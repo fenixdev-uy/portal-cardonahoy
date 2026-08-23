@@ -10,6 +10,15 @@ El proyecto oficial y único sobre el que se debe continuar es:
 
 No mezclar cambios con las demás carpetas que pertenecen al repositorio Git superior.
 
+## Control de versiones
+
+Este proyecto tiene **su propio repositorio git**, independiente del repo grande de `/home/fenixdev/public_html` (que mezcla otros proyectos de clientes sin relación). Se creó el 23 de agosto de 2026, rama `main`, sin remoto configurado — vive solo en este disco por ahora.
+
+- El primer commit (`440a41b`) incluye todo el estado aprobado hasta esa fecha: feeds, votos, panel de votaciones, administración completa.
+- El `.gitignore` propio del proyecto ya excluye `admin/config.local.php` (credenciales de la base de datos), `/error_log` y las imágenes subidas en `/uploads/noticias/` (contenido de usuarios, no código fuente). **Las fotos de las noticias no viajan con el repo** — si se clona en otra máquina, `uploads/noticias/` aparece vacío salvo el `.htaccess`.
+- Antes de cualquier commit, revisar `git status --short` y `git diff --cached --name-only` para confirmar que no se cuela nada de `config.local.php` ni de logs.
+- Si en el futuro se agrega un remoto (GitHub/GitLab privado), documentarlo acá.
+
 ## Estado aprobado
 
 El usuario aprobó expresamente el estado visual y funcional descrito a continuación. Al retomar, conservarlo y realizar cambios pequeños únicamente cuando sean solicitados.
