@@ -1,0 +1,6 @@
+/admin/config.local.php
+/db
+/error_log
+/uploads/noticias/*
+!/uploads/noticias/.htaccess
+
