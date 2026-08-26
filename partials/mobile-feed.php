@@ -10,6 +10,23 @@
  * La galería completa queda reservada para la vista ampliada de la noticia.
  */
 require_once __DIR__ . '/publicidad.php';
+$publicidadesFeedMovil = [];
+$bolsaPublicidadMovil = [];
+$ultimoAnuncioMovil = null;
+for ($i = 0, $totalNoticiasMovil = count($noticias); $i < $totalNoticiasMovil && $anunciosPublicidadActivos; $i++) {
+    if (!$bolsaPublicidadMovil) {
+        $bolsaPublicidadMovil = $anunciosPublicidadActivos;
+        shuffle($bolsaPublicidadMovil);
+        if (count($bolsaPublicidadMovil) > 1
+            && $ultimoAnuncioMovil !== null
+            && (int) $bolsaPublicidadMovil[0]['id'] === $ultimoAnuncioMovil) {
+            [$bolsaPublicidadMovil[0], $bolsaPublicidadMovil[1]] = [$bolsaPublicidadMovil[1], $bolsaPublicidadMovil[0]];
+        }
+    }
+    $avisoMovil = array_shift($bolsaPublicidadMovil);
+    $publicidadesFeedMovil[] = $avisoMovil;
+    $ultimoAnuncioMovil = (int) $avisoMovil['id'];
+}
 ?>
   <section class="news-feed" aria-label="Noticias">
 <?php foreach ($noticias as $indiceNoticia => $n): ?>
@@ -20,7 +37,7 @@ require_once __DIR__ . '/publicidad.php';
     $categoria = $n['categoria_nombre'] ?? '';
     $portada = $fotos[0] ?? null;
     $resumen = html_a_texto($n['descripcion'] ?? '', 280);
-    $aviso = $avisosPublicidad[$indiceNoticia % count($avisosPublicidad)];
+    $aviso = $publicidadesFeedMovil[$indiceNoticia] ?? null;
 ?>
     <article class="feed-item">
 <?php if ($portada): ?>
@@ -49,10 +66,23 @@ require_once __DIR__ . '/publicidad.php';
       </div>
     </article>
 
-    <aside class="feed-ad-item" aria-label="Publicidad">
-      <figure class="feed-ad-panel">
-        <img src="<?= e($aviso['imagen']) ?>" alt="<?= e($aviso['alt']) ?>" loading="lazy" decoding="async">
-      </figure>
+<?php if ($aviso): ?>
+<?php $nombrePublicidad = trim((string) $aviso['nombre']); $publicidad = $aviso; ?>
+    <aside class="feed-ad-item" aria-label="Publicidad de <?= e($nombrePublicidad) ?>">
+      <div class="feed-ad-card">
+        <figure class="feed-ad-media">
+          <img src="<?= e(url_imagen_front($aviso['imagen'])) ?>" alt="<?= e($aviso['alt']) ?>" loading="lazy" decoding="async">
+        </figure>
+        <footer class="feed-ad-footer">
+          <span class="feed-ad-label">Publicidad</span>
+<?php
+    $claseRedesPublicidad = 'feed-ad-social';
+    $claseEnlacePublicidad = 'feed-ad-social-link';
+    require __DIR__ . '/publicidad-social.php';
+?>
+        </footer>
+      </div>
     </aside>
+<?php endif; ?>
 <?php endforeach; ?>
   </section>
