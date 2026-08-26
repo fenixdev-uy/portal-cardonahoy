@@ -362,8 +362,9 @@ El asistente se integra directamente en la barra de TipTap mediante el botón co
 
 ## Próxima mejora priorizada
 
-1. Diseñar la experiencia de la **página individual de la noticia en PC**. El usuario confirmó que la versión móvil quedó totalmente aprobada, pero la presentación actual del permalink en escritorio todavía no lo convence. La próxima sesión debe comenzar revisando esa superficie en PC, conversar el diseño y modificar únicamente el bloque de escritorio; no rediseñar ni degradar la experiencia móvil aprobada.
-2. Más adelante, confirmar visualmente en el editor autenticado de PROD las cards **SEO** y **Vista Previa**. Después corresponderá validar la URL real con Rich Results Test, depuradores sociales y Google Search Console.
+1. Continuar ajustando la **nueva grilla de la portada en PC** a partir de la primera versión solicitada el 26 de agosto. Debe conservar el header/slider y mostrar todas las noticias en tarjetas; la próxima intervención se limita a los detalles visuales que indique el usuario.
+2. Después de cerrar la portada, diseñar la experiencia de la **página individual de la noticia en PC**. La presentación móvil sigue totalmente aprobada y no debe modificarse.
+3. Más adelante, confirmar visualmente en el editor autenticado de PROD las cards **SEO** y **Vista Previa**. Después corresponderá validar la URL real con Rich Results Test, depuradores sociales y Google Search Console.
 
 ## Otros próximos pasos acordados
 
@@ -489,11 +490,11 @@ Después de esta etapa el front quedó repartido así. Conviene conocerlo antes 
 | --- | --- |
 | `index.php` | Consultas a la base, estructura del hero, `include` de los partials y configuración mínima de la URL de votos. |
 | `assets/css/portal.css` | Todo el CSS compartido de la portada para PC y móvil, extraído sin modificar reglas y cargado con versión `filemtime()`. |
-| `assets/js/portal.js` | Todas las interacciones compartidas de la portada: hero, menú, galerías, hoja completa, visor, votos y ayudas de scroll. |
+| `assets/js/portal.js` | Interacciones compartidas de la portada: hero, menú, hoja completa móvil, visor y votos. |
 | `assets/css/noticia.css` | Estilos de la página pública individual, incluida su adaptación PC/móvil y el visor propio. |
 | `assets/js/noticia.js` | Menú, carrusel, visor con zoom/gestos/teclado y votos de la página pública individual; se inicializa según los elementos presentes. |
 | `partials/mobile-feed.php` | Marcado del feed móvil. |
-| `partials/pc-feed.php` | Marcado del feed PC. |
+| `partials/pc-feed.php` | Grilla resumida de tarjetas para la portada PC. |
 | `partials/publicidad.php` | Piezas de publicidad y su orden. Fuente única. |
 | `partials/boton-nota-completa.php` | Botón móvil «Ver nota completa». |
 | `partials/nota-completa.php` | Hoja móvil aprobada, contenido completo, galería y doble exposición publicitaria provisoria. |
@@ -504,7 +505,7 @@ Después de esta etapa el front quedó repartido así. Conviene conocerlo antes 
 | `admin/votaciones.php` | Pantalla del panel: ranking de noticias más votadas. |
 | `admin/assets/votaciones.js` | Dibuja el gráfico (SVG a mano, sin librería). |
 
-Se decidió mantener **dos partials de feed** en lugar de uno responsive, para no reescribir el marcado del feed PC que ya estaba aprobado. La contrapartida asumida es que cada dispositivo descarga el marcado del otro oculto por CSS, con el contenido duplicado que eso implica para lectores de pantalla y para SEO. Unificarlos en un solo partial sigue siendo el camino más limpio a largo plazo, pero requiere pedido explícito.
+Se mantienen **dos partials de feed** porque móvil y PC son experiencias deliberadamente independientes. La contrapartida asumida es que cada dispositivo descarga el marcado del otro oculto por CSS, con contenido duplicado para lectores de pantalla y SEO. Unificarlos requiere una etapa propia y un pedido explícito.
 
 ## Regla al retomar
 
@@ -521,3 +522,11 @@ Al retomar, la única prioridad nueva acordada es diseñar la experiencia de la 
 El usuario aprobó el refactor como **«perfecto, impecable»** y pidió dejar todo pronto para regresar más tarde y comenzar la vista de PC. El cierre técnico está en `83270c6 refactor: extraer interacciones de la noticia`, precedido por tres commits separados para CSS/JavaScript de portada y noticia. La rama `main` quedó limpia, siguiendo `origin/main`, con los cuatro commits publicados en el repositorio privado de GitHub.
 
 Este refactor existe únicamente en el checkout y en GitHub: **no fue desplegado a PROD**. Producción conserva el baseline aprobado `27ca624` / `prod-2026-08-26`. Al regresar, comenzar leyendo `AGENDA.md`, revisar visualmente la página individual actual en escritorio y conversar la composición antes de editar. No iniciar otra tarea, no tocar móvil y no desplegar hasta que el usuario revise la propuesta de PC.
+
+### Primera versión de la nueva portada PC — 26 de agosto de 2026
+
+El usuario cambió explícitamente la prioridad: antes de la página individual se comenzó por desmantelar la portada PC debajo del header/slider. `partials/pc-feed.php` ahora presenta las siete noticias actuales como tarjetas editoriales completas, con portada `3:2`, categoría, fecha compacta, título, resumen y enlace al permalink. Las tarjetas son rectangulares y no tienen bordes redondeados.
+
+La grilla usa tres columnas desde `1100px` y dos entre `769px` y `1099px`; la experiencia móvil continúa siendo independiente hasta `768px`. Se retiraron del home PC el antiguo artículo a pantalla completa, `scroll-snap`, anuncios intercalados, mini-slider, ampliación de galería y ayuda de scroll, junto con su CSS y JavaScript específicos. El header y su slider no fueron modificados.
+
+Validación DEV: PHP, JavaScript y diff correctos; Chromium/Puppeteer a `1440×900`, `900×900` y `390×844`, con siete tarjetas, 3/2 columnas según el ancho, cero overflow y enlaces/imágenes válidos. El clic sobre la primera tarjeta abrió el permalink y el título esperado sin errores. Las capturas móvil anteriores y posteriores resultaron idénticas byte por byte. Browser plugin y Playwright no estaban disponibles, por lo que se reutilizó Puppeteer. Esta propuesta **no está desplegada en PROD** y debe recibir la revisión visual del usuario antes de cualquier publicación.

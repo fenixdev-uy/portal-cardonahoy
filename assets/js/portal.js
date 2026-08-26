@@ -105,62 +105,6 @@
       navbar.classList.toggle('scrolled', window.scrollY > 10);
     });
 
-    // Mini sliders de fotos en el feed PC (auto-rotación + pausa al pasar el mouse + puntos)
-    document.querySelectorAll('.pc-slider').forEach((slider) => {
-      const slides = Array.from(slider.querySelectorAll('.pc-slide'));
-      const dotsContainer = slider.querySelector('.pc-dots');
-      if (slides.length < 2) return;
-
-      const dots = slides.map((_, i) => {
-        const dot = document.createElement('button');
-        dot.className = 'pc-dot' + (i === 0 ? ' active' : '');
-        dot.setAttribute('aria-label', 'Ir a la foto ' + (i + 1));
-        if (dotsContainer) dotsContainer.appendChild(dot);
-        return dot;
-      });
-
-      let idx = 0;
-      let timer = null;
-
-      function show(i) {
-        slides[idx].classList.remove('active');
-        if (dots[idx]) dots[idx].classList.remove('active');
-
-        idx = i;
-
-        slides[idx].classList.add('active');
-        if (dots[idx]) dots[idx].classList.add('active');
-      }
-
-      function next() {
-        show((idx + 1) % slides.length);
-      }
-
-      function start() {
-        stop();
-        timer = setInterval(next, 3000);
-      }
-
-      function stop() {
-        if (timer) {
-          clearInterval(timer);
-          timer = null;
-        }
-      }
-
-      dots.forEach((dot, i) => {
-        dot.addEventListener('click', () => {
-          show(i);
-          start();
-        });
-      });
-
-      slider.addEventListener('mouseenter', stop);
-      slider.addEventListener('mouseleave', start);
-
-      start();
-    });
-
     // Nota completa móvil: panel inferior cargado desde templates
     // inertes para no duplicar descargas de imágenes y videos al abrir el feed.
     const storySheet = document.getElementById('storySheet');
@@ -553,20 +497,6 @@
         if (storySheet?.classList.contains('open')) startStorySheetGalleryAutoplay?.();
       }
 
-      // Disparador del feed PC: mini slider con la foto activa marcada por clase.
-      document.querySelectorAll('.pc-gallery-expand').forEach((button) => {
-        button.addEventListener('click', () => {
-          const slider = button.closest('.pc-slider');
-          if (!slider) return;
-          const slides = Array.from(slider.querySelectorAll('.pc-slide'));
-          openGallery(
-            slides.map((slide) => slide.dataset.fullSrc),
-            slides.findIndex((slide) => slide.classList.contains('active')),
-            button
-          );
-        });
-      });
-
       // Disparador del feed móvil: tanto la lupa como un toque directo sobre la
       // foto abren el carrusel en la imagen que está activa.
       function openMobileGallery(gallery, trigger) {
@@ -712,25 +642,3 @@
         if (event.key === 'ArrowRight') showGalleryImage(galleryIndex + 1);
       });
     }
-
-    // Flecha de scroll en noticias PC con texto desbordado
-    document.querySelectorAll('.pc-item').forEach((item) => {
-      const content = item.querySelector('.pc-content');
-      const hint = item.querySelector('.pc-scroll-hint');
-      if (!content || !hint) return;
-
-      function updateHint() {
-        const hasOverflow = content.scrollHeight > content.clientHeight;
-        const atBottom = content.scrollTop + content.clientHeight >= content.scrollHeight - 5;
-        hint.classList.toggle('show', hasOverflow && !atBottom);
-      }
-
-      content.addEventListener('scroll', updateHint);
-      window.addEventListener('resize', updateHint);
-
-      hint.addEventListener('click', () => {
-        content.scrollBy({ top: content.clientHeight * 0.9, behavior: 'smooth' });
-      });
-
-      updateHint();
-    });

@@ -6,21 +6,22 @@ Este archivo contiene únicamente el trabajo pendiente elegido para próximas et
 
 ## Prioridad activa
 
-1. **Rediseñar la experiencia de la página individual de la noticia en PC.**
-   - Estado: **lista para iniciar cuando regrese el usuario**. La preparación técnica previa quedó terminada, validada y respaldada en GitHub; todavía no fue desplegada en PROD.
-   - Revisar primero la composición actual del permalink en escritorio y acordar la nueva propuesta visual.
-   - Modificar únicamente la presentación de escritorio.
-   - Preservar íntegramente la experiencia móvil aprobada y desplegada.
-   - No desplegar la propuesta nueva hasta que el usuario la revise.
+1. **Continuar dando forma a la nueva portada de noticias en PC.**
+   - Estado: **primera versión implementada y validada en DEV; pendiente de revisión visual del usuario**.
+   - Se conserva sin cambios el header con slider y, debajo, todas las noticias aparecen como tarjetas editoriales: tres columnas desde `1100px` y dos entre `769px` y `1099px`.
+   - Ajustar solamente la grilla y la anatomía de sus tarjetas según la próxima devolución del usuario.
+   - Preservar íntegramente la experiencia móvil aprobada hasta `768px`.
+   - No desplegar esta propuesta nueva hasta que el usuario la apruebe expresamente.
 
 ## Pendientes posteriores
 
-1. Confirmar visualmente en el editor autenticado de PROD las cards **SEO** y **Vista Previa**; luego validar una URL real con Rich Results Test, los depuradores de Facebook/WhatsApp y Google Search Console.
-2. Alimentar el slider del hero desde la base de datos; hoy conserva tres noticias estáticas de ejemplo.
-3. Resolver la limpieza segura de fotos huérfanas cuando se abandona el formulario sin guardar la noticia.
-4. Evaluar el formato publicitario provisorio antes de diseñar una gestión dinámica desde el panel.
-5. Probar los gestos, la inercia y el rendimiento en un teléfono real, especialmente Safari iOS.
-6. Incorporar un favicon para eliminar la petición 404 conocida.
+1. Rediseñar la experiencia de la página individual de la noticia en PC después de cerrar la portada; la versión móvil sigue siendo el baseline aprobado.
+2. Confirmar visualmente en el editor autenticado de PROD las cards **SEO** y **Vista Previa**; luego validar una URL real con Rich Results Test, los depuradores de Facebook/WhatsApp y Google Search Console.
+3. Alimentar el slider del hero desde la base de datos; hoy conserva tres noticias estáticas de ejemplo.
+4. Resolver la limpieza segura de fotos huérfanas cuando se abandona el formulario sin guardar la noticia.
+5. Evaluar el formato publicitario provisorio antes de diseñar una gestión dinámica desde el panel.
+6. Probar los gestos, la inercia y el rendimiento en un teléfono real, especialmente Safari iOS.
+7. Incorporar un favicon para eliminar la petición 404 conocida.
 
 ## Mejoras futuras sin etapa activa
 

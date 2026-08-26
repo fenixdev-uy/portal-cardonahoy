@@ -240,14 +240,11 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 
 ### Hecho — front PC
 - [x] Front conectado al backend (`index.php` + `partials/pc-feed.php`).
-- [x] 1 noticia por pantalla (scroll-snap), imagen izquierda + texto derecha.
-- [x] Galería como mini-slider si hay más de una foto (auto-rotación + puntos).
-- [x] Ampliación de galerías en PC: lupa, visor a pantalla completa, anterior/siguiente, cierre, teclado y zoom de 100% a 400% con la rueda del mouse.
+- [x] Header y slider principal conservados a pantalla completa.
+- [x] Portada editorial con todas las noticias en tarjetas: tres columnas desde `1100px` y dos columnas entre `769px` y `1099px`.
+- [x] Tarjetas rectangulares, sin bordes redondeados: portada `3:2`, categoría, fecha compacta, título y resumen; toda la tarjeta abre el permalink público.
 - [x] Orden: la última noticia creada sale primera.
-- [x] Descripción HTML renderizada con estilos (títulos, listas, citas, imágenes, enlaces, etc.).
-- [x] Video de YouTube embebido debajo de la descripción.
-- [x] Ajustes visuales: título más grande (`clamp(2.8rem, 5vw, 4.5rem)`, peso 900) y categoría con mejor contraste (teal oscuro `#0f766e`).
-- [x] Bloques provisorios de publicidad después de cada noticia en PC, alternando dos parejas de piezas cuadradas.
+- [x] El antiguo feed de una noticia por pantalla, sus anuncios intercalados, mini-slider, lupa y `scroll-snap` fueron retirados de la portada PC. El contenido completo y las galerías permanecen en el permalink individual.
 
 ### Hecho — front móvil
 - [x] Feed móvil conectado al backend (`index.php` + `partials/mobile-feed.php`), sin consultas adicionales: reutiliza los datos del feed PC.
@@ -284,7 +281,7 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 ### Pendiente / próximas versiones
 - [x] **SEO por noticia desplegado en PROD:** permalink estable, historial 301, título/descripción/imagen automáticos con overrides opcionales, previews Google/social, página pública, canonical, Open Graph, Twitter Card, `NewsArticle`, sitemap, robots y botones Compartir. La base de producción fue respaldada y migrada de forma idempotente; la salida pública pasó QA HTTPS.
 - [x] **Página individual móvil desplegada y aprobada:** encabezado del portal, hero/galería con lupa incluso para una foto, visor con zoom de 100% a 400%, fecha, autor, HTML enriquecido, medios, votos, redes alineadas y regreso a la portada. La rotación automática mueve solamente el carrusel horizontal y no altera el scroll vertical.
-- [ ] **Próxima etapa:** rediseñar la experiencia de la página individual en PC. La versión móvil es el baseline aprobado y debe permanecer intacta; el trabajo de escritorio comenzará en la próxima sesión después de acordar la nueva composición visual.
+- [ ] **Etapa activa:** terminar de dar forma a la nueva grilla de la portada PC después de la revisión visual del usuario. Luego se retomará el rediseño de la página individual en PC. La versión móvil es el baseline aprobado y debe permanecer intacta.
 - [x] **Asistente editorial desplegado:** el botón **«Crear con IA»** abre un drawer lateral donde el periodista puede pegar información cruda o fragmentos de otras fuentes y agregar indicaciones. Siempre que TipTap tenga contenido —especialmente al editar una noticia— su texto actual reemplaza la información base al abrir el asistente; si está vacío no la sobrescribe. DeepSeek construye una propuesta, permite crear otra versión y solo la agrega a TipTap al confirmar. Para garantizar exactitud no admite URLs: el periodista debe copiar el contenido relevante del enlace. La clave nunca llega al navegador. Código, runtime privado y bloqueo HTTP quedaron publicados y verificados en producción el 25 de agosto de 2026.
 - [ ] Conectar el slider del home (`hero`) al backend; es lo último del front que sigue estático.
 - [x] Autenticación y protección completa del panel.
