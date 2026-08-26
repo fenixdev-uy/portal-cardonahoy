@@ -1935,9 +1935,14 @@
         transition: opacity 0.2s ease, transform 0.2s ease;
       }
 
-      .pc-news-ad-social-link:hover {
+      .pc-news-ad-social-link:not(.is-disabled):hover {
         opacity: 0.62;
         transform: translateY(-1px);
+      }
+
+      .pc-news-ad-social-link.is-disabled {
+        color: #94a3b8;
+        opacity: 0.68;
       }
 
       .pc-news-ad-social-link:focus-visible {

@@ -58,6 +58,11 @@ $redesPublicidadPc = [
     $esUrlSegura = filter_var($urlRedPublicidad, FILTER_VALIDATE_URL) !== false
         && in_array(strtolower((string) parse_url($urlRedPublicidad, PHP_URL_SCHEME)), ['http', 'https'], true);
     if (!$esUrlSegura) {
+?>
+              <span class="pc-news-ad-social-link is-disabled" role="img" aria-label="<?= e($redPublicidad['etiqueta']) ?> sin configurar para <?= e($nombrePublicidad) ?>" aria-disabled="true" title="<?= e($redPublicidad['etiqueta']) ?> sin configurar">
+                <svg viewBox="<?= e($redPublicidad['view_box']) ?>" <?= $redPublicidad['relleno'] ? 'fill="currentColor"' : 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"' ?> aria-hidden="true"><?= $redPublicidad['svg'] ?></svg>
+              </span>
+<?php
         continue;
     }
     $urlDestinoPublicidad = $urlRedPublicidad;
@@ -68,7 +73,7 @@ $redesPublicidadPc = [
         ]));
     }
 ?>
-              <a class="pc-news-ad-social-link" href="<?= e($urlDestinoPublicidad) ?>" target="_blank" rel="noopener noreferrer" aria-label="<?= e($redPublicidad['etiqueta']) ?> de <?= e($nombrePublicidad) ?>" title="<?= e($redPublicidad['etiqueta']) ?>">
+              <a class="pc-news-ad-social-link" href="<?= e($urlDestinoPublicidad) ?>" target="_blank" rel="noopener noreferrer sponsored" aria-label="<?= e($redPublicidad['etiqueta']) ?> de <?= e($nombrePublicidad) ?>" title="<?= e($redPublicidad['etiqueta']) ?>">
                 <svg viewBox="<?= e($redPublicidad['view_box']) ?>" <?= $redPublicidad['relleno'] ? 'fill="currentColor"' : 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"' ?> aria-hidden="true"><?= $redPublicidad['svg'] ?></svg>
               </a>
 <?php endforeach; ?>
