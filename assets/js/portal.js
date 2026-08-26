@@ -181,17 +181,32 @@
       const template = document.querySelector(`template[data-story-template="${storyId}"]`);
       if (!storySheet || !storySheetPanel || !storySheetContent || !template) return;
 
+      const alreadyOpen = storySheet.classList.contains('open');
+
       if (storySheetClearTimer) {
         window.clearTimeout(storySheetClearTimer);
         storySheetClearTimer = null;
       }
 
-      storySheetTrigger = trigger;
-      storySheetPreviousOverflow = document.body.style.overflow;
+      if (!alreadyOpen) {
+        storySheetTrigger = trigger;
+        storySheetPreviousOverflow = document.body.style.overflow;
+      }
       storySheetDragPointer = null;
       storySheetDragOffset = 0;
       clearStorySheetDragStyles();
       storySheetContent.replaceChildren(template.content.cloneNode(true));
+      if (window.matchMedia('(min-width: 769px)').matches) {
+        const latestTemplate = document.getElementById('storyLatestTemplate');
+        const latestFragment = latestTemplate?.content.cloneNode(true);
+        const latestSection = latestFragment?.querySelector('.story-latest');
+        if (latestSection) {
+          latestSection.querySelector(`[data-story-recommendation="${storyId}"]`)?.remove();
+          Array.from(latestSection.querySelectorAll('.story-latest-entry')).slice(10).forEach((entry) => entry.remove());
+          const copy = storySheetContent.querySelector('.story-sheet-copy');
+          if (copy && latestSection.querySelector('.story-latest-entry')) copy.appendChild(latestSection);
+        }
+      }
       storySheetContent.scrollTop = 0;
       storySheet.classList.add('open');
       storySheet.setAttribute('aria-hidden', 'false');

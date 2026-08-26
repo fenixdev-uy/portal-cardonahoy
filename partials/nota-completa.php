@@ -25,6 +25,45 @@ require_once __DIR__ . '/publicidad.php';
     </section>
   </div>
 
+<?php $ultimasNoticiasDrawer = array_slice(array_values($noticias), 0, 11); ?>
+<?php if (count($ultimasNoticiasDrawer) > 1): ?>
+  <template id="storyLatestTemplate">
+    <section class="story-latest" aria-labelledby="storyLatestTitle">
+      <header class="story-latest-header">
+        <span aria-hidden="true"></span>
+        <h2 id="storyLatestTitle">Últimas Noticias</h2>
+        <span aria-hidden="true"></span>
+      </header>
+      <div class="story-latest-list">
+<?php foreach ($ultimasNoticiasDrawer as $indiceUltima => $noticiaUltima): ?>
+        <div class="story-latest-entry" data-story-recommendation="<?= (int) $noticiaUltima['id'] ?>">
+<?php $n = $noticiaUltima; require __DIR__ . '/pc-news-card.php'; ?>
+<?php if ($anunciosPublicidadActivos): ?>
+<?php
+    $publicidad = $anunciosPublicidadActivos[$indiceUltima % count($anunciosPublicidadActivos)];
+    $nombrePublicidad = trim((string) $publicidad['nombre']);
+?>
+          <aside class="pc-news-ad-card story-latest-ad-card" aria-label="Publicidad de <?= e($nombrePublicidad) ?>">
+            <figure class="pc-news-ad-media">
+              <img src="<?= e(url_imagen_front($publicidad['imagen'])) ?>" alt="<?= e($publicidad['alt']) ?>" loading="lazy" decoding="async">
+            </figure>
+            <footer class="pc-news-ad-footer">
+              <span class="pc-news-ad-label">Publicidad</span>
+<?php
+    $claseRedesPublicidad = 'pc-news-ad-social';
+    $claseEnlacePublicidad = 'pc-news-ad-social-link';
+    require __DIR__ . '/publicidad-social.php';
+?>
+            </footer>
+          </aside>
+<?php endif; ?>
+        </div>
+<?php endforeach; ?>
+      </div>
+    </section>
+  </template>
+<?php endif; ?>
+
 <?php foreach ($noticias as $indiceNoticia => $n): ?>
 <?php
     $fotos = $fotosPorNoticia[(int) $n['id']] ?? [];
