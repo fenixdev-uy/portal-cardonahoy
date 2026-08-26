@@ -230,13 +230,18 @@ require __DIR__ . '/includes/header.php';
 </div>
 
 <section class="users-panel ads-panel">
-  <div class="ads-table-toolbar">
-    <span class="ads-total"><strong><?= count($anuncios) ?></strong> <?= count($anuncios) === 1 ? 'anuncio' : 'anuncios' ?></span>
+  <div class="ads-table-toolbar<?= empty($anuncios) ? ' is-empty' : '' ?>">
+    <?php if (!empty($anuncios)): ?>
+      <label class="ads-search" for="adsSearch">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
+        <input type="search" id="adsSearch" placeholder="Buscar anuncios..." autocomplete="off" aria-describedby="adsSearchStatus">
+      </label>
+    <?php endif; ?>
     <a class="btn btn-primary ads-create-btn js-new-ad" href="anuncios.php?nuevo=1">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
       Nuevo Anuncio
     </a>
-    <span class="ads-toolbar-spacer" aria-hidden="true"></span>
+    <span class="ads-total" id="adsSearchStatus" aria-live="polite"><strong id="adsSearchCount"><?= count($anuncios) ?></strong><span id="adsSearchLabel"> <?= count($anuncios) === 1 ? 'anuncio' : 'anuncios' ?></span></span>
   </div>
 
   <?php if (empty($anuncios)): ?>
@@ -265,7 +270,7 @@ require __DIR__ . '/includes/header.php';
               'web' => ['Web', $anuncio['sitio_web_url']],
           ];
       ?>
-        <tr>
+        <tr class="ad-row" data-search-name="<?= e($anuncio['nombre']) ?>">
           <td data-label="Imagen"><button type="button" class="ad-table-image-button js-view-ad" data-ad-id="<?= (int) $anuncio['id'] ?>" aria-label="Ver datos de <?= e($anuncio['nombre']) ?>" title="Ver anuncio"><img class="ad-table-image" src="<?= e(url_imagen($anuncio['imagen'])) ?>" alt="Vista previa de <?= e($anuncio['nombre']) ?>"></button></td>
           <td data-label="Nombre"><strong><?= e($anuncio['nombre']) ?></strong><div class="cell-desc">#<?= (int) $anuncio['id'] ?></div></td>
           <td data-label="Destinos"><div class="ad-destinations">
@@ -313,6 +318,7 @@ require __DIR__ . '/includes/header.php';
       <?php endforeach; ?>
       </tbody>
     </table></div>
+    <div class="ads-filter-empty" id="adsFilterEmpty" hidden>No encontramos anuncios con ese nombre.</div>
   <?php endif; ?>
 </section>
 
@@ -421,6 +427,29 @@ require __DIR__ . '/includes/header.php';
   let returnFocus = null;
   let drawerFocusTimer = null;
   let currentEditButton = null;
+  const adsSearch = document.getElementById('adsSearch');
+  const adsSearchCount = document.getElementById('adsSearchCount');
+  const adsSearchLabel = document.getElementById('adsSearchLabel');
+  const adsFilterEmpty = document.getElementById('adsFilterEmpty');
+  const adRows = Array.from(document.querySelectorAll('.ad-row'));
+
+  function normalizeSearch(value) {
+    return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es');
+  }
+  function filterAds() {
+    if (!adsSearch || !adsSearchCount || !adsSearchLabel) return;
+    const term = normalizeSearch(adsSearch.value.trim());
+    let visible = 0;
+    adRows.forEach((row) => {
+      const matches = !term || normalizeSearch(row.dataset.searchName || '').includes(term);
+      row.hidden = !matches;
+      if (matches) visible += 1;
+    });
+    const total = adRows.length;
+    adsSearchCount.textContent = String(term ? visible : total);
+    adsSearchLabel.textContent = term ? ` de ${total} anuncios` : ` ${total === 1 ? 'anuncio' : 'anuncios'}`;
+    if (adsFilterEmpty) adsFilterEmpty.hidden = visible !== 0;
+  }
 
   function updateActiveLabel() {
     activeLabel.textContent = activeInput.checked ? 'Activo' : 'Inactivo';
@@ -698,6 +727,7 @@ require __DIR__ . '/includes/header.php';
     }
   });
   newButton.addEventListener('click', prepareNew);
+  if (adsSearch) adsSearch.addEventListener('input', filterAds);
   document.querySelectorAll('.js-view-ad').forEach((button) => button.addEventListener('click', prepareView));
   document.querySelectorAll('.js-edit-ad').forEach((button) => button.addEventListener('click', prepareEdit));
   editDrawerButton.addEventListener('click', () => { if (currentEditButton) loadEditForm(currentEditButton, returnFocus); });
