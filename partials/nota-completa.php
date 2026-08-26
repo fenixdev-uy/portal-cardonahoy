@@ -37,7 +37,12 @@ require_once __DIR__ . '/publicidad.php';
       <div class="story-latest-list">
 <?php foreach ($ultimasNoticiasDrawer as $indiceUltima => $noticiaUltima): ?>
         <div class="story-latest-entry" data-story-recommendation="<?= (int) $noticiaUltima['id'] ?>">
-<?php $n = $noticiaUltima; require __DIR__ . '/pc-news-card.php'; ?>
+<?php
+    $n = $noticiaUltima;
+    $mostrarBotonNotaCompletaPc = true;
+    require __DIR__ . '/pc-news-card.php';
+    $mostrarBotonNotaCompletaPc = false;
+?>
 <?php if ($anunciosPublicidadActivos): ?>
 <?php
     $publicidad = $anunciosPublicidadActivos[$indiceUltima % count($anunciosPublicidadActivos)];

@@ -7,6 +7,7 @@ $resumen = html_a_texto($n['descripcion'] ?? '', 220);
 $timestamp = strtotime((string) ($n['created_at'] ?? ''));
 $fecha = $timestamp !== false ? date('j/n/Y', $timestamp) : '';
 $url = url_noticia((string) $n['slug']);
+$mostrarCtaNotaCompletaPc = !empty($mostrarBotonNotaCompletaPc);
 ?>
       <article class="pc-news-card">
         <a class="pc-news-card-link" href="<?= e($url) ?>" data-story-id="<?= (int) $n['id'] ?>" aria-label="Abrir noticia: <?= e($n['titulo']) ?>">
@@ -29,6 +30,9 @@ $url = url_noticia((string) $n['slug']);
             <h2 class="pc-news-card-title"><?= e($n['titulo']) ?></h2>
 <?php if ($resumen !== ''): ?>
             <p class="pc-news-card-summary"><?= e($resumen) ?></p>
+<?php endif; ?>
+<?php if ($mostrarCtaNotaCompletaPc): ?>
+            <span class="pc-news-card-cta">Ver nota completa</span>
 <?php endif; ?>
           </div>
         </a>
