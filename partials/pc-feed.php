@@ -60,8 +60,15 @@ $redesPublicidadPc = [
     if (!$esUrlSegura) {
         continue;
     }
+    $urlDestinoPublicidad = $urlRedPublicidad;
+    if (!empty($publicidad['id'])) {
+        $urlDestinoPublicidad = url_portal('publicidad-click.php?' . http_build_query([
+            'id' => (int) $publicidad['id'],
+            'destino' => $redPublicidad['campo'],
+        ]));
+    }
 ?>
-              <a class="pc-news-ad-social-link" href="<?= e($urlRedPublicidad) ?>" target="_blank" rel="noopener noreferrer" aria-label="<?= e($redPublicidad['etiqueta']) ?> de <?= e($nombrePublicidad) ?>" title="<?= e($redPublicidad['etiqueta']) ?>">
+              <a class="pc-news-ad-social-link" href="<?= e($urlDestinoPublicidad) ?>" target="_blank" rel="noopener noreferrer" aria-label="<?= e($redPublicidad['etiqueta']) ?> de <?= e($nombrePublicidad) ?>" title="<?= e($redPublicidad['etiqueta']) ?>">
                 <svg viewBox="<?= e($redPublicidad['view_box']) ?>" <?= $redPublicidad['relleno'] ? 'fill="currentColor"' : 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"' ?> aria-hidden="true"><?= $redPublicidad['svg'] ?></svg>
               </a>
 <?php endforeach; ?>

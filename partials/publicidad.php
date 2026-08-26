@@ -49,3 +49,27 @@ $filaPublicidadPc = [
         'sitio_web_url' => 'https://example.com/',
     ],
 ];
+
+// En PC, los anuncios administrados reemplazan el banco demostrativo cuando
+// existe al menos uno publicable. Móvil conserva por ahora su banco aprobado.
+if (isset($pdo) && $pdo instanceof PDO) {
+    try {
+        $stmtPublicidadPc = $pdo->prepare(
+            'SELECT id, nombre, imagen, facebook_url, instagram_url, whatsapp_url, sitio_web_url, clics
+               FROM anuncios
+              WHERE activo = 1
+                AND (fecha_vencimiento IS NULL OR fecha_vencimiento > ?)
+              ORDER BY created_at DESC, id DESC'
+        );
+        $stmtPublicidadPc->execute([date('Y-m-d')]);
+        $anunciosPublicablesPc = $stmtPublicidadPc->fetchAll();
+        if ($anunciosPublicablesPc) {
+            $filaPublicidadPc = array_map(static function (array $anuncio): array {
+                $anuncio['alt'] = 'Publicidad de ' . trim((string) $anuncio['nombre']);
+                return $anuncio;
+            }, $anunciosPublicablesPc);
+        }
+    } catch (PDOException $e) {
+        // Permite desplegar código y migración de forma incremental.
+    }
+}

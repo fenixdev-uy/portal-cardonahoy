@@ -250,6 +250,7 @@ require __DIR__ . '/includes/header.php';
         <th>Vencimiento</th>
         <th>Creado</th>
         <th>Estado</th>
+        <th>Clics</th>
         <th style="width:110px;">Acciones</th>
       </tr></thead>
       <tbody>
@@ -286,6 +287,7 @@ require __DIR__ . '/includes/header.php';
               <small class="ad-status-feedback" aria-live="polite"></small>
             </form>
           </td>
+          <td data-label="Clics"><strong><?= number_format((int) ($anuncio['clics'] ?? 0), 0, ',', '.') ?></strong></td>
           <td data-label="Acciones"><div class="cell-actions user-icon-actions">
             <a class="action-icon action-icon-edit js-edit-ad" href="anuncios.php?editar=<?= (int) $anuncio['id'] ?>"
                data-id="<?= (int) $anuncio['id'] ?>" data-name="<?= e($anuncio['nombre']) ?>" data-image="<?= e(url_imagen($anuncio['imagen'])) ?>"
@@ -295,6 +297,7 @@ require __DIR__ . '/includes/header.php';
                data-created="<?= e(date('d/m/Y H:i', strtotime((string) $anuncio['created_at']))) ?>"
                data-updated="<?= e(date('d/m/Y H:i', strtotime((string) $anuncio['updated_at']))) ?>"
                data-active="<?= $activoManual ? '1' : '0' ?>"
+               data-clicks="<?= (int) ($anuncio['clics'] ?? 0) ?>"
                data-status="<?= $activoManual ? 'Activo' : 'Inactivo' ?>" data-status-class="<?= $activoManual ? 'is-current' : 'is-inactive' ?>"
                aria-label="Editar <?= e($anuncio['nombre']) ?>" title="Editar anuncio">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
@@ -333,6 +336,7 @@ require __DIR__ . '/includes/header.php';
         <div><dt>WhatsApp</dt><dd id="adDetailWhatsapp"></dd></div>
         <div><dt>Sitio web</dt><dd id="adDetailWeb"></dd></div>
         <div><dt>Fecha de vencimiento</dt><dd id="adDetailExpires"></dd></div>
+        <div><dt>Clics</dt><dd id="adDetailClicks"></dd></div>
         <div><dt>Fecha de creación</dt><dd id="adDetailCreated"></dd></div>
         <div><dt>Última actualización</dt><dd id="adDetailUpdated"></dd></div>
       </dl>
@@ -602,6 +606,7 @@ require __DIR__ . '/includes/header.php';
     document.getElementById('adDetailName').textContent = editButton.dataset.name || '—';
     document.getElementById('adDetailId').textContent = '#' + (editButton.dataset.id || '');
     document.getElementById('adDetailExpires').textContent = editButton.dataset.expiresLabel || 'Sin vencimiento';
+    document.getElementById('adDetailClicks').textContent = Number(editButton.dataset.clicks || 0).toLocaleString('es-UY');
     document.getElementById('adDetailCreated').textContent = editButton.dataset.created || '—';
     document.getElementById('adDetailUpdated').textContent = editButton.dataset.updated || '—';
     const status = document.getElementById('adDetailStatus');
