@@ -9,42 +9,44 @@ $noticiasPc = array_values($noticias);
 $totalNoticiasPc = count($noticiasPc);
 $indiceNoticiaPc = 0;
 $indiceFilaMixta = 0;
+$identidadesNoticiasPc = array_map(static function (array $noticia): string {
+    return (string) $noticia['id'] . ':' . (string) $noticia['slug'];
+}, $noticiasPc);
+$semillaPortadaPc = (int) sprintf('%u', crc32(implode('|', $identidadesNoticiasPc)));
+$desplazamientoPosicion = $semillaPortadaPc % 3;
+$sentidoPosicion = intdiv($semillaPortadaPc, 3) % 2 === 0 ? 1 : -1;
+$totalPublicidadesPc = count($filaPublicidadPc);
+$desplazamientoPublicidad = $totalPublicidadesPc > 0 ? $semillaPortadaPc % $totalPublicidadesPc : 0;
+$sentidoPublicidad = $totalPublicidadesPc > 0 && intdiv($semillaPortadaPc, $totalPublicidadesPc) % 2 !== 0 ? -1 : 1;
 ?>
   <section class="pc-feed" aria-label="Noticias">
     <div class="pc-news-grid">
 <?php while ($indiceNoticiaPc < $totalNoticiasPc): ?>
-<?php for ($cantidadNoticias = 0; $cantidadNoticias < 3 && $indiceNoticiaPc < $totalNoticiasPc; $cantidadNoticias++, $indiceNoticiaPc++): ?>
-<?php $n = $noticiasPc[$indiceNoticiaPc]; ?>
+<?php $noticiasFila = array_slice($noticiasPc, $indiceNoticiaPc, 2); ?>
+<?php $indiceNoticiaPc += count($noticiasFila); ?>
+<?php if (count($noticiasFila) < 2 || $totalPublicidadesPc === 0): ?>
+<?php foreach ($noticiasFila as $n): ?>
 <?php require __DIR__ . '/pc-news-card.php'; ?>
-<?php endfor; ?>
-<?php if ($cantidadNoticias === 3 && $indiceNoticiaPc < $totalNoticiasPc): ?>
-<?php
-    $n = $noticiasPc[$indiceNoticiaPc++];
-    $semillaFila = (int) sprintf('%u', crc32((string) $n['id'] . '|' . (string) $n['slug'] . '|' . $indiceFilaMixta));
-    $posicionNoticia = $semillaFila % 3;
-    $totalPublicidades = count($filaPublicidadPc);
-    $inicioPublicidad = ($indiceFilaMixta * 2) % $totalPublicidades;
-    $publicidadesFila = [
-        $filaPublicidadPc[$inicioPublicidad],
-        $filaPublicidadPc[($inicioPublicidad + 1) % $totalPublicidades],
-    ];
-    if ($semillaFila % 2 === 1) {
-        $publicidadesFila = array_reverse($publicidadesFila);
-    }
-    $indicePublicidad = 0;
-?>
-      <div class="pc-news-mixed-row" aria-label="Noticias y publicidad">
-<?php for ($posicion = 0; $posicion < 3; $posicion++): ?>
-<?php if ($posicion === $posicionNoticia): ?>
-<?php require __DIR__ . '/pc-news-card.php'; ?>
+<?php endforeach; ?>
 <?php else: ?>
-<?php $publicidad = $publicidadesFila[$indicePublicidad++]; ?>
+<?php
+    $posicionPublicidad = (($desplazamientoPosicion + ($sentidoPosicion * $indiceFilaMixta)) % 3 + 3) % 3;
+    $indicePublicidad = (($desplazamientoPublicidad + ($sentidoPublicidad * $indiceFilaMixta)) % $totalPublicidadesPc + $totalPublicidadesPc) % $totalPublicidadesPc;
+    $publicidad = $filaPublicidadPc[$indicePublicidad];
+    $indiceNoticiaFila = 0;
+?>
+      <div class="pc-news-mixed-row" aria-label="Dos noticias y publicidad">
+<?php for ($posicion = 0; $posicion < 3; $posicion++): ?>
+<?php if ($posicion === $posicionPublicidad): ?>
         <aside class="pc-news-ad-card">
           <figure class="pc-news-ad-media">
             <img src="<?= e($publicidad['imagen']) ?>" alt="<?= e($publicidad['alt']) ?>" loading="lazy" decoding="async">
           </figure>
           <span class="pc-news-ad-label">Publicidad</span>
         </aside>
+<?php else: ?>
+<?php $n = $noticiasFila[$indiceNoticiaFila++]; ?>
+<?php require __DIR__ . '/pc-news-card.php'; ?>
 <?php endif; ?>
 <?php endfor; ?>
       </div>
