@@ -1527,6 +1527,14 @@
         text-decoration: none;
       }
 
+      .story-latest .pc-news-ad-social-link {
+        color: #111;
+      }
+
+      .story-latest .pc-news-ad-social-link.is-disabled {
+        color: #94a3b8;
+      }
+
       .story-latest .pc-news-card-cta {
         display: inline-flex;
         min-height: 44px;

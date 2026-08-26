@@ -670,3 +670,5 @@ Después del anuncio final de la noticia completa, el lateral PC incorpora un se
 El bloque se define una sola vez en un `<template>` inerte de once candidatas y se clona únicamente al abrir el drawer PC: JavaScript excluye la noticia actual y limita el resultado a diez. Al pulsar una recomendación, su contenido reemplaza el lateral abierto, vuelve al inicio y conserva como foco de retorno la card original de la portada. La hoja móvil no clona ni muestra este bloque.
 
 Cada card recomendada incorpora además un CTA visible **Ver nota completa**, rectangular, transparente y de borde negro, inspirado en el botón móvil. El CTA vive dentro del enlace integral de la card: se puede entrar por imagen, título, resumen o botón y todos conducen al mismo cambio de noticia dentro del drawer. Esta ayuda visual se limita a `story-latest`; las cards de la portada PC y el feed móvil no fueron alterados.
+
+Los iconos activos de las publicidades intercaladas en **Últimas Noticias** se fuerzan a negro para neutralizar el color celeste heredado de los enlaces del texto enriquecido; los destinos deshabilitados permanecen grises.
