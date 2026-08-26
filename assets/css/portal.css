@@ -1258,6 +1258,73 @@
       .story-sheet-vote { gap: 14px; }
     }
 
+    /* En PC la misma nota completa aparece como drawer recto a la derecha. */
+    @media (min-width: 769px) {
+      .story-sheet {
+        display: flex;
+        align-items: stretch;
+        justify-content: flex-end;
+      }
+
+      .story-sheet-panel {
+        width: 40vw;
+        height: 100vh;
+        height: 100svh;
+        border: 0;
+        border-left: 1px solid rgba(15, 23, 42, 0.12);
+        border-radius: 0;
+        box-shadow: -24px 0 70px rgba(15, 23, 42, 0.22);
+        transform: translateX(105%);
+      }
+
+      .story-sheet.open .story-sheet-panel {
+        transform: translateX(0);
+      }
+
+      .story-sheet-header {
+        padding-top: 0;
+        cursor: default;
+        touch-action: auto;
+      }
+
+      .story-sheet-handle {
+        display: none;
+      }
+
+      .story-sheet-photo {
+        max-height: none;
+        aspect-ratio: 4 / 3;
+      }
+
+      .story-sheet-copy {
+        padding: 32px 30px 58px;
+      }
+
+      .story-sheet-title {
+        margin-right: 46px !important;
+        font-size: clamp(1.8rem, 2.4vw, 2.65rem) !important;
+      }
+    }
+
+    @media (min-width: 769px) and (max-width: 1100px) {
+      .story-sheet-copy {
+        padding-right: 24px;
+        padding-left: 24px;
+      }
+
+      .story-sheet-actions {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 18px;
+      }
+
+      .story-sheet-share {
+        margin-left: 0;
+        padding-left: 0;
+        border-left: 0;
+      }
+    }
+
     @media (max-width: 360px) {
       .story-sheet-vote { gap: 10px; }
       .story-sheet-share { gap: 13px; padding-left: 13px; }

@@ -18,7 +18,7 @@
     $url = url_noticia((string) $n['slug']);
 ?>
       <article class="pc-news-card">
-        <a class="pc-news-card-link" href="<?= e($url) ?>" aria-label="Leer: <?= e($n['titulo']) ?>">
+        <a class="pc-news-card-link" href="<?= e($url) ?>" data-story-id="<?= (int) $n['id'] ?>" aria-label="Abrir noticia: <?= e($n['titulo']) ?>">
 <?php if ($portada): ?>
           <figure class="pc-news-card-media">
             <img src="<?= e(url_imagen_front($portada['ruta'])) ?>" alt="<?= e($n['titulo']) ?>" loading="lazy" decoding="async">

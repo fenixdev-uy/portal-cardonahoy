@@ -9,6 +9,7 @@ Este archivo contiene únicamente el trabajo pendiente elegido para próximas et
 1. **Continuar dando forma a la nueva portada de noticias en PC.**
    - Estado: **primera versión implementada y validada en DEV; pendiente de revisión visual del usuario**.
    - Se conserva sin cambios el header con slider y, debajo, todas las noticias aparecen como tarjetas editoriales: tres columnas desde `1100px` y dos entre `769px` y `1099px`.
+   - El clic normal abre la noticia completa en un drawer recto desde la derecha al `40%`: galería con autoplay/fullscreen, contenido, medios, anuncios, votos y compartir. Los clics modificados conservan el permalink para abrirlo en otra pestaña.
    - Ajustar solamente la grilla y la anatomía de sus tarjetas según la próxima devolución del usuario.
    - Preservar íntegramente la experiencia móvil aprobada hasta `768px`.
    - No desplegar esta propuesta nueva hasta que el usuario la apruebe expresamente.

@@ -105,8 +105,8 @@
       navbar.classList.toggle('scrolled', window.scrollY > 10);
     });
 
-    // Nota completa móvil: panel inferior cargado desde templates
-    // inertes para no duplicar descargas de imágenes y videos al abrir el feed.
+    // Nota completa compartida: panel inferior en móvil y drawer derecho en PC.
+    // Se carga desde templates inertes para no duplicar medios al abrir el feed.
     const storySheet = document.getElementById('storySheet');
     const storySheetPanel = storySheet?.querySelector('.story-sheet-panel');
     const storySheetHeader = storySheet?.querySelector('.story-sheet-header');
@@ -304,6 +304,14 @@
     }
 
     document.addEventListener('click', (event) => {
+      const pcTrigger = event.target.closest('.pc-news-card-link[data-story-id]');
+      if (pcTrigger && window.matchMedia('(min-width: 769px)').matches) {
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        openStorySheet(pcTrigger.dataset.storyId, pcTrigger);
+        return;
+      }
+
       const trigger = event.target.closest('.story-sheet-trigger[data-story-id]');
       if (trigger) {
         openStorySheet(trigger.dataset.storyId, trigger);

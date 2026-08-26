@@ -243,6 +243,7 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 - [x] Header y slider principal conservados a pantalla completa.
 - [x] Portada editorial con todas las noticias en tarjetas: tres columnas desde `1100px` y dos columnas entre `769px` y `1099px`.
 - [x] Tarjetas rectangulares, sin bordes redondeados: portada `3:2`, categoría, fecha compacta, título y resumen; toda la tarjeta abre el permalink público.
+- [x] El clic normal sobre una tarjeta abre la noticia completa en un drawer derecho recto al `40%` del viewport. Reutiliza el mismo contenido funcional de móvil: galería con autoplay, fullscreen y zoom, texto, publicidad, audios/videos, votos definitivos y compartir en Facebook/WhatsApp. `Ctrl`/`Cmd`/`Shift` + clic conserva la apertura normal del permalink.
 - [x] Orden: la última noticia creada sale primera.
 - [x] El antiguo feed de una noticia por pantalla, sus anuncios intercalados, mini-slider, lupa y `scroll-snap` fueron retirados de la portada PC. El contenido completo y las galerías permanecen en el permalink individual.
 
@@ -321,6 +322,7 @@ En el cloud cPanel/WHM actual todas las cuentas usan el servicio FTPS global med
 - `index.php` es PHP (antes era `index.html`). Incluye `admin/includes/funciones.php`, consulta las noticias (`ORDER BY created_at DESC, id DESC`) más las galerías en una segunda consulta, y delega el dibujo de los feeds en `partials/pc-feed.php` y `partials/mobile-feed.php`. Ambos partials consumen las mismas variables, así que agregar el feed móvil no sumó consultas.
 - El único bloque que sigue siendo HTML estático es el slider del home (`hero`).
 - Los estilos y las interacciones de la portada viven en `assets/css/portal.css` y `assets/js/portal.js`, cargados con versión automática por `filemtime()`. La página individual usa `assets/css/noticia.css` y `assets/js/noticia.js` con el mismo criterio. Cada PHP entrega al script solamente la URL dinámica de votos mediante `data-vote-url`; los partials solo aportan marcado.
+- `partials/nota-completa.php` aporta un único template funcional por noticia. En móvil se clona dentro de la hoja inferior aprobada y en PC dentro del drawer derecho, evitando mantener dos versiones distintas del contenido completo.
 - Los estilos del HTML de la descripción están en la clase global `.rich-text`, fuera de media queries, y se aplican al contenido PC y a la hoja móvil. El resumen del feed es texto plano. Al permitir una etiqueta nueva en `sanitizar_html()`, darle estilo en `.rich-text`.
 
 ### Galería y subida de fotos
