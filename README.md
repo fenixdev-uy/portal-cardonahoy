@@ -32,10 +32,13 @@ Backend de noticias para la landing page. Las noticias se administran desde un p
 ```
 landing/
 ├── README.md                   ← este documento
-├── index.php                   ← front: feeds PC/móvil, estilos e interacciones
+├── index.php                   ← front: datos, estructura, feeds e interacciones
 ├── noticia.php                 ← página pública individual + metatags SEO/sociales
 ├── sitemap.php / robots.php    ← descubrimiento e indexación de permalinks
 ├── db                          ← credenciales (texto plano, solo referencia)
+├── assets/
+│   └── css/
+│       └── portal.css          ← estilos compartidos de la portada PC/móvil
 ├── imagenes/
 │   ├── Logo2027.png
 │   ├── Logo2027-radiosur.png
@@ -316,7 +319,7 @@ En el cloud cPanel/WHM actual todas las cuentas usan el servicio FTPS global med
 ### Render del front
 - `index.php` es PHP (antes era `index.html`). Incluye `admin/includes/funciones.php`, consulta las noticias (`ORDER BY created_at DESC, id DESC`) más las galerías en una segunda consulta, y delega el dibujo de los feeds en `partials/pc-feed.php` y `partials/mobile-feed.php`. Ambos partials consumen las mismas variables, así que agregar el feed móvil no sumó consultas.
 - El único bloque que sigue siendo HTML estático es el slider del home (`hero`).
-- Todo el CSS y el JavaScript viven dentro de `index.php`; los partials solo aportan marcado.
+- Los estilos de la portada viven en `assets/css/portal.css`, cargado con versión automática por `filemtime()`; el JavaScript todavía vive dentro de `index.php`. Los partials solo aportan marcado.
 - Los estilos del HTML de la descripción están en la clase global `.rich-text`, fuera de media queries, y se aplican al contenido PC y a la hoja móvil. El resumen del feed es texto plano. Al permitir una etiqueta nueva en `sanitizar_html()`, darle estilo en `.rich-text`.
 
 ### Galería y subida de fotos

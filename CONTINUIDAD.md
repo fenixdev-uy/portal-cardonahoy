@@ -478,7 +478,8 @@ Después de esta etapa el front quedó repartido así. Conviene conocerlo antes 
 
 | Archivo | Responsabilidad |
 | --- | --- |
-| `index.php` | Consultas a la base, todo el CSS, todo el JavaScript, el hero con su slider y los `include` de los partials. |
+| `index.php` | Consultas a la base, todo el JavaScript, el hero con su slider y los `include` de los partials. |
+| `assets/css/portal.css` | Todo el CSS compartido de la portada para PC y móvil, extraído sin modificar reglas y cargado con versión `filemtime()`. |
 | `partials/mobile-feed.php` | Marcado del feed móvil. |
 | `partials/pc-feed.php` | Marcado del feed PC. |
 | `partials/publicidad.php` | Piezas de publicidad y su orden. Fuente única. |
