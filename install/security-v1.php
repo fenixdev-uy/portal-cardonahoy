@@ -101,6 +101,7 @@ $permisos = [
     ['usuarios.gestionar', 'Gestionar usuarios', 'Crear, editar, activar y desactivar usuarios.'],
     ['roles.gestionar', 'Gestionar roles', 'Configurar permisos de roles.'],
     ['archivos.subir', 'Subir archivos', 'Subir y retirar imagenes del portal.'],
+    ['configuracion.gestionar', 'Gestionar configuracion', 'Cambiar ajustes generales y la marca de agua del portal.'],
 ];
 $stmtPermiso = $pdo->prepare('INSERT INTO permisos (clave, nombre, descripcion) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE nombre=VALUES(nombre), descripcion=VALUES(descripcion)');
 foreach ($permisos as $permiso) {

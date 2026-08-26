@@ -28,8 +28,8 @@ body { background: #fff; }
 
 .login-panel { display: grid; place-items: center; padding: 48px clamp(36px, 6vw, 104px); background: #fff; }
 .login-content { width: min(100%, 570px); }
-.login-brand { display: inline-block; margin-bottom: clamp(48px, 8vh, 88px); }
-.login-brand img { display: block; width: auto; height: clamp(58px, 7vw, 84px); max-width: 260px; object-fit: contain; }
+.login-brand { display: inline-block; margin-bottom: clamp(28px, 4vh, 42px); }
+.login-brand img { display: block; width: auto; height: clamp(68px, 8vw, 102px); max-width: 315px; object-fit: contain; }
 
 .login-heading { margin-bottom: 36px; }
 .login-heading h1, .password-card h1 { margin: 0; font-size: clamp(2.1rem, 3.1vw, 3.35rem); line-height: 1.08; letter-spacing: -.04em; font-weight: 780; }
@@ -67,8 +67,8 @@ body { background: #fff; }
   .login-visual { height: 34vh; min-height: 210px; }
   .login-visual img { object-position: center 48%; }
   .login-panel { place-items: start center; padding: 34px 24px 48px; }
-  .login-brand { margin-bottom: 26px; }
-  .login-brand img { height: 54px; }
+  .login-brand { margin-bottom: 20px; }
+  .login-brand img { height: 64px; }
   .login-heading { margin-bottom: 25px; }
   .login-heading h1 { font-size: 2rem; }
 }

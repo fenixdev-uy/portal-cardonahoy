@@ -1,16 +1,29 @@
 Options -Indexes
 
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule (^|/)\.deploy(?:/|$) - [F,L]
+  RewriteRule ^noticia/([a-z0-9-]+)/?$ noticia.php?slug=$1 [L,QSA]
+  RewriteRule ^sitemap\.xml$ sitemap.php [L]
+  RewriteRule ^robots\.txt$ robots.php [L]
+</IfModule>
+
 <IfModule mod_authz_core.c>
-  <FilesMatch "^(db|error_log|README\.md|.*\.local\.php)$">
+  <FilesMatch "^(\.user\.ini|db|error_log|README\.md|subir\.txt|servicios\.local\.json|.*\.local\.(php|json))$">
     Require all denied
   </FilesMatch>
 </IfModule>
 
 <IfModule !mod_authz_core.c>
-  <FilesMatch "^(db|error_log|README\.md|.*\.local\.php)$">
+  <FilesMatch "^(\.user\.ini|db|error_log|README\.md|subir\.txt|servicios\.local\.json|.*\.local\.(php|json))$">
     Order allow,deny
     Deny from all
   </FilesMatch>
+</IfModule>
+
+<IfModule mod_php.c>
+  php_value upload_max_filesize 25M
+  php_value post_max_size 27M
 </IfModule>
 
 <IfModule mod_headers.c>
@@ -18,6 +31,6 @@ Options -Indexes
   Header always set X-Frame-Options "SAMEORIGIN"
   Header always set Referrer-Policy "strict-origin-when-cross-origin"
   Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
-  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://esm.sh; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https:; frame-src https://www.youtube-nocookie.com; connect-src 'self' https://esm.sh; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://esm.sh; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' https:; font-src 'self' data: https:; frame-src https://www.youtube-nocookie.com; connect-src 'self' https://esm.sh; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
   Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains" env=HTTPS
 </IfModule>

@@ -29,6 +29,21 @@ if (!$noticia) {
 }
 
 $fotos = obtener_fotos_noticia($id);
+$imagenes = [];
+foreach ($fotos as $foto) {
+    $ruta = (string) ($foto['ruta'] ?? '');
+    if (ruta_imagen_subida_valida($ruta)) $imagenes[$ruta] = true;
+}
+foreach (imagenes_locales_en_html($noticia['descripcion'] ?? '') as $ruta) {
+    $imagenes[$ruta] = true;
+}
+$imagenSeo = (string) ($noticia['seo_imagen'] ?? '');
+if (ruta_imagen_subida_valida($imagenSeo)) $imagenes[$imagenSeo] = true;
+$audios = array_filter([
+    (string) ($noticia['audio_1'] ?? ''),
+    (string) ($noticia['audio_2'] ?? ''),
+    (string) ($noticia['audio_3'] ?? ''),
+]);
 $pdo->beginTransaction();
 try {
     $stmt = $pdo->prepare('DELETE FROM noticias WHERE id = ?');
@@ -39,7 +54,13 @@ try {
     flash('danger', 'No se pudo eliminar la noticia.');
     redirigir('index.php');
 }
-foreach ($fotos as $foto) eliminar_imagen($foto['ruta']);
+// Solo se elimina un archivo si ninguna otra noticia lo sigue usando.
+foreach (array_keys($imagenes) as $imagen) {
+    if (!imagen_subida_referenciada($imagen)) eliminar_imagen($imagen);
+}
+foreach ($audios as $audio) {
+    if (ruta_audio_subido_valida($audio) && !audio_subido_referenciado($audio)) eliminar_audio($audio);
+}
 
 flash('success', 'Noticia eliminada correctamente.');
 redirigir('index.php');

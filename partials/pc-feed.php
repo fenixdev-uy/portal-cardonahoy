@@ -12,7 +12,6 @@ require_once __DIR__ . '/publicidad.php';
 <?php
     $fotos = $fotosPorNoticia[(int) $n['id']] ?? [];
     $urlPortada = $fotos ? url_imagen_front($fotos[0]['ruta']) : '';
-    $youtube = youtube_embed_url($n['youtube'] ?? '');
     $fecha = fecha_larga($n['created_at']);
     $autor = $n['autor_nombre'] ?? '';
     $categoria = $n['categoria_nombre'] ?? '';
@@ -51,11 +50,7 @@ require_once __DIR__ . '/publicidad.php';
 
         <?= $n['descripcion'] /* HTML ya saneado en el servidor */ ?>
 
-        <?php if ($youtube !== ''): ?>
-        <div class="pc-video">
-          <iframe src="<?= e($youtube) ?>" title="Video de YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
-        </div>
-        <?php endif; ?>
+<?php include __DIR__ . '/medios-noticia.php'; ?>
 
 <?php $prefijo = 'pc'; include __DIR__ . '/acciones-noticia.php'; ?>
       </div>

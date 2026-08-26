@@ -14,7 +14,9 @@ $pdo = db();
 // Los contadores de votos viajan en la misma consulta: son columnas de
 // noticias, así que mostrarlos no cuesta ninguna consulta extra.
 $noticias = $pdo->query(
-    'SELECT n.id, n.titulo, n.descripcion, n.youtube, n.created_at,
+    'SELECT n.id, n.titulo, n.slug, n.descripcion,
+            n.youtube, n.youtube_2, n.youtube_3,
+            n.audio_1, n.audio_2, n.audio_3, n.created_at,
             n.me_gusta, n.no_me_gusta,
             c.nombre AS categoria_nombre,
             u.nombre AS autor_nombre
@@ -664,6 +666,13 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
         padding: 28px 20px 40px;
       }
 
+      .feed-summary {
+        margin: 0;
+        color: #333;
+        font-size: 1.05rem;
+        line-height: 1.6;
+      }
+
       .feed-video {
         margin-top: 20px;
       }
@@ -720,12 +729,23 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
       }
 
       .feed-actions {
+        position: relative;
         display: flex;
         align-items: center;
         justify-content: space-between;
         margin-top: 24px;
         padding-top: 18px;
-        border-top: 1px solid #eee;
+        padding-bottom: 22px;
+      }
+
+      .feed-actions::after {
+        content: "";
+        position: absolute;
+        right: 12px;
+        bottom: 0;
+        left: 12px;
+        height: 1px;
+        background: #94a3b8;
       }
 
       /* Separación amplia a propósito: el voto no se puede deshacer, así que
@@ -828,6 +848,487 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
       opacity: 0.6;
     }
 
+    /* ===== Vista inferior de nota completa (solo móvil) ===== */
+    .story-sheet-trigger {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+      margin-top: 26px;
+      padding: 11px 18px;
+      color: #111;
+      border: 1px solid #111;
+      border-radius: 0;
+      background: transparent;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 750;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: color 0.2s ease, background-color 0.2s ease;
+    }
+
+    .story-sheet-trigger:hover,
+    .story-sheet-trigger:focus-visible {
+      color: #fff;
+      background: #111;
+      outline: none;
+    }
+
+    .story-sheet {
+      position: fixed;
+      inset: 0;
+      z-index: 180;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      visibility: hidden;
+      pointer-events: none;
+      transition: visibility 0s linear 0.42s;
+    }
+
+    .story-sheet.open {
+      visibility: visible;
+      pointer-events: auto;
+      transition-delay: 0s;
+    }
+
+    .story-sheet-backdrop {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      padding: 0;
+      border: 0;
+      background: rgba(15, 23, 42, 0);
+      cursor: default;
+      transition: background-color 0.38s ease;
+    }
+
+    .story-sheet.open .story-sheet-backdrop {
+      background: rgba(15, 23, 42, 0.48);
+    }
+
+    .story-sheet-panel {
+      position: relative;
+      z-index: 1;
+      width: min(100%, 960px);
+      height: 60vh;
+      height: 60svh;
+      overflow: hidden;
+      color: #111;
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      border-bottom: 0;
+      border-radius: 28px 28px 0 0;
+      background: #fff;
+      box-shadow: 0 -24px 70px rgba(15, 23, 42, 0.22);
+      transform: translateY(105%);
+      transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+      will-change: transform;
+    }
+
+    .story-sheet.open .story-sheet-panel {
+      transform: translateY(0);
+    }
+
+    .story-sheet-panel:focus {
+      outline: none;
+    }
+
+    .story-sheet-header {
+      position: relative;
+      z-index: 3;
+      display: flex;
+      flex: 0 0 auto;
+      align-items: center;
+      justify-content: center;
+      height: 72px;
+      padding: 10px 64px 0;
+      border-bottom: 1px solid #e5e7eb;
+      background: #fff;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .story-sheet.dragging .story-sheet-header {
+      cursor: grabbing;
+    }
+
+    .story-sheet.dragging .story-sheet-panel,
+    .story-sheet.dragging .story-sheet-backdrop {
+      transition: none;
+    }
+
+    .story-sheet-heading {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      color: #111;
+      font-size: 1.05rem;
+      font-weight: 850;
+      line-height: 1;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+    }
+
+    .story-sheet-heading svg {
+      width: 21px;
+      height: 21px;
+      flex: 0 0 auto;
+      color: #64748b;
+    }
+
+    .story-sheet-handle {
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      z-index: 1;
+      width: 40px;
+      height: 4px;
+      border-radius: 999px;
+      background: #cbd5e1;
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+
+    .story-sheet-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 4;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 42px;
+      height: 42px;
+      padding: 0;
+      color: #111;
+      border: 0;
+      border-radius: 50%;
+      background: #f1f1f1;
+      box-shadow: none;
+      cursor: pointer;
+      transition: transform 0.2s ease, background-color 0.2s ease;
+    }
+
+    .story-sheet-close:hover {
+      transform: scale(1.05);
+      background: #fff;
+    }
+
+    .story-sheet-close svg {
+      width: 23px;
+      height: 23px;
+    }
+
+    .story-sheet-scroll {
+      height: calc(100% - 72px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+      scrollbar-color: #94a3b8 transparent;
+    }
+
+    .story-sheet-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .story-sheet-scroll::-webkit-scrollbar-thumb {
+      border-radius: 999px;
+      background: #94a3b8;
+    }
+
+    .story-sheet-gallery {
+      position: relative;
+      width: 100%;
+      overflow: hidden;
+      background: #0f172a;
+    }
+
+    .story-sheet-gallery-track {
+      display: flex;
+      width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .story-sheet-gallery-track::-webkit-scrollbar {
+      display: none;
+    }
+
+    .story-sheet-gallery-dots {
+      position: absolute;
+      left: 18px;
+      bottom: 18px;
+      z-index: 2;
+      display: flex;
+      gap: 6px;
+      pointer-events: none;
+    }
+
+    .story-sheet-gallery-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.48);
+      transition: width 0.25s ease, background-color 0.25s ease;
+    }
+
+    .story-sheet-gallery-dot.active {
+      width: 22px;
+      background: #fff;
+    }
+
+    .story-sheet-gallery-expand {
+      position: absolute;
+      right: 18px;
+      bottom: 14px;
+      z-index: 3;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      color: #111;
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+    }
+
+    .story-sheet-gallery-expand svg {
+      width: 21px;
+      height: 21px;
+    }
+
+    .story-sheet-lead-ad-wrap {
+      margin: 0 0 34px;
+      background: #fff;
+    }
+
+    .story-sheet-lead-ad {
+      border-radius: 18px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+    }
+
+    .story-sheet-photo {
+      flex: 0 0 100%;
+      max-height: 320px;
+      aspect-ratio: 16 / 6;
+      margin: 0;
+      scroll-snap-align: center;
+      overflow: hidden;
+    }
+
+    /* La especificidad evita que .rich-text img convierta la foto en alto
+       automático y deje visible una franja azul variable debajo. */
+    .story-sheet-article .story-sheet-photo img {
+      display: block;
+      width: 100%;
+      max-width: none;
+      height: 100%;
+      object-fit: cover;
+      margin: 0;
+      border-radius: 0;
+      cursor: zoom-in;
+    }
+
+    .story-sheet-copy {
+      width: min(100%, 760px);
+      margin: 0 auto;
+      padding: 38px 40px 64px;
+    }
+
+    .story-sheet-tag {
+      display: inline-block;
+      margin-bottom: 12px;
+      color: #0f766e;
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .story-sheet-title {
+      margin: 0 60px 18px 0 !important;
+      color: #111;
+      font-size: clamp(2rem, 4vw, 3.4rem) !important;
+      font-weight: 900 !important;
+      line-height: 1.05 !important;
+    }
+
+    .story-sheet-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 30px;
+      color: #64748b;
+      font-size: 0.86rem;
+    }
+
+    .story-sheet-meta svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      color: #111;
+    }
+
+    .story-sheet-author {
+      color: #111;
+      font-weight: 700;
+    }
+
+    .story-sheet-actions {
+      display: flex;
+      align-items: center;
+      margin-top: 32px;
+      padding: 22px 0;
+      border-top: 1px solid #e2e8f0;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .story-sheet-vote {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .story-sheet-share {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      margin-left: auto;
+      padding-left: 17px;
+      border-left: 1px solid #cbd5e1;
+    }
+
+    .story-sheet-actions .vote-btn {
+      gap: 5px;
+      color: #111;
+      font-size: 0.78rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .story-sheet-actions .share-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      color: #111;
+      text-decoration: none;
+    }
+
+    .story-sheet-actions .share-btn svg {
+      width: 21px;
+      height: 21px;
+    }
+
+    .story-sheet-ads {
+      display: grid;
+      gap: 22px;
+      margin-top: 36px;
+    }
+
+    .story-sheet-ads-label {
+      color: #64748b;
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .story-sheet-ad {
+      width: 100%;
+      margin: 0;
+      aspect-ratio: 1 / 1;
+      overflow: hidden;
+      border: 1px solid rgba(15, 23, 42, 0.1);
+      background: #fff;
+      box-shadow: 0 18px 36px rgba(15, 23, 42, 0.16);
+    }
+
+    .story-sheet-ad img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    @media (max-width: 768px) {
+      .story-sheet {
+        display: flex;
+      }
+
+      .story-sheet-panel {
+        width: 100%;
+        height: 85vh;
+        height: 85svh;
+        border-radius: 28px 28px 0 0;
+      }
+
+      .story-sheet-photo {
+        max-height: none;
+        /* 30% más alta que el 4:3 anterior: 0,75 × 1,30 = 0,975. */
+        aspect-ratio: 40 / 39;
+      }
+
+      .story-sheet-copy {
+        padding: 30px 20px 52px;
+      }
+
+      .story-sheet-title {
+        margin-right: 42px !important;
+        font-size: 1.8rem !important;
+      }
+
+      .story-sheet-close {
+        top: 16px;
+        right: 14px;
+        width: 42px;
+        height: 42px;
+      }
+
+      .story-sheet-vote { gap: 14px; }
+    }
+
+    @media (max-width: 360px) {
+      .story-sheet-vote { gap: 10px; }
+      .story-sheet-share { gap: 13px; padding-left: 13px; }
+      .story-sheet-actions .vote-btn { font-size: 0.72rem; }
+      .story-sheet-actions .vote-btn svg { width: 17px; height: 17px; }
+
+      .story-sheet-header {
+        padding-right: 66px;
+        padding-left: 66px;
+      }
+
+      .story-sheet-heading {
+        gap: 6px;
+        font-size: 0.94rem;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .story-sheet,
+      .story-sheet-backdrop,
+      .story-sheet-panel {
+        transition-duration: 0.01ms;
+      }
+    }
+
     /* ===== Visor ampliado de galerías (compartido PC + móvil) ===== */
     .gallery-lightbox {
       display: none;
@@ -865,9 +1366,14 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
       will-change: transform;
     }
 
-    /* Durante la pinza el zoom sigue al dedo: sin transición intermedia */
-    .gallery-lightbox.pinching .pc-lightbox-stage img {
+    /* Durante la pinza o el arrastre la imagen sigue al dedo sin demora. */
+    .gallery-lightbox.pinching .pc-lightbox-stage img,
+    .gallery-lightbox.panning .pc-lightbox-stage img {
       transition: none;
+    }
+
+    .gallery-lightbox.panning .pc-lightbox-stage img {
+      cursor: grabbing;
     }
 
     .pc-lightbox-close,
@@ -1068,6 +1574,59 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
     .rich-text a {
       color: #0ea5e9;
       text-decoration: underline;
+    }
+
+    /* Audios y videos compartidos por los feeds PC y móvil. */
+    .story-media {
+      display: grid;
+      gap: 20px;
+      margin-top: 22px;
+    }
+
+    .story-media-group {
+      display: grid;
+      gap: 12px;
+    }
+
+    .story-media-heading {
+      margin: 0;
+      color: #64748b;
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .story-audio {
+      display: grid;
+      gap: 6px;
+    }
+
+    .story-audio span {
+      color: #64748b;
+      font-size: 0.76rem;
+      font-weight: 600;
+    }
+
+    .story-audio audio {
+      display: block;
+      width: 100%;
+      height: 42px;
+    }
+
+    .story-video {
+      overflow: hidden;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #0f172a;
+      border-radius: 12px;
+    }
+
+    .story-video iframe {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: 0;
     }
 
     /* ===== Feed estilo artículo sticky (solo PC) ===== */
@@ -1464,6 +2023,9 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
   <!-- Feed de noticias estilo artículo sticky (solo PC) -->
 <?php include __DIR__ . '/partials/pc-feed.php'; ?>
 
+  <!-- Nota completa en panel inferior, disponible solo en el feed móvil -->
+<?php include __DIR__ . '/partials/nota-completa.php'; ?>
+
   <!-- Visor ampliado de galerías, compartido por ambos feeds -->
 <?php include __DIR__ . '/partials/lightbox.php'; ?>
 
@@ -1650,6 +2212,221 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
       start();
     });
 
+    // Nota completa móvil: panel inferior cargado desde templates
+    // inertes para no duplicar descargas de imágenes y videos al abrir el feed.
+    const storySheet = document.getElementById('storySheet');
+    const storySheetPanel = storySheet?.querySelector('.story-sheet-panel');
+    const storySheetHeader = storySheet?.querySelector('.story-sheet-header');
+    const storySheetBackdrop = storySheet?.querySelector('.story-sheet-backdrop');
+    const storySheetContent = document.getElementById('storySheetContent');
+    let storySheetTrigger = null;
+    let storySheetPreviousOverflow = '';
+    let storySheetClearTimer = null;
+    let storySheetDragPointer = null;
+    let storySheetDragStartY = 0;
+    let storySheetDragStartTime = 0;
+    let storySheetDragOffset = 0;
+    let storySheetGalleryTimer = null;
+    let startStorySheetGalleryAutoplay = null;
+
+    function clearStorySheetDragStyles() {
+      storySheet?.classList.remove('dragging');
+      if (storySheetPanel) storySheetPanel.style.transform = '';
+      if (storySheetBackdrop) storySheetBackdrop.style.backgroundColor = '';
+    }
+
+    function stopStorySheetGalleryAutoplay() {
+      if (!storySheetGalleryTimer) return;
+      window.clearInterval(storySheetGalleryTimer);
+      storySheetGalleryTimer = null;
+    }
+
+    function initializeStorySheetGallery() {
+      stopStorySheetGalleryAutoplay();
+      startStorySheetGalleryAutoplay = null;
+      const gallery = storySheetContent?.querySelector('.story-sheet-gallery');
+      const track = gallery?.querySelector('.story-sheet-gallery-track');
+      const frames = Array.from(gallery?.querySelectorAll('.story-sheet-photo') || []);
+      const dotsContainer = gallery?.querySelector('.story-sheet-gallery-dots');
+      if (!gallery || !track || !dotsContainer || frames.length < 2) return;
+
+      const dots = frames.map((_, index) => {
+        const dot = document.createElement('span');
+        dot.className = 'story-sheet-gallery-dot' + (index === 0 ? ' active' : '');
+        dotsContainer.appendChild(dot);
+        return dot;
+      });
+
+      const updateActivePhoto = () => {
+        const index = Math.max(0, Math.min(frames.length - 1, Math.round(track.scrollLeft / Math.max(1, track.clientWidth))));
+        gallery.dataset.activeIndex = String(index);
+        dots.forEach((dot, dotIndex) => dot.classList.toggle('active', dotIndex === index));
+      };
+
+      track.addEventListener('scroll', updateActivePhoto, { passive: true });
+      startStorySheetGalleryAutoplay = () => {
+        stopStorySheetGalleryAutoplay();
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+        storySheetGalleryTimer = window.setInterval(() => {
+          if (!storySheet?.classList.contains('open')) return;
+          if (document.getElementById('pcGalleryLightbox')?.classList.contains('open')) return;
+          const actual = Number(gallery.dataset.activeIndex || 0);
+          const siguiente = (actual + 1) % frames.length;
+          track.scrollTo({ left: siguiente * track.clientWidth, behavior: 'smooth' });
+        }, 3200);
+      };
+
+      track.addEventListener('pointerdown', stopStorySheetGalleryAutoplay);
+      track.addEventListener('pointerup', () => startStorySheetGalleryAutoplay?.());
+      track.addEventListener('pointercancel', () => startStorySheetGalleryAutoplay?.());
+      updateActivePhoto();
+      startStorySheetGalleryAutoplay();
+    }
+
+    function openStorySheet(storyId, trigger) {
+      const template = document.querySelector(`template[data-story-template="${storyId}"]`);
+      if (!storySheet || !storySheetPanel || !storySheetContent || !template) return;
+
+      if (storySheetClearTimer) {
+        window.clearTimeout(storySheetClearTimer);
+        storySheetClearTimer = null;
+      }
+
+      storySheetTrigger = trigger;
+      storySheetPreviousOverflow = document.body.style.overflow;
+      storySheetDragPointer = null;
+      storySheetDragOffset = 0;
+      clearStorySheetDragStyles();
+      storySheetContent.replaceChildren(template.content.cloneNode(true));
+      storySheetContent.scrollTop = 0;
+      storySheet.classList.add('open');
+      storySheet.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('story-sheet-open');
+      document.body.style.overflow = 'hidden';
+      initializeStorySheetGallery();
+      storySheet.querySelector('.story-sheet-close')?.focus();
+    }
+
+    function closeStorySheet(dragOffset = 0) {
+      if (!storySheet?.classList.contains('open')) return;
+
+      storySheetDragPointer = null;
+      storySheetDragOffset = 0;
+      stopStorySheetGalleryAutoplay();
+      startStorySheetGalleryAutoplay = null;
+
+      // Si el cierre nace del gesto, la animación continúa desde el punto
+      // exacto en que quedó el dedo hasta desaparecer por debajo de la pantalla.
+      if (dragOffset > 0 && storySheetPanel) {
+        storySheet.classList.remove('dragging');
+        storySheetPanel.style.transform = `translateY(${dragOffset}px)`;
+        void storySheetPanel.offsetHeight;
+        storySheet.classList.remove('open');
+        storySheetPanel.style.transform = 'translateY(105%)';
+        if (storySheetBackdrop) storySheetBackdrop.style.backgroundColor = 'rgba(15, 23, 42, 0)';
+      } else {
+        clearStorySheetDragStyles();
+        storySheet.classList.remove('open');
+      }
+
+      storySheet.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('story-sheet-open');
+      document.body.style.overflow = storySheetPreviousOverflow;
+      if (storySheetTrigger) storySheetTrigger.focus();
+
+      // Espera a que termine la salida para detener videos y audios sin cortar
+      // visualmente la animación del panel.
+      storySheetClearTimer = window.setTimeout(() => {
+        clearStorySheetDragStyles();
+        storySheetContent?.replaceChildren();
+        storySheetClearTimer = null;
+      }, 430);
+    }
+
+    function restoreStorySheetPosition() {
+      if (!storySheet || !storySheetPanel) return;
+
+      storySheet.classList.remove('dragging');
+      storySheetPanel.style.transform = `translateY(${storySheetDragOffset}px)`;
+      if (storySheetBackdrop) {
+        const progreso = Math.min(1, storySheetDragOffset / (storySheetPanel.offsetHeight * 0.75));
+        storySheetBackdrop.style.backgroundColor = `rgba(15, 23, 42, ${0.48 * (1 - progreso)})`;
+      }
+      void storySheetPanel.offsetHeight;
+      storySheetPanel.style.transform = '';
+      if (storySheetBackdrop) storySheetBackdrop.style.backgroundColor = '';
+      storySheetDragOffset = 0;
+    }
+
+    if (storySheetHeader && storySheetPanel) {
+      storySheetHeader.addEventListener('pointerdown', (event) => {
+        if (event.pointerType === 'mouse' || !storySheet?.classList.contains('open')) return;
+        if (event.target.closest('[data-story-close]')) return;
+
+        storySheetDragPointer = event.pointerId;
+        storySheetDragStartY = event.clientY;
+        storySheetDragStartTime = performance.now();
+        storySheetDragOffset = 0;
+        storySheet.classList.add('dragging');
+        storySheetHeader.setPointerCapture(event.pointerId);
+        event.preventDefault();
+      });
+
+      storySheetHeader.addEventListener('pointermove', (event) => {
+        if (event.pointerId !== storySheetDragPointer) return;
+
+        storySheetDragOffset = Math.max(0, event.clientY - storySheetDragStartY);
+        storySheetPanel.style.transform = `translateY(${storySheetDragOffset}px)`;
+        if (storySheetBackdrop) {
+          const progreso = Math.min(1, storySheetDragOffset / (storySheetPanel.offsetHeight * 0.75));
+          storySheetBackdrop.style.backgroundColor = `rgba(15, 23, 42, ${0.48 * (1 - progreso)})`;
+        }
+        event.preventDefault();
+      });
+
+      storySheetHeader.addEventListener('pointerup', (event) => {
+        if (event.pointerId !== storySheetDragPointer) return;
+
+        const duracion = Math.max(1, performance.now() - storySheetDragStartTime);
+        const velocidad = storySheetDragOffset / duracion;
+        const umbral = Math.min(120, storySheetPanel.offsetHeight * 0.18);
+        const debeCerrar = storySheetDragOffset >= umbral || (storySheetDragOffset >= 42 && velocidad >= 0.65);
+        const offsetFinal = storySheetDragOffset;
+        storySheetDragPointer = null;
+        storySheetHeader.releasePointerCapture(event.pointerId);
+
+        if (debeCerrar) {
+          closeStorySheet(offsetFinal);
+        } else {
+          restoreStorySheetPosition();
+        }
+      });
+
+      storySheetHeader.addEventListener('pointercancel', (event) => {
+        if (event.pointerId !== storySheetDragPointer) return;
+        storySheetDragPointer = null;
+        restoreStorySheetPosition();
+      });
+    }
+
+    document.addEventListener('click', (event) => {
+      const trigger = event.target.closest('.story-sheet-trigger[data-story-id]');
+      if (trigger) {
+        openStorySheet(trigger.dataset.storyId, trigger);
+        return;
+      }
+
+      if (event.target.closest('[data-story-close]')) closeStorySheet();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && storySheet?.classList.contains('open')) {
+        if (document.getElementById('pcGalleryLightbox')?.classList.contains('open')) return;
+        closeStorySheet();
+      }
+    });
+
     // Votos: un solo listener delegado cubre los dos feeds, así que no hace
     // falta cablear nada por noticia. El voto es definitivo: al confirmarse, los
     // dos botones de esa noticia quedan bloqueados.
@@ -1657,8 +2434,9 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
       const boton = event.target.closest('.vote-btn[data-noticia-id]');
       if (!boton || boton.disabled || boton.classList.contains('enviando')) return;
 
-      const grupo = boton.closest('[data-noticia-id]:not(.vote-btn)');
-      const botones = grupo ? Array.from(grupo.querySelectorAll('.vote-btn')) : [boton];
+      const botones = Array.from(document.querySelectorAll(
+        `.vote-btn[data-noticia-id="${boton.dataset.noticiaId}"]`
+      ));
 
       botones.forEach((b) => b.classList.add('enviando'));
 
@@ -1667,7 +2445,7 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
           noticia_id: boton.dataset.noticiaId,
           valor: boton.dataset.voto,
         });
-        const respuesta = await fetch('votar.php', {
+        const respuesta = await fetch(<?= json_encode(url_portal('votar.php')) ?>, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: cuerpo,
@@ -1739,18 +2517,56 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
       let galleryImages = [];
       let galleryIndex = 0;
       let zoomLevel = 1;
+      let panX = 0;
+      let panY = 0;
       let previousBodyOverflow = '';
       let lastFocusedElement = null;
 
       const esTactil = () => window.matchMedia('(max-width: 768px)').matches;
 
+      function limitPan() {
+        const maxX = Math.max(0, (lightboxImage.offsetWidth * zoomLevel - lightboxStage.clientWidth) / 2);
+        const maxY = Math.max(0, (lightboxImage.offsetHeight * zoomLevel - lightboxStage.clientHeight) / 2);
+        panX = Math.min(maxX, Math.max(-maxX, panX));
+        panY = Math.min(maxY, Math.max(-maxY, panY));
+      }
+
+      function applyImageTransform() {
+        lightboxImage.style.transformOrigin = '50% 50%';
+        lightboxImage.style.transform = `translate3d(${panX}px, ${panY}px, 0) scale(${zoomLevel})`;
+      }
+
       function updateZoom(nextZoom, originX = 50, originY = 50) {
+        const previousZoom = zoomLevel;
         zoomLevel = Math.min(4, Math.max(1, nextZoom));
-        lightboxImage.style.transformOrigin = zoomLevel === 1 ? '50% 50%' : `${originX}% ${originY}%`;
-        lightboxImage.style.transform = `scale(${zoomLevel})`;
+
+        if (zoomLevel === 1) {
+          panX = 0;
+          panY = 0;
+        } else if (previousZoom > 0 && zoomLevel !== previousZoom) {
+          const bounds = lightboxStage.getBoundingClientRect();
+          const originPxX = ((originX / 100) - 0.5) * bounds.width;
+          const originPxY = ((originY / 100) - 0.5) * bounds.height;
+          const ratio = zoomLevel / previousZoom;
+          panX = originPxX - (originPxX - panX) * ratio;
+          panY = originPxY - (originPxY - panY) * ratio;
+        }
+
+        limitPan();
+        applyImageTransform();
         lightboxImage.style.cursor = zoomLevel > 1 ? 'zoom-out' : 'zoom-in';
-        const ayuda = esTactil() ? 'Pinza para ampliar' : 'Rueda del mouse para ampliar';
+        const ayuda = esTactil()
+          ? (zoomLevel > 1 ? 'Arrastrá con un dedo' : 'Pinza para ampliar')
+          : 'Rueda del mouse para ampliar';
         lightboxZoom.textContent = `${ayuda} · ${Math.round(zoomLevel * 100)}%`;
+      }
+
+      function panImage(deltaX, deltaY) {
+        if (zoomLevel <= 1) return;
+        panX += deltaX;
+        panY += deltaY;
+        limitPan();
+        applyImageTransform();
       }
 
       function showGalleryImage(index) {
@@ -1767,6 +2583,7 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
         if (!galleryImages.length) return;
 
         lastFocusedElement = trigger;
+        if (trigger?.closest('.story-sheet-gallery')) stopStorySheetGalleryAutoplay();
         previousBodyOverflow = document.body.style.overflow;
         galleryLightbox.classList.add('open');
         galleryLightbox.setAttribute('aria-hidden', 'false');
@@ -1778,12 +2595,13 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
       function closeGallery() {
         punteros.clear();
         distanciaInicial = 0;
-        galleryLightbox.classList.remove('open', 'pinching');
+        galleryLightbox.classList.remove('open', 'pinching', 'panning');
         galleryLightbox.setAttribute('aria-hidden', 'true');
         document.body.style.overflow = previousBodyOverflow;
         updateZoom(1);
         lightboxImage.removeAttribute('src');
         if (lastFocusedElement) lastFocusedElement.focus();
+        if (storySheet?.classList.contains('open')) startStorySheetGalleryAutoplay?.();
       }
 
       // Disparador del feed PC: mini slider con la foto activa marcada por clase.
@@ -1800,18 +2618,44 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
         });
       });
 
-      // Disparador del feed móvil: carrusel con la posición en data-active-index.
+      // Disparador del feed móvil: tanto la lupa como un toque directo sobre la
+      // foto abren el carrusel en la imagen que está activa.
+      function openMobileGallery(gallery, trigger) {
+        if (!gallery) return;
+        const imagenes = Array.from(gallery.querySelectorAll('.feed-frame img'));
+        openGallery(
+          imagenes.map((img) => img.currentSrc || img.src),
+          Number(gallery.dataset.activeIndex || 0),
+          trigger
+        );
+      }
+
+      function openStorySheetGallery(gallery, trigger) {
+        if (!gallery) return;
+        const imagenes = Array.from(gallery.querySelectorAll('.story-sheet-photo img'));
+        openGallery(
+          imagenes.map((img) => img.currentSrc || img.src),
+          Number(gallery.dataset.activeIndex || 0),
+          trigger
+        );
+      }
+
       document.querySelectorAll('.feed-gallery-expand').forEach((button) => {
         button.addEventListener('click', () => {
-          const gallery = button.closest('.feed-gallery');
-          if (!gallery) return;
-          const imagenes = Array.from(gallery.querySelectorAll('.feed-frame img'));
-          openGallery(
-            imagenes.map((img) => img.currentSrc || img.src),
-            Number(gallery.dataset.activeIndex || 0),
-            button
-          );
+          openMobileGallery(button.closest('.feed-gallery'), button);
         });
+      });
+
+      document.querySelectorAll('.feed-gallery .feed-frame img').forEach((image) => {
+        image.addEventListener('click', () => {
+          openMobileGallery(image.closest('.feed-gallery'), image);
+        });
+      });
+
+      document.addEventListener('click', (event) => {
+        const trigger = event.target.closest('.story-sheet-gallery-expand, .story-sheet-photo img');
+        if (!trigger) return;
+        openStorySheetGallery(trigger.closest('.story-sheet-gallery'), trigger);
       });
 
       lightboxClose.addEventListener('click', closeGallery);
@@ -1827,8 +2671,8 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
         updateZoom(zoomLevel + (event.deltaY < 0 ? 0.25 : -0.25), originX, originY);
       }, { passive: false });
 
-      // Gestos táctiles: pinza con dos dedos para el zoom, deslizamiento con uno
-      // para cambiar de foto (o hacia abajo para cerrar) cuando no hay zoom.
+      // Gestos táctiles: pinza con dos dedos para el zoom. Con zoom activo, un
+      // dedo desplaza la imagen; al 100% conserva la navegación/cierre por swipe.
       const punteros = new Map();
       let distanciaInicial = 0;
       let zoomInicial = 1;
@@ -1844,22 +2688,36 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
         if (punteros.size === 2) {
           distanciaInicial = distanciaEntrePunteros();
           zoomInicial = zoomLevel;
+          galleryLightbox.classList.remove('panning');
           galleryLightbox.classList.add('pinching');
+        } else if (zoomLevel > 1) {
+          galleryLightbox.classList.add('panning');
         }
+        lightboxStage.setPointerCapture?.(event.pointerId);
       });
 
       lightboxStage.addEventListener('pointermove', (event) => {
         const puntero = punteros.get(event.pointerId);
         if (!puntero) return;
+        const deltaX = event.clientX - puntero.x;
+        const deltaY = event.clientY - puntero.y;
         puntero.x = event.clientX;
         puntero.y = event.clientY;
 
-        if (punteros.size !== 2 || distanciaInicial <= 0) return;
-        const bounds = lightboxStage.getBoundingClientRect();
-        const [a, b] = Array.from(punteros.values());
-        const originX = (((a.x + b.x) / 2 - bounds.left) / bounds.width) * 100;
-        const originY = (((a.y + b.y) / 2 - bounds.top) / bounds.height) * 100;
-        updateZoom(zoomInicial * (distanciaEntrePunteros() / distanciaInicial), originX, originY);
+        if (punteros.size === 2 && distanciaInicial > 0) {
+          const bounds = lightboxStage.getBoundingClientRect();
+          const [a, b] = Array.from(punteros.values());
+          const originX = (((a.x + b.x) / 2 - bounds.left) / bounds.width) * 100;
+          const originY = (((a.y + b.y) / 2 - bounds.top) / bounds.height) * 100;
+          updateZoom(zoomInicial * (distanciaEntrePunteros() / distanciaInicial), originX, originY);
+          event.preventDefault();
+          return;
+        }
+
+        if (punteros.size === 1 && zoomLevel > 1) {
+          panImage(deltaX, deltaY);
+          event.preventDefault();
+        }
       });
 
       function finPuntero(event) {
@@ -1871,15 +2729,21 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
         if (punteros.size < 2) {
           distanciaInicial = 0;
           galleryLightbox.classList.remove('pinching');
+          galleryLightbox.classList.toggle('panning', punteros.size === 1 && zoomLevel > 1);
         }
 
-        // Con zoom activo el dedo no navega: se reserva para la pinza.
+        if (punteros.size === 0) galleryLightbox.classList.remove('panning');
+        if (lightboxStage.hasPointerCapture?.(event.pointerId)) lightboxStage.releasePointerCapture(event.pointerId);
+
+        // Con zoom activo el gesto simple ya desplazó la imagen y no navega.
         if (!eraGestoSimple || zoomLevel > 1) return;
 
         const desplazamientoX = puntero.x - puntero.inicioX;
         const desplazamientoY = puntero.y - puntero.inicioY;
         if (Math.abs(desplazamientoX) > 50 && Math.abs(desplazamientoX) > Math.abs(desplazamientoY)) {
-          showGalleryImage(galleryIndex + (desplazamientoX < 0 ? 1 : -1));
+          // La navegación acompaña el sentido pedido por el gesto: hacia la
+          // derecha avanza y hacia la izquierda retrocede.
+          showGalleryImage(galleryIndex + (desplazamientoX > 0 ? 1 : -1));
         } else if (desplazamientoY > 90) {
           closeGallery();
         }

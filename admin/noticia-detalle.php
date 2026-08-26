@@ -18,7 +18,9 @@ if ($id <= 0) {
 }
 
 $stmt = db()->prepare(
-    'SELECT n.id, n.titulo, n.descripcion, n.youtube, n.created_at,
+    'SELECT n.id, n.titulo, n.descripcion,
+            n.youtube, n.youtube_2, n.youtube_3,
+            n.audio_1, n.audio_2, n.audio_3, n.created_at,
             n.me_gusta, n.no_me_gusta,
             c.nombre AS categoria_nombre,
             u.nombre AS autor_nombre
@@ -45,7 +47,17 @@ foreach ($fotos as $f) {
     ];
 }
 
-$youtubeEmbed = youtube_embed_url($n['youtube'] ?? '');
+$videos = array_values(array_filter(array_map(
+    static fn($url) => youtube_embed_url((string) $url),
+    [$n['youtube'] ?? '', $n['youtube_2'] ?? '', $n['youtube_3'] ?? '']
+)));
+$audios = array_values(array_filter(array_map(
+    static function ($url): string {
+        $normalizada = normalizar_url_audio((string) $url);
+        return $normalizada === '' ? '' : url_audio_panel($normalizada);
+    },
+    [$n['audio_1'] ?? '', $n['audio_2'] ?? '', $n['audio_3'] ?? '']
+)));
 
 echo json_encode([
     'id'             => (int) $n['id'],
@@ -57,7 +69,9 @@ echo json_encode([
     'autor'          => $n['autor_nombre'] ?? null,
     'fecha'          => $n['created_at'] ? date('d/m/Y', strtotime($n['created_at'])) : null,
     'fecha_larga'    => fecha_larga($n['created_at']),
-    'youtube'        => $youtubeEmbed,
+    'youtube'        => $videos[0] ?? '',
+    'videos'         => $videos,
+    'audios'         => $audios,
     'me_gusta'       => (int) ($n['me_gusta'] ?? 0),
     'no_me_gusta'    => (int) ($n['no_me_gusta'] ?? 0),
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

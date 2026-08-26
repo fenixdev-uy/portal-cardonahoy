@@ -1,0 +1,43 @@
+{
+  "version": 2,
+  "project": {
+    "name": "NOMBRE_DEL_PROYECTO",
+    "public_url": "https://ejemplo.com/"
+  },
+  "deployment": {
+    "protocol": "ftps",
+    "host": "servidor-ftps.ejemplo.com",
+    "port": 21,
+    "username": "USUARIO_FTPS",
+    "password": "CONTRASENA_FTPS",
+    "remote_path": "/",
+    "verify_tls": true,
+    "database_environment": "production"
+  },
+  "databases": {
+    "development": {
+      "label": "DEV - proyecto local",
+      "host": "HOST_BASE_DEV",
+      "port": 3306,
+      "name": "NOMBRE_BASE_DEV",
+      "username": "USUARIO_BASE_DEV",
+      "password": "CONTRASENA_BASE_DEV",
+      "charset": "utf8mb4"
+    },
+    "production": {
+      "label": "PROD - sitio publicado",
+      "host": "localhost",
+      "port": 3306,
+      "name": "NOMBRE_BASE_PROD",
+      "username": "USUARIO_BASE_PROD",
+      "password": "CONTRASENA_BASE_PROD",
+      "charset": "utf8mb4"
+    }
+  },
+  "deepseek": {
+    "api_key": "CLAVE_API_DEEPSEEK",
+    "base_url": "https://api.deepseek.com",
+    "model": "deepseek-v4-flash",
+    "timeout_seconds": 45
+  }
+}

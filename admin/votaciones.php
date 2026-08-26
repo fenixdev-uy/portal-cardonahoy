@@ -137,23 +137,34 @@ require __DIR__ . '/includes/header.php';
           <table class="table users-table viz-datos">
             <thead>
               <tr>
-                <th style="width: 56px;">#</th>
                 <th>Noticia</th>
                 <th>Categoría</th>
-                <th class="viz-num">Me gusta</th>
-                <th class="viz-num">No me gusta</th>
-                <th class="viz-num">Total</th>
+                <th>Votos</th>
               </tr>
             </thead>
             <tbody>
-<?php foreach ($noticiasVotadas as $i => $n): ?>
+<?php foreach ($noticiasVotadas as $n): ?>
               <tr>
-                <td class="viz-num"><?= $i + 1 ?></td>
-                <td><a href="noticia-form.php?id=<?= (int) $n['id'] ?>"><?= e($n['titulo']) ?></a></td>
-                <td><?php if (!empty($n['categoria_nombre'])): ?><span class="badge"><?= e($n['categoria_nombre']) ?></span><?php endif; ?></td>
-                <td class="viz-num"><?= (int) $n['me_gusta'] ?></td>
-                <td class="viz-num"><?= (int) $n['no_me_gusta'] ?></td>
-                <td class="viz-num"><strong><?= (int) $n['total'] ?></strong></td>
+                <td data-label="Noticia"><a href="#" class="js-ver-noticia" data-id="<?= (int) $n['id'] ?>" title="Ver noticia completa"><?= e($n['titulo']) ?></a></td>
+                <td data-label="Categoría">
+                  <?php if (!empty($n['categoria_nombre'])): ?>
+                    <span class="badge"><?= e($n['categoria_nombre']) ?></span>
+                  <?php else: ?>
+                    <span style="color:#94a3b8;">—</span>
+                  <?php endif; ?>
+                </td>
+                <td class="td-votes" data-label="Votos">
+                  <div class="viz-vote-stats">
+                    <span class="vote-stat" title="Me gusta">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
+                      <?= (int) ($n['me_gusta'] ?? 0) ?>
+                    </span>
+                    <span class="vote-stat" title="No me gusta">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"></path></svg>
+                      <?= (int) ($n['no_me_gusta'] ?? 0) ?>
+                    </span>
+                  </div>
+                </td>
               </tr>
 <?php endforeach; ?>
             </tbody>
@@ -163,5 +174,6 @@ require __DIR__ . '/includes/header.php';
 
       <script id="vizDatos" type="application/json"><?= json_encode($datosGrafico, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
       <script src="assets/votaciones.js" defer></script>
+      <?php require __DIR__ . '/includes/noticia-preview-drawer.php'; ?>
 <?php endif; ?>
 <?php require __DIR__ . '/includes/footer.php'; ?>

@@ -60,15 +60,33 @@ CREATE TABLE IF NOT EXISTS noticias (
   categoria_id INT UNSIGNED NULL,
   usuario_id INT UNSIGNED NULL,
   titulo VARCHAR(255) NOT NULL,
+  slug VARCHAR(190) NOT NULL,
   descripcion TEXT NOT NULL,
+  seo_titulo VARCHAR(255) NULL,
+  seo_descripcion VARCHAR(500) NULL,
+  seo_imagen VARCHAR(255) NULL,
   youtube VARCHAR(255) NULL,
+  youtube_2 VARCHAR(255) NULL,
+  youtube_3 VARCHAR(255) NULL,
+  audio_1 VARCHAR(500) NULL,
+  audio_2 VARCHAR(500) NULL,
+  audio_3 VARCHAR(500) NULL,
   me_gusta INT UNSIGNED NOT NULL DEFAULT 0,
   no_me_gusta INT UNSIGNED NOT NULL DEFAULT 0,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (id), KEY idx_noticias_categoria (categoria_id), KEY idx_noticias_usuario (usuario_id),
+  PRIMARY KEY (id), UNIQUE KEY uq_noticias_slug (slug), KEY idx_noticias_categoria (categoria_id), KEY idx_noticias_usuario (usuario_id),
   CONSTRAINT fk_noticias_categoria FOREIGN KEY (categoria_id) REFERENCES categorias(id) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT fk_noticias_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS noticias_slugs_historial (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  noticia_id INT UNSIGNED NOT NULL,
+  slug VARCHAR(190) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id), UNIQUE KEY uq_noticias_slugs_historial_slug (slug), KEY idx_noticias_slugs_historial_noticia (noticia_id),
+  CONSTRAINT fk_noticias_slugs_historial_noticia FOREIGN KEY (noticia_id) REFERENCES noticias(id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS noticias_fotos (
@@ -106,4 +124,11 @@ CREATE TABLE IF NOT EXISTS intentos_login (
   primer_intento_at DATETIME NOT NULL,
   bloqueado_hasta DATETIME NULL,
   PRIMARY KEY (clave_hash)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS configuracion (
+  clave VARCHAR(100) NOT NULL,
+  valor TEXT NOT NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (clave)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -36,6 +36,42 @@ function obtener_flash(): array
 }
 
 /**
+ * Configuración efectiva de la marca de agua.
+ * Mantiene el logo histórico como fallback para instalaciones sin migrar.
+ *
+ * @return array{ruta:string,opacidad:int}
+ */
+function configuracion_marca_agua(): array
+{
+    $ruta = 'imagenes/Logo2027v2.png';
+    $opacidad = 15;
+
+    try {
+        $stmt = db()->query("SELECT clave, valor FROM configuracion WHERE clave IN ('marca_agua_ruta', 'marca_agua_opacidad')");
+        foreach ($stmt->fetchAll() as $fila) {
+            if ($fila['clave'] === 'marca_agua_ruta') {
+                $candidata = trim((string) $fila['valor']);
+                if ($candidata === 'imagenes/Logo2027v2.png'
+                    || preg_match('#^uploads/configuracion/marca_agua_[A-Za-z0-9_-]+\.png$#', $candidata)) {
+                    $ruta = $candidata;
+                }
+            } elseif ($fila['clave'] === 'marca_agua_opacidad') {
+                $opacidad = max(5, min(100, (int) $fila['valor']));
+            }
+        }
+    } catch (PDOException $e) {
+        // La migración puede estar pendiente durante un despliegue incremental.
+    }
+
+    $raiz = dirname(__DIR__, 2);
+    if (!is_file($raiz . '/' . $ruta)) {
+        $ruta = 'imagenes/Logo2027v2.png';
+    }
+
+    return ['ruta' => $ruta, 'opacidad' => $opacidad];
+}
+
+/**
  * Sube una imagen y devuelve la ruta relativa pública, o null si no se subió.
  *
  * @param array $archivo Elemento de $_FILES.
@@ -95,6 +131,63 @@ function subir_imagen(array $archivo): ?string
 }
 
 /**
+ * Sube un audio y devuelve la ruta relativa pública.
+ * Admite MP3, M4A, OGG y WAV, hasta 25 MB.
+ *
+ * @param array $archivo Elemento de $_FILES.
+ */
+function subir_audio(array $archivo): ?string
+{
+    if (($archivo['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+        return null;
+    }
+    if (($archivo['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_INI_SIZE
+        || ($archivo['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_FORM_SIZE) {
+        throw new RuntimeException('El audio supera el tamaño permitido de 25 MB.');
+    }
+    if (($archivo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        throw new RuntimeException('Error al subir el audio (código ' . (int) $archivo['error'] . ').');
+    }
+    if (($archivo['size'] ?? 0) <= 0 || $archivo['size'] > 25 * 1024 * 1024) {
+        throw new RuntimeException('El audio debe pesar como máximo 25 MB.');
+    }
+    // Este hosting no tiene fileinfo: se valida la firma binaria real, no solo
+    // el MIME declarado por el navegador ni la extensión original.
+    $cabecera = file_get_contents($archivo['tmp_name'], false, null, 0, 64);
+    $extensionOriginal = strtolower(pathinfo((string) ($archivo['name'] ?? ''), PATHINFO_EXTENSION));
+    $extension = null;
+    if (is_string($cabecera)) {
+        if (substr($cabecera, 0, 4) === 'RIFF' && substr($cabecera, 8, 4) === 'WAVE') {
+            $extension = 'wav';
+        } elseif (substr($cabecera, 0, 4) === 'OggS') {
+            $extension = 'ogg';
+        } elseif (substr($cabecera, 0, 3) === 'ID3'
+            || (strlen($cabecera) >= 2 && ord($cabecera[0]) === 0xFF && (ord($cabecera[1]) & 0xE0) === 0xE0)) {
+            $extension = 'mp3';
+        } elseif ($extensionOriginal === 'm4a' && substr($cabecera, 4, 4) === 'ftyp') {
+            $extension = 'm4a';
+        }
+    }
+    if ($extension === null) {
+        throw new RuntimeException('El archivo debe ser un audio MP3, M4A, OGG o WAV.');
+    }
+
+    $directorio = dirname(__DIR__, 2) . '/uploads/audios';
+    if (!is_dir($directorio) && !mkdir($directorio, 0775, true) && !is_dir($directorio)) {
+        throw new RuntimeException('No se pudo crear la carpeta de audios.');
+    }
+
+    $nombre = 'audio_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
+    $rutaCompleta = $directorio . '/' . $nombre;
+    if (!move_uploaded_file($archivo['tmp_name'], $rutaCompleta)) {
+        throw new RuntimeException('No se pudo guardar el audio en el servidor.');
+    }
+    @chmod($rutaCompleta, 0644);
+
+    return 'uploads/audios/' . $nombre;
+}
+
+/**
  * Aplica el logo del portal en el centro de una imagen subida.
  * El archivo se reemplaza de forma atómica solamente cuando termina bien.
  */
@@ -104,7 +197,9 @@ function aplicar_marca_agua_centrada(string $rutaCompleta, string $mime): void
         throw new RuntimeException('La extensión GD no está disponible.');
     }
 
-    $logoRuta = dirname(__DIR__, 2) . '/imagenes/Logo2027v2.png';
+    $configuracionMarca = configuracion_marca_agua();
+    $logoRuta = dirname(__DIR__, 2) . '/' . $configuracionMarca['ruta'];
+    $opacidadMarca = $configuracionMarca['opacidad'];
     if (!is_file($logoRuta)) {
         throw new RuntimeException('No se encontró el logo para la marca de agua.');
     }
@@ -146,8 +241,9 @@ function aplicar_marca_agua_centrada(string $rutaCompleta, string $mime): void
         imagefilledrectangle($marca, 0, 0, $anchoMarca, $altoMarca, $transparente);
         imagecopyresampled($marca, $logo, 0, 0, 0, 0, $anchoMarca, $altoMarca, $anchoLogo, $altoLogo);
 
-        // Suma transparencia al canal alfa: la parte más visible queda al 15%.
-        if (!imagefilter($marca, IMG_FILTER_COLORIZE, 0, 0, 0, 108)) {
+        // Suma transparencia al canal alfa según la opacidad elegida (15% por defecto).
+        $alphaAdicional = (int) round(127 * (1 - ($opacidadMarca / 100)));
+        if (!imagefilter($marca, IMG_FILTER_COLORIZE, 0, 0, 0, $alphaAdicional)) {
             throw new RuntimeException('No se pudo ajustar la transparencia de la marca.');
         }
 
@@ -208,13 +304,151 @@ function ruta_imagen_subida_valida(string $ruta): bool
     return (bool) preg_match('#^uploads/noticias/noticia_[A-Za-z0-9_-]+\.(?:jpe?g|png|webp)$#i', $ruta);
 }
 
+function ruta_audio_subido_valida(string $ruta): bool
+{
+    return (bool) preg_match('#^uploads/audios/audio_[A-Za-z0-9_-]+\.(?:mp3|m4a|ogg|wav)$#i', $ruta);
+}
+
+/** Conserva rutas locales generadas o URLs HTTPS externas; rechaza otros protocolos. */
+function normalizar_url_audio(?string $url): string
+{
+    $url = trim((string) $url);
+    if ($url === '') return '';
+    if (ruta_audio_subido_valida($url)) return $url;
+    if (strlen($url) > 500 || filter_var($url, FILTER_VALIDATE_URL) === false) return '';
+    return strtolower((string) parse_url($url, PHP_URL_SCHEME)) === 'https' ? $url : '';
+}
+
+function url_audio_panel(string $url): string
+{
+    return ruta_audio_subido_valida($url) ? '../' . $url : $url;
+}
+
+function audio_subido_referenciado(string $ruta): bool
+{
+    $stmt = db()->prepare(
+        'SELECT EXISTS(SELECT 1 FROM noticias WHERE audio_1 = ? OR audio_2 = ? OR audio_3 = ?)'
+    );
+    $stmt->execute([$ruta, $ruta, $ruta]);
+    return (bool) $stmt->fetchColumn();
+}
+
+function eliminar_audio(?string $rutaRelativa): void
+{
+    if (!$rutaRelativa || !ruta_audio_subido_valida($rutaRelativa)) return;
+    $directorio = realpath(dirname(__DIR__, 2) . '/uploads/audios');
+    $rutaCompleta = realpath(dirname(__DIR__, 2) . '/' . $rutaRelativa);
+    if ($directorio !== false && $rutaCompleta !== false
+        && str_starts_with($rutaCompleta, $directorio . DIRECTORY_SEPARATOR)
+        && is_file($rutaCompleta)) {
+        @unlink($rutaCompleta);
+    }
+}
+
+function limpiar_audios_huerfanos_antiguos(int $horas = 48, int $limite = 20): int
+{
+    $directorio = dirname(__DIR__, 2) . '/uploads/audios';
+    $corte = time() - max(1, $horas) * 3600;
+    $eliminados = 0;
+    foreach (glob($directorio . '/audio_*.*') ?: [] as $archivo) {
+        if ($eliminados >= $limite || !is_file($archivo) || filemtime($archivo) >= $corte) continue;
+        $ruta = 'uploads/audios/' . basename($archivo);
+        if (ruta_audio_subido_valida($ruta) && !audio_subido_referenciado($ruta)) {
+            eliminar_audio($ruta);
+            $eliminados++;
+        }
+    }
+    return $eliminados;
+}
+
+/** @return array<int,string> Rutas locales únicas insertadas en el HTML. */
+function imagenes_locales_en_html(?string $html): array
+{
+    $html = (string) $html;
+    if ($html === '' || !str_contains($html, 'uploads/noticias/')) return [];
+
+    $dom = new DOMDocument('1.0', 'UTF-8');
+    $estadoLibxml = libxml_use_internal_errors(true);
+    $cargado = $dom->loadHTML(
+        '<?xml encoding="UTF-8"><div id="contenido-noticia">' . $html . '</div>',
+        LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
+    );
+    libxml_clear_errors();
+    libxml_use_internal_errors($estadoLibxml);
+    if (!$cargado) return [];
+
+    $rutas = [];
+    foreach ($dom->getElementsByTagName('img') as $imagen) {
+        $src = html_entity_decode(trim($imagen->getAttribute('src')), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $src = preg_replace('#^(?:\.\./)+#', '', $src);
+        $src = ltrim((string) $src, '/');
+        if (ruta_imagen_subida_valida($src)) $rutas[$src] = true;
+    }
+    return array_keys($rutas);
+}
+
+/** Devuelve el tamaño real de una ruta local generada por el portal. */
+function tamano_archivo_portal(string $ruta): int
+{
+    if (!ruta_imagen_subida_valida($ruta) && !ruta_audio_subido_valida($ruta)) return 0;
+    $raiz = realpath(dirname(__DIR__, 2));
+    $archivo = realpath(dirname(__DIR__, 2) . '/' . $ruta);
+    if ($raiz === false || $archivo === false
+        || !str_starts_with($archivo, $raiz . DIRECTORY_SEPARATOR)
+        || !is_file($archivo)) {
+        return 0;
+    }
+    $bytes = filesize($archivo);
+    return $bytes === false ? 0 : max(0, (int) $bytes);
+}
+
+/**
+ * Peso de los archivos locales asociados a una noticia, sin duplicar rutas.
+ * Las URLs externas y YouTube no consumen disco local y no se cuentan.
+ *
+ * @param array<string,mixed> $noticia
+ * @param array<int,array<string,mixed>> $fotos
+ * @return array{fotos:int,audios:int,total:int}
+ */
+function peso_archivos_noticia(array $noticia, array $fotos): array
+{
+    $rutasFotos = [];
+    foreach ($fotos as $foto) {
+        $ruta = (string) ($foto['ruta'] ?? '');
+        if (ruta_imagen_subida_valida($ruta)) $rutasFotos[$ruta] = true;
+    }
+    foreach (imagenes_locales_en_html($noticia['descripcion'] ?? '') as $ruta) {
+        $rutasFotos[$ruta] = true;
+    }
+    $imagenSeo = (string) ($noticia['seo_imagen'] ?? '');
+    if (ruta_imagen_subida_valida($imagenSeo)) $rutasFotos[$imagenSeo] = true;
+
+    $rutasAudios = [];
+    foreach (['audio_1', 'audio_2', 'audio_3'] as $campo) {
+        $ruta = (string) ($noticia[$campo] ?? '');
+        if (ruta_audio_subido_valida($ruta)) $rutasAudios[$ruta] = true;
+    }
+
+    $pesoFotos = array_sum(array_map('tamano_archivo_portal', array_keys($rutasFotos)));
+    $pesoAudios = array_sum(array_map('tamano_archivo_portal', array_keys($rutasAudios)));
+    return ['fotos' => $pesoFotos, 'audios' => $pesoAudios, 'total' => $pesoFotos + $pesoAudios];
+}
+
+function formatear_megabytes(int $bytes): string
+{
+    if ($bytes <= 0) return '0 MB';
+    $mb = $bytes / 1048576;
+    $decimales = $mb >= 10 ? 1 : 2;
+    return number_format($mb, $decimales, ',', '.') . ' MB';
+}
+
 function imagen_subida_referenciada(string $ruta): bool
 {
     $stmt = db()->prepare(
         'SELECT EXISTS(SELECT 1 FROM noticias_fotos WHERE ruta = ?)
-             OR EXISTS(SELECT 1 FROM noticias WHERE LOCATE(?, descripcion) > 0)'
+             OR EXISTS(SELECT 1 FROM noticias WHERE LOCATE(?, descripcion) > 0 OR seo_imagen = ?)'
     );
-    $stmt->execute([$ruta, $ruta]);
+    $stmt->execute([$ruta, $ruta, $ruta]);
     return (bool) $stmt->fetchColumn();
 }
 
@@ -240,6 +474,8 @@ function limpiar_subidas_no_usadas_de_sesion(): void
     foreach (array_keys($_SESSION['archivos_subidos'] ?? []) as $ruta) {
         if (ruta_imagen_subida_valida($ruta) && !imagen_subida_referenciada($ruta)) {
             eliminar_imagen($ruta);
+        } elseif (ruta_audio_subido_valida($ruta) && !audio_subido_referenciado($ruta)) {
+            eliminar_audio($ruta);
         }
     }
     unset($_SESSION['archivos_subidos']);
@@ -521,6 +757,104 @@ function html_a_texto(?string $html, int $limite = 0): string
     }
 
     return $texto;
+}
+
+/** Normaliza un texto como slug seguro para URLs de noticias. */
+function normalizar_slug_noticia(?string $texto): string
+{
+    $texto = mb_strtolower(trim((string) $texto), 'UTF-8');
+    $ascii = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $texto);
+    if (is_string($ascii) && $ascii !== '') $texto = $ascii;
+    $texto = preg_replace('/[^a-z0-9]+/', '-', $texto);
+    $texto = trim((string) $texto, '-');
+    return mb_substr($texto !== '' ? $texto : 'noticia', 0, 190);
+}
+
+function slug_noticia_en_uso(PDO $pdo, string $slug, int $excluirNoticiaId = 0): bool
+{
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM noticias WHERE slug = ? AND id <> ?');
+    $stmt->execute([$slug, $excluirNoticiaId]);
+    if ((int) $stmt->fetchColumn() > 0) return true;
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM noticias_slugs_historial WHERE slug = ? AND noticia_id <> ?');
+    $stmt->execute([$slug, $excluirNoticiaId]);
+    return (int) $stmt->fetchColumn() > 0;
+}
+
+function generar_slug_noticia_unico(PDO $pdo, string $texto, int $excluirNoticiaId = 0): string
+{
+    $base = normalizar_slug_noticia($texto);
+    $slug = $base;
+    $sufijo = 2;
+    while (slug_noticia_en_uso($pdo, $slug, $excluirNoticiaId)) {
+        $cola = '-' . $sufijo++;
+        $slug = mb_substr($base, 0, 190 - strlen($cola)) . $cola;
+    }
+    return $slug;
+}
+
+/** URL base inferida del portal; admite PORTAL_PUBLIC_URL como override privado. */
+function url_base_portal(): string
+{
+    if (defined('PORTAL_PUBLIC_URL') && trim((string) PORTAL_PUBLIC_URL) !== '') {
+        return rtrim((string) PORTAL_PUBLIC_URL, '/');
+    }
+    $https = (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off')
+        || strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+    $host = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
+    if (!preg_match('/^[a-z0-9.-]+(?::\d+)?$/i', $host)) $host = 'localhost';
+    $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? '/index.php'));
+    $posAdmin = strpos($script, '/admin/');
+    $base = $posAdmin !== false ? substr($script, 0, $posAdmin) : dirname($script);
+    $base = $base === '/' || $base === '.' ? '' : rtrim($base, '/');
+    return ($https ? 'https' : 'http') . '://' . $host . $base;
+}
+
+function url_portal(string $ruta = ''): string
+{
+    return url_base_portal() . ($ruta === '' ? '' : '/' . ltrim($ruta, '/'));
+}
+
+function url_noticia(string $slug): string
+{
+    return url_portal('noticia/' . rawurlencode(normalizar_slug_noticia($slug)));
+}
+
+function url_recurso_portal(?string $ruta): string
+{
+    $ruta = trim((string) $ruta);
+    if ($ruta === '') return '';
+    if (preg_match('#^https?://#i', $ruta)) return $ruta;
+    return url_portal(ltrim($ruta, '/'));
+}
+
+function descripcion_seo_automatica(?string $html, int $limite = 160): string
+{
+    $texto = html_a_texto($html);
+    if (mb_strlen($texto) <= $limite) return $texto;
+    $corte = rtrim(mb_substr($texto, 0, $limite - 1));
+    $ultimoEspacio = mb_strrpos($corte, ' ');
+    if ($ultimoEspacio !== false && $ultimoEspacio >= (int) ($limite * .65)) {
+        $corte = mb_substr($corte, 0, $ultimoEspacio);
+    }
+    return rtrim($corte, " .,;:-") . '…';
+}
+
+/** @return array{titulo:string,descripcion:string,imagen:string,url:string,slug:string} */
+function valores_seo_noticia(array $noticia, array $fotos = []): array
+{
+    $slug = normalizar_slug_noticia((string) ($noticia['slug'] ?? $noticia['titulo'] ?? 'noticia'));
+    $titulo = trim((string) ($noticia['seo_titulo'] ?? '')) ?: trim((string) ($noticia['titulo'] ?? ''));
+    $descripcion = trim((string) ($noticia['seo_descripcion'] ?? '')) ?: descripcion_seo_automatica($noticia['descripcion'] ?? '');
+    $imagen = trim((string) ($noticia['seo_imagen'] ?? ''));
+    if ($imagen === '' && !empty($fotos[0]['ruta'])) $imagen = (string) $fotos[0]['ruta'];
+    if ($imagen === '') $imagen = 'imagenes/Logo2027v3.png';
+    return [
+        'titulo' => $titulo,
+        'descripcion' => $descripcion,
+        'imagen' => url_recurso_portal($imagen),
+        'url' => url_noticia($slug),
+        'slug' => $slug,
+    ];
 }
 
 /**

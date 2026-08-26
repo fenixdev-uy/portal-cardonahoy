@@ -112,18 +112,16 @@ require __DIR__ . '/includes/header.php';
 <?php if ($errores): ?><div class="flash"><?php foreach ($errores as $error): ?><div class="alert danger"><?= e($error) ?></div><?php endforeach; ?></div><?php endif; ?>
 
 <section class="users-panel">
-  <div class="users-panel-header">
-    <div>
+  <div class="users-panel-header users-management-header">
+    <div class="users-management-copy">
       <h2>Usuarios registrados</h2>
       <p><?= count($usuarios) ?> <?= count($usuarios) === 1 ? 'usuario registrado' : 'usuarios registrados' ?></p>
     </div>
-    <div class="users-panel-actions">
-      <?php if (tiene_permiso('roles.gestionar')): ?><a class="btn btn-outline" href="roles.php">Roles y permisos</a><?php endif; ?>
-      <a class="btn btn-primary js-new-user" href="usuarios.php?nuevo=1">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-        Nuevo usuario
-      </a>
-    </div>
+    <a class="btn btn-primary js-new-user users-create-btn" href="usuarios.php?nuevo=1">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      Nuevo usuario
+    </a>
+    <?php if (tiene_permiso('roles.gestionar')): ?><a class="btn btn-outline users-roles-btn" href="roles.php">Roles - Permisos</a><?php endif; ?>
   </div>
 
   <div class="table-wrap users-table-wrap"><table class="table users-table"><thead><tr><th>Usuario</th><th>Rol</th><th>Noticias</th><th>Estado</th><th>Último acceso</th><th>Acciones</th></tr></thead><tbody>

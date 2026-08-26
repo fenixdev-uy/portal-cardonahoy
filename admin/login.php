@@ -76,7 +76,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>Ingresar al panel</title>
-  <link rel="stylesheet" href="assets/login.css">
+  <link rel="stylesheet" href="assets/login.css?v=<?= (int) filemtime(__DIR__ . '/assets/login.css') ?>">
 </head>
 <body>
   <main class="login-shell">
@@ -87,11 +87,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     <section class="login-panel">
       <div class="login-content">
         <a class="login-brand" href="../index.php" aria-label="Volver al portal">
-          <img src="../imagenes/Logo2027.png" alt="Portal de noticias">
+          <img src="../imagenes/Logo2027v3.png" alt="Portal de noticias">
         </a>
 
         <div class="login-heading">
-          <h1>Ingresar al panel</h1>
+          <h1>Panel de Gestión</h1>
           <p>Gestiona las noticias y el contenido del portal.</p>
         </div>
 

@@ -1,6 +1,6 @@
 # Continuidad — Portal de Noticias
 
-Fecha del punto de pausa: **23 de agosto de 2026** (segunda revisión del mismo día, tras aprobar el feed móvil).
+Fecha del punto de pausa: **26 de agosto de 2026**.
 
 ## Carpeta oficial
 
@@ -19,6 +19,78 @@ Este proyecto tiene **su propio repositorio git**, independiente del repo grande
 - Antes de cualquier commit, revisar `git status --short` y `git diff --cached --name-only` para confirmar que no se cuela nada de `config.local.php` ni de logs.
 - Si en el futuro se agrega un remoto (GitHub/GitLab privado), documentarlo acá.
 
+## Estándar de despliegue directo
+
+Definido el **25 de agosto de 2026** como procedimiento reutilizable para este y futuros proyectos. La especificación completa está en `ESTANDAR_DESPLIEGUE_FTPS.md` y la estructura versionable sin valores reales está en `servicios.example.json`.
+
+- Primera publicación completa con lista previa y exclusiones; nunca usar borrado espejo.
+- Publicaciones posteriores mediante manifiesto local de rutas, tamaños y SHA-256 para transferir solamente archivos agregados o modificados.
+- Git conserva historial/reversión y el manifiesto registra los bytes realmente desplegados, incluso si todavía existen cambios sin commit.
+- Antes de reemplazar un archivo, comparar la copia remota con el hash del último despliegue para detectar ediciones hechas fuera del flujo.
+- Respaldar cada archivo remoto reemplazado, transferir mediante archivo temporal + renombrado cuando el hosting lo permita y verificar nuevamente la copia remota.
+- Eliminaciones y migraciones de base de datos siempre separadas y con autorización explícita.
+- `servicios.local.json` es el archivo maestro privado versión 2 con `project`, `deployment`, `databases.development`, `databases.production` y `deepseek`. `deployment.database_environment` vincula el despliegue con `production`. Permanece con permisos `600`, está ignorado por Git, bloqueado por `.htaccess` y excluido de toda publicación. La aplicación nunca recibe la sección `deployment` ni el mapa completo de bases.
+- La cuenta FTPS probada queda confinada por el hosting a su carpeta asignada; dentro de la sesión su ruta efectiva es `/`.
+- Lectura, escritura, despliegue inicial completo y primera actualización incremental verificados el 25 de agosto de 2026.
+- El problema de certificado quedó resuelto: todas las cuentas de este VPS deben usar `vps-4962765-x.dattaweb.com`, que coincide con el certificado global del servicio FTP. ProFTPD ahora entrega la cadena completa mediante `TLSCertificateChainFile /var/cpanel/ssl/ftp/ftpd-ca.pem`; la validación externa devuelve `Verify return code: 0 (ok)` y la cuenta confinada autentica con `curl --ssl-reqd` sin `--insecure`.
+- La corrección es global para este servidor cPanel/WHM, no por cuenta. Otros proyectos alojados en el mismo VPS reutilizan hostname y certificado, pero conservan credenciales y rutas propias. Otro VPS requiere su propia validación.
+- Respaldo de la configuración anterior del servidor: `/root/proftpd.conf.before-chain-20260825`. Como cPanel puede regenerar `/etc/proftpd.conf`, cada despliegue debe validar TLS antes de autenticarse y detenerse si la directiva o la cadena desaparecen.
+- El estándar incluye el alta de futuros proyectos: revisar primero los datos disponibles y preguntar solamente lo que falte o pueda cambiar el destino, los datos persistentes, la base, los permisos o la recuperación. No repetir preguntas ya resueltas en `servicios.local.json`, la documentación o el manifiesto.
+
+### Configuración maestra de servicios
+
+El **25 de agosto de 2026** se reemplazó el formato libre `subir.txt` por `servicios.local.json`, aprobado como estándar para reunir en forma estructurada los datos operativos del proyecto.
+
+- El 25 de agosto de 2026 se evolucionó a `version: 2`: `database` fue reemplazada por `databases.development` y `databases.production`, cada una con etiqueta y credenciales independientes. `deployment.database_environment` vale `production`.
+- DEV fue obtenido de `admin/config.local.php` sin imprimir valores; PROD conserva la antigua sección `database`. El archivo v1 quedó respaldado con permisos `600` en `.deploy/respaldos-configuracion/2026-08-25/servicios.local.before-databases-v2.json`.
+- `php tools/validar-servicios.php` comprueba el contrato sin mostrar secretos: versión, ausencia de la sección legacy, ambos entornos, campos, selector, permisos y huellas no reversibles. `tools/.htaccess` bloquea acceso web y `tools/` queda fuera de despliegues.
+- Los valores FTPS y de base existentes fueron migrados sin imprimirlos. El original quedó como respaldo privado con permisos `600` en `.deploy/respaldos-configuracion/2026-08-25/subir.txt`.
+- `servicios.local.json` tiene permisos `600`, está ignorado por Git, bloqueado por `.htaccess` y excluido de FTPS. La plantilla segura es `servicios.example.json`.
+- La conexión FTPS se probó realmente leyendo el nuevo JSON: autenticación correcta y TLS verificado, sin `--insecure`.
+- `deepseek.base_url` queda en `https://api.deepseek.com`, el modelo inicial de prueba en `deepseek-v4-flash` y el timeout en 45 segundos. El usuario incorporó `deepseek.api_key` el 25 de agosto de 2026; se validó sin imprimirla mediante `GET /models`: HTTP 200, autenticación correcta y modelo configurado disponible.
+- El consumo de DeepSeek quedó implementado localmente mediante `admin/mejorar-noticia.php`. La aplicación lee `admin/servicios.runtime.local.json`, derivado con solamente la sección `deepseek`; nunca recibe ni publica la sección `deployment` del archivo maestro.
+- No registrar el JSON completo en consola, capturas, errores ni informes. Las validaciones deben mostrar únicamente nombres de secciones, tipos o valores redactados.
+- Regla surgida de la incidencia real de Configuración: un respaldo o una migración sobre DEV nunca valida PROD. Toda operación de base debe nombrar el entorno, comparar su huella con el runtime correspondiente, respaldar ese destino y verificar allí los invariantes.
+
+### Primer despliegue confirmado — baseline del flujo incremental
+
+Realizado el **25 de agosto de 2026** hacia la carpeta FTPS confinada cuya URL pública es `https://digitales.uy/subir/`.
+
+- Se desplegaron 53 archivos de aplicación, 10 archivos persistentes de uploads y una configuración privada generada para destino. No viajaron Git, documentación, credenciales FTPS, logs, diseño de referencia ni el esquema histórico `install/schema-v2-legacy.sql`.
+- Se exportó la base actual mediante `mysqldump` consistente y se importó únicamente después de comprobar que la base destino tenía cero tablas. Resultado: 10 tablas importadas. El front remoto renderizó las 5 noticias esperadas.
+- Los 67 archivos de la transferencia inicial —incluidos tres artefactos temporales de importación— se descargaron nuevamente y coincidieron en SHA-256, sin diferencias. Después se eliminaron del servidor el importador, el token y el volcado SQL; el resultado permanente es de 64 archivos del proyecto.
+- Se conservaron sin cambios `test.txt` y `prueba-codex-2026-08-25.txt`, creados durante las pruebas previas.
+- HTTP: front 200, login 200, configuración privada 404, instaladores 404, audio 200 y hash idéntico al origen. El importador temporal devuelve 404 después de su eliminación.
+- QA remota en Chromium/Puppeteer porque el plugin Browser y Playwright no estaban disponibles: escritorio `1440×900` y móvil `390×844`, sin overflow horizontal; 5 noticias en ambos feeds; «Ver nota completa» abrió la hoja a 717 px con galería y votos. No se emitieron votos ni se modificaron datos durante esta QA.
+- El único error de consola es el beacon de métricas que Cloudflare inyecta y que la CSP del portal bloquea; no corresponde al código de la aplicación. La única imagen con `naturalWidth = 0` es el placeholder vacío y oculto del lightbox antes de abrirlo, no un medio faltante.
+- La primera ejecución reveló accesos internos `.agents`, `.codex` y enlaces `.ea-php-cli.cache` heredados del entorno. Los enlaces fueron rechazados por FTPS y las dos carpetas vacías creadas se retiraron inmediatamente. Se incorporaron como exclusiones obligatorias al estándar.
+- La publicación inicial usó temporalmente la excepción TLS autorizada. El 25 de agosto se corrigieron hostname y cadena en ProFTPD, se actualizó primero `subir.txt` y luego se migró ese dato a `servicios.local.json`; `.deploy/estado.json` quedó con `tls_certificate_verified: true`. Las publicaciones siguientes no deben usar `--insecure`.
+- El usuario revisó el resultado y lo confirmó como **«impresionante»**. El manifiesto provisional fue promovido a `.deploy/estado.json`: esta versión de 64 archivos es el baseline oficial para calcular los próximos despliegues incrementales.
+- Este flujo queda adoptado como estándar de trabajo para el Portal de Noticias. Su réplica en otros proyectos se evaluará posteriormente y deberá comenzar por el alta documentada en `ESTANDAR_DESPLIEGUE_FTPS.md`, sin copiar credenciales ni supuestos propios de este portal.
+
+### Primera actualización incremental confirmada
+
+Realizada el **25 de agosto de 2026** para incorporar el botón visual deshabilitado **«Mejorar con IA»** en la barra de TipTap.
+
+- El manifiesto detectó exactamente dos archivos modificados respecto del baseline: `admin/noticia-form.php` y `admin/assets/admin.css`. `admin/config.local.php` presentaba una diferencia local, pero fue excluido por ser configuración privada.
+- Antes de reemplazar, se descargaron las dos versiones remotas y sus hashes coincidieron con `.deploy/estado.json`; no existían ediciones externas.
+- Las copias anteriores quedaron en `.deploy/respaldos/2026-08-25_202803/`. Cada archivo nuevo se subió con nombre temporal, se renombró y se descargó nuevamente; ambos SHA-256 coincidieron.
+- Cloudflare continuó sirviendo la URL sin versión de `admin.css` desde caché (`cf-cache-status: HIT`, `max-age=14400`). Se agregó versionado automático con `filemtime()` en `admin/includes/header.php`, se aplicó el mismo control de conflicto/respaldo/hash y la URL versionada entregó inmediatamente el CSS nuevo.
+- Resultado HTTP: portada 200, CSS versionado 200 y formulario protegido redirigiendo correctamente al login. No hubo base de datos, migraciones, borrados ni cambios en uploads.
+- El usuario validó producción y calificó la actualización como **«impecable»**. `.deploy/estado.json` conserva los tres hashes confirmados y es el nuevo baseline incremental.
+
+### Actualización integral — IA, Configuración, móvil y login
+
+Realizada el **25 de agosto de 2026** después de la autorización expresa de actualizar todo el proyecto.
+
+- Se publicaron 18 archivos: 12 reemplazos sin conflictos y 6 altas. Incluyen el asistente completo **Crear con IA**, el drawer **Configuración → Marca de Agua**, los últimos ajustes de la nota móvil y el login con `Logo2027v3.png`, título **Panel de Gestión**, logo ampliado y menor separación.
+- Antes de escribir, los 12 archivos remotos existentes coincidieron con el baseline. Sus copias quedaron en `.deploy/respaldos/2026-08-25_configuracion-ia-login/`.
+- La primera comprobación de base alcanzó la conexión privada local, cuya configuración no coincide con `admin/config.local.php` de producción. Esto se detectó cuando el usuario informó que el menú no aparecía. Sin exponer credenciales, se compararon los hashes de ambas configuraciones y se confirmó la diferencia.
+- Se ejecutó entonces el procedimiento correcto sobre la base real: un runner temporal protegido por token generó `production-database-before-configuracion.sql`, respaldo completo de las 10 tablas previas, aplicó la migración idempotente y verificó tabla, permiso `configuracion.gestionar`, asignación al rol `admin` y dos valores iniciales. Runner y token se eliminaron inmediatamente y ambos devolvieron 404.
+- La configuración mínima de DeepSeek se transfirió en un paso privado separado y quedó con permisos `600`. `servicios.local.json`, credenciales FTPS, documentación y contenidos persistentes de usuarios no fueron publicados.
+- Todos los archivos se subieron con nombre temporal, se renombraron y se descargaron nuevamente: los 18 SHA-256 coinciden. No quedaron archivos temporales ni se eliminó ningún archivo remoto preexistente.
+- Validación HTTPS: portada, login, logo y CSS versionado respondieron 200; el título, `Logo2027v3.png` y el nuevo tamaño aparecen en los bytes servidos. El runtime privado y el instalador respondieron 404.
+
 ## Estado aprobado
 
 El usuario aprobó expresamente el estado visual y funcional descrito a continuación. Al retomar, conservarlo y realizar cambios pequeños únicamente cuando sean solicitados.
@@ -34,17 +106,17 @@ El usuario aprobó expresamente el estado visual y funcional descrito a continua
 - Los errores del servidor conservan los datos escritos y vuelven a abrir el panel.
 - Archivos: `admin/usuarios.php` y `admin/assets/admin.css`.
 
-### Feed móvil desde base de datos — aprobado
+### Feed móvil resumido desde base de datos — aprobado
 
-El usuario aprobó este feed como impecable el 23 de agosto de 2026. Conservarlo.
+El usuario aprobó el feed original el 23 de agosto y el flujo resumido actual como perfecto el **24 de agosto de 2026**. Conservarlo.
 
 - El feed móvil **ya no es estático**: se renderiza desde la base de datos en `partials/mobile-feed.php`. Se eliminaron de `index.php` las tres noticias de ejemplo con imágenes de Unsplash.
 - No agrega consultas: consume las mismas `$noticias` y `$fotosPorNoticia` que ya prepara `index.php` para el feed PC.
-- Estructura por noticia, estilo red social: foto a `100svh` con degradado inferior, categoría y título encima; a continuación el texto **completo** de la nota, el video de YouTube si lo hay, y los botones de voto y compartir.
+- Estructura por noticia: **una sola portada** a `100svh` con degradado inferior, categoría y título encima; debajo aparecen fecha, autor, un resumen en texto plano de hasta **280 caracteres** y el botón claro **«Ver nota completa»**.
+- Aunque la noticia tenga varias fotos, el feed muestra solamente la portada (`posicion = 0`). La galería, los audios, videos y votos quedan dentro de la vista completa; esto reduce mucho la altura de lectura del feed.
 - **Sin `scroll-snap` en móvil**: el feed se lee corrido. Fue una decisión deliberada, porque el encaje pelea con las noticias de texto largo. El `scroll-snap` sigue activo solo en PC.
 - Las fotos son `<img loading="lazy" decoding="async">` con `object-fit: cover`, no `background-image`. El cambio fue necesario para que el lazy loading funcione de verdad: con imágenes de fondo el navegador no lo aplica.
-- Galerías de más de una foto: carrusel horizontal con `scroll-snap-type: x mandatory` y `overflow-x: auto`, es decir deslizamiento nativo sin JavaScript. Los puntos indicadores se sincronizan con un `IntersectionObserver` sobre el track.
-- **No hay rotación automática en móvil**, a diferencia del mini slider de PC. Decisión deliberada: en un feed vertical la foto que se mueve sola molesta. No agregar temporizadores acá.
+- **No hay carrusel ni rotación automática en el feed móvil**. La rotación existe solo dentro de la vista completa, donde sirve para comunicar que hay más fotos.
 - Noticias sin fotos: fondo degradado neutro `linear-gradient(135deg, #0f172a, #334155)`, igual criterio que `pc-media-empty`.
 - Archivos: `partials/mobile-feed.php` e `index.php`.
 
@@ -95,7 +167,7 @@ Se evaluó explícitamente la alternativa (contadores que espejan la tabla y pue
 - Las reglas de estilo del HTML de la descripción (`h1`–`h3`, listas, `blockquote`, `code`, `pre`, `mark`, `hr`, `img`, `a`, `sub`, `sup`) viven **una sola vez**, en una clase global `.rich-text` dentro de `index.php`, fuera de cualquier media query.
 - Antes estaban únicamente dentro de `@media (min-width: 769px)`, por lo que en móvil una noticia con subtítulos o listas se veía sin formato. Ese era un defecto real, no una decisión de diseño.
 - El bloque de PC ahora solo reajusta tamaños y márgenes (`.pc-content h1/h2/h3`, `li`, `ul`, `ol`, `blockquote`, `pre`, `img`). No volver a duplicar el conjunto completo ahí.
-- La clase se aplica en los dos feeds: `class="pc-content rich-text"` y `class="feed-text rich-text"`.
+- La clase se aplica al contenido completo de PC y a la hoja móvil. El resumen del feed es texto plano y no usa `.rich-text`.
 - Al agregar una etiqueta nueva permitida en `sanitizar_html()`, darle estilo en `.rich-text` y no en el bloque de PC.
 
 ### Publicidad provisoria, PC y móvil
@@ -111,42 +183,222 @@ Se evaluó explícitamente la alternativa (contadores que espejan la tabla y pue
 - Sigue siendo una prueba provisoria y debe poder quitarse sin afectar las noticias.
 - Archivos: `partials/publicidad.php`, `partials/pc-feed.php`, `partials/mobile-feed.php` e `index.php`.
 
+### Vista completa móvil y flujo publicitario — aprobados en esta etapa
+
+Implementada y ajustada el **24 de agosto de 2026**. Después de los cambios de resumen, galería, fullscreen y zoom, el usuario calificó el resultado como **«perfecto»** e **«impecable»** y cerró la etapa. Preservar este comportamiento. La publicidad continúa siendo provisoria y reversible; esta aprobación no autoriza convertirla en gestión dinámica.
+
+- Es **solo para móvil**. En `partials/mobile-feed.php`, después del resumen aparece el botón transparente de borde fino **«Ver nota completa»**. El feed PC no tiene ese botón y `.story-sheet` permanece `display: none` fuera del breakpoint móvil.
+- El botón abre desde abajo una hoja de `85svh`, con animación suave, bordes superiores de `28px` y bloqueo del scroll del fondo.
+- Encabezado fijo de `72px`: barrita central de `40×4px`, icono SVG de diario, título **«RADIO SUR - NOTICIAS»** y cierre circular de `42×42px`.
+- El contenido interno comienza con la **portada o galería** inmediatamente debajo del encabezado blanco. Después aparecen categoría, título, fecha y autor; a continuación se muestra **el primer anuncio cuadrado**, con radio de `18px`, y luego siguen la descripción completa, audios, videos y botones de voto. **El segundo anuncio** de la pareja permanece al final de la nota.
+- Las dos piezas salen de la pareja que ya corresponde a esa noticia en `$paresPublicidad`; `partials/publicidad.php` sigue siendo la fuente única. Esto es un nuevo flujo de **exposición** publicitaria, no una administración dinámica ni un nuevo esquema de base de datos.
+- Los anuncios que ya aparecían como bloques independientes después de cada noticia **no fueron eliminados**. La hoja se agregó como plus reversible mientras se evalúa el modelo publicitario.
+- El contenido de cada noticia se guarda en un `<template>` inerte y solo se clona al abrir; así las imágenes, audios y videos propios de esta vista no se activan todos al cargar la página.
+- Cierre disponible mediante cruz, fondo exterior, `Escape` y gesto táctil sobre el encabezado. La hoja acompaña el dedo hacia abajo y el fondo se aclara; un arrastre corto vuelve suavemente al `85%`, mientras que uno que supera `120px` —o un gesto rápido de al menos `42px`— completa el cierre.
+- Al votar desde la hoja, se sincronizan los botones de esa misma noticia presentes en las demás instancias visibles del documento.
+- Si el visor fullscreen está abierto, `Escape` cierra primero solamente el visor; la hoja permanece abierta, conserva su scroll y recupera el foco en el disparador.
+- Archivos: `partials/boton-nota-completa.php`, `partials/nota-completa.php`, `partials/mobile-feed.php`, `partials/acciones-noticia.php` e `index.php`.
+
+La prueba en un teléfono real sigue recomendada para evaluar la sensibilidad e inercia de los gestos, especialmente en Safari iOS, pero el diseño y comportamiento actual quedaron aprobados.
+
 ### Ampliación de galerías, PC y móvil
 
 - El visor es **uno solo y compartido**, en `partials/lightbox.php`, incluido una única vez desde `index.php`. Antes vivía dentro de `partials/pc-feed.php`; no volver a duplicarlo.
-- Solo las noticias con más de una foto muestran la lupa. En PC va abajo a la derecha de la imagen izquierda; en móvil, abajo a la derecha de la foto a pantalla completa.
+- En la **vista completa móvil**, la galería se desliza horizontalmente, muestra puntos sincronizados y avanza automáticamente cada **3,2 segundos**. Se pausa durante la interacción y mientras el fullscreen está abierto; luego continúa. Respeta `prefers-reduced-motion`.
+- La galería interna mide un **30% más de alto** que el antiguo `4:3`: a 390px de viewport, marco real `388×378,3px`. Cada imagen cubre exactamente el marco con `object-fit: cover`, sin margen, borde redondeado ni franja azul; puntos y lupa quedan superpuestos.
+- En PC, la lupa continúa apareciendo cuando la noticia tiene más de una foto. En la hoja móvil aparece abajo a la derecha siempre que exista al menos una portada, incluso si es la única imagen, para hacer evidente que puede ampliarse. Tocar directamente la foto también abre el fullscreen en la imagen activa.
 - La lupa abre un visor negro a pantalla completa con la foto que estaba activa.
 - **PC**: navegación circular mediante botones anterior/siguiente o teclas izquierda/derecha; zoom con la rueda del mouse entre 100% y 400%, orientado al punto del cursor.
-- **Móvil**: sin flechas. Se navega deslizando en horizontal (umbral de 50px), se cierra deslizando hacia abajo (umbral de 90px) y se amplía con **pinza de dos dedos** entre 100% y 400%, orientada al punto medio entre los dedos. Con zoom activo el dedo deja de navegar y queda reservado para la pinza.
+- **Móvil**: sin flechas. Al 100%, se navega deslizando en horizontal (umbral de 50px) y se cierra deslizando hacia abajo (umbral de 90px). Dos dedos amplían entre 100% y 400%; con zoom activo, **un dedo desplaza la imagen** en ambos ejes y los límites evitan perderla fuera del visor.
 - Cierre en ambos: cruz superior derecha, tecla `Escape` o clic en el fondo exterior.
 - Cada cambio de foto reinicia el zoom al 100%.
-- El texto de ayuda del visor cambia según el dispositivo: «Rueda del mouse para ampliar» o «Pinza para ampliar».
+- El texto de ayuda cambia según estado/dispositivo: «Rueda del mouse para ampliar», «Pinza para ampliar» o «Arrastrá con un dedo».
 - Archivos: `partials/lightbox.php`, `partials/pc-feed.php`, `partials/mobile-feed.php` e `index.php`.
 
 ### Marca de agua automática
 
 - Todas las imágenes **nuevas** subidas por `admin/upload-imagen.php` pasan por `subir_imagen()` y reciben la marca antes de publicarse.
-- Logo actual fijo: `imagenes/Logo2027v2.png` (PNG transparente de 250×100).
-- Configuración aprobada: centrado, ancho equivalente al 36% de la foto y aproximadamente 15% de opacidad.
+- El menú lateral del panel incorpora **Configuración**, inmediatamente encima de los datos del usuario conectado. Solo aparece con el permiso `configuracion.gestionar` y abre un drawer derecho responsive.
+- La primera card, **Marca de Agua**, permite subir un PNG de hasta 2 MB, ajustar su intensidad entre 5% y 100% y ver el resultado al instante sobre una foto de demostración. Al editar el slider se muestra el porcentaje exacto.
+- El endpoint `admin/configuracion-marca-agua.php` exige POST, sesión, permiso y CSRF; valida tipo, tamaño y dimensiones, normaliza el PNG con GD y lo guarda con nombre único en `uploads/configuracion/`.
+- La configuración activa vive en la tabla genérica `configuracion`, claves `marca_agua_ruta` y `marca_agua_opacidad`. La migración CLI idempotente `install/configuracion-v1.php` crea la tabla, agrega el permiso y lo asigna al rol administrador.
+- Configuración inicial y fallback seguro: `imagenes/Logo2027v2.png` (PNG transparente de 250×100) al 15%. Si la migración todavía no fue ejecutada o un archivo configurado desaparece, la subida de noticias continúa usando ese valor.
+- Configuración aprobada: marca centrada y ancho equivalente al 36% de la foto; la intensidad queda definida por el panel.
 - Compatible con JPG, PNG y WEBP mediante GD.
 - Salida: JPEG calidad 90, PNG compresión 6 y WEBP calidad 90.
 - La escritura usa un archivo temporal y reemplazo final; ante un error se elimina el archivo incompleto.
-- No modifica imágenes existentes.
-- Archivo: `admin/includes/funciones.php`, función `aplicar_marca_agua_centrada()`.
+- Guardar una configuración nueva **no modifica imágenes existentes**: se utiliza solamente en las fotos subidas a partir de ese momento.
+- Archivos principales: `admin/includes/funciones.php`, `admin/configuracion-marca-agua.php`, `admin/includes/header.php`, `admin/includes/footer.php`, `admin/assets/admin.css` e `install/configuracion-v1.php`.
 
-## Próximos pasos acordados
+## SEO por noticia — desplegado en PROD
 
-1. Crear más adelante una sección **Configuración** en el panel.
-2. Permitir subir o reemplazar desde esa sección el logo utilizado como marca de agua, en lugar de depender siempre de `Logo2027v2.png`.
-3. Evaluar el formato provisorio de publicidad antes de diseñar una gestión dinámica de anuncios.
-4. Alimentar el slider del hero desde la base de datos. **Sigue estático** con las tres noticias de ejemplo de Unsplash, en PC y en móvil (`index.php`, bloque `.slider`). Es lo único del front que todavía no sale de la base.
-5. Hacer funcionar los botones de **compartir**. Siguen siendo `href="#"` y no hacen nada; para que sirvan hace falta primero un permalink por noticia, que todavía no existe. Los de voto ya funcionan.
-6. Evaluar si el zoom táctil de galerías necesita también arrastre de la imagen ampliada. Hoy la pinza amplía orientada al punto medio entre los dedos, pero **no se puede desplazar la foto ya ampliada**; se confirmó en captura al 311%, donde solo se ve una parte de la imagen.
-7. El sitio no tiene `favicon.ico` y el navegador lo pide en cada carga, devolviendo 404. Hay un `isotipo.png` en el directorio padre que podría servir.
+Conversado el **24 de agosto de 2026**, implementado en DEV y desplegado en **PROD** el **25 de agosto de 2026**. Antes de migrar producción se verificó la huella `866bb80a5356` del runtime y se guardó el respaldo `.deploy/respaldos-db/2026-08-25/prod-before-seo-v1.sql` (23.221 bytes, SHA-256 `67cc015401c4a977e45c4c1301ea6d17d8b9b11106e4e8062fc37b0403455b8c`).
+
+Se agregaron `noticias.slug`, `seo_titulo`, `seo_descripcion`, `seo_imagen` y la tabla `noticias_slugs_historial`. Las 7 noticias de DEV y las 6 noticias existentes en PROD recibieron slugs únicos; los tres overrides quedaron `NULL`, por lo que continúan funcionando en modo Automático sin reguardarlas. La segunda ejecución de la migración no produjo cambios en ninguno de los dos entornos.
+
+La propuesta queda **aprobada tal como está documentada**: agregar al final de los formularios de alta y edición una card contraíble **SEO**. Por defecto no exigirá trabajo adicional al redactor y tomará los datos editoriales de la noticia; cada valor podrá personalizarse y luego volver a «Automático».
+
+### Condición previa: una URL pública estable por noticia
+
+- La página pública individual `noticia.php`, expuesta mediante `/noticia/{slug}`, se renderiza en servidor y es accesible sin login.
+- El `slug` se genera automáticamente desde el título, debe ser único y queda estable después de publicar. La card mostrará la URL completa y permitirá editar solamente el `slug`, nunca dominio ni protocolo.
+- Si se modifica un slug ya publicado, conservar el anterior y responder con redirección **301** hacia la URL nueva para no romper enlaces, historial ni posicionamiento.
+- Esa URL es la canónica de la noticia y alimenta los botones funcionales de Facebook y WhatsApp.
+
+### Comportamiento de la card SEO
+
+- Estado inicial: badge **Automático** y resumen de los valores efectivos. Puede abrirse para personalizar.
+- **Título SEO:** usa `noticias.titulo` cuando no existe override. Campo opcional, contador orientativo y acción «Volver a automático»; no imponer un corte destructivo porque Google puede reescribir o truncar el título según contexto.
+- **Descripción SEO:** usa una versión en texto plano, limpia y resumida de `descripcion`. Campo opcional con contador orientativo (aproximadamente 150–160 caracteres), sin lista de palabras clave ni `meta keywords`.
+- **Imagen SEO/social:** usa la portada de la galería. Se podrá elegir otra foto existente o subir una pieza dedicada, mostrando una previsualización horizontal; primera referencia recomendada para compartir: **1200 × 630 px**. Más adelante se pueden generar variantes 16:9, 4:3 y 1:1 para datos estructurados sin pedir tres cargas al usuario.
+- **URL:** muestra la URL final y permite editar el slug con validación, disponibilidad y advertencia si la noticia ya estaba publicada.
+- **Vista previa social en vivo:** vive en la card separada **Vista Previa** acordada al iniciar la implementación. Se actualiza inmediatamente mientras cambia título, descripción, imagen o slug y alterna entre **Al compartir** y **En Google**.
+- Los overrides se guardarán como `NULL` mientras estén en automático. No copiar los valores editoriales a columnas SEO: así un cambio de título, descripción o portada se refleja solo mientras no exista una personalización expresa.
+- Las noticias existentes deben funcionar inmediatamente con los fallbacks automáticos, sin obligar a abrirlas y guardarlas una por una.
+
+### Vista previa para compartir
+
+- La preview será una card social horizontal con proporción aproximada **1.91:1** para la imagen y, debajo o a su lado según el ancho disponible: nombre del sitio/dominio, título efectivo, descripción efectiva y URL pública.
+- Debe usar exactamente la misma resolución de fallbacks que los metadatos reales: imagen SEO personalizada → portada de la noticia → imagen social predeterminada del portal; título/descripción personalizados → valores automáticos de la noticia.
+- La miniatura activa, el título, la descripción y la URL se actualizan en vivo. Si se pulsa «Volver a automático», la preview vuelve inmediatamente al dato editorial correspondiente.
+- En escritorio puede mostrarse completa dentro de la card SEO; en móvil debe conservar el formato sin desbordar y apilar imagen/texto cuando sea necesario.
+- Mostrará avisos suaves, no bloqueantes, si falta una imagen utilizable, si el texto probablemente se truncará o si el slug todavía no es válido/disponible.
+- Es una representación orientativa: Facebook, WhatsApp, X y otras plataformas pueden recortar imágenes o truncar textos de forma diferente y además conservan caché. La interfaz no debe prometer una coincidencia píxel por píxel.
+- Como complemento útil, la card podrá alternar entre **Vista en Google** y **Vista al compartir** mediante dos pestañas compactas, reutilizando siempre los mismos valores efectivos y sin duplicar campos.
+
+### Salida pública implementada
+
+- HTML básico por noticia: `<title>`, `<meta name="description">` y `<link rel="canonical">`.
+- Open Graph: `og:type=article`, `og:title`, `og:description`, `og:image`, `og:image:alt`, `og:url`, `og:site_name`, fecha, autor y categoría cuando corresponda.
+- Tarjeta social grande: `twitter:card=summary_large_image` reutilizando título, descripción e imagen efectivos.
+- JSON-LD `NewsArticle` generado en servidor con título, imágenes, fecha de publicación/modificación, autor, categoría, URL canónica y organización editora. Escapar HTML y construir JSON-LD con `json_encode`, nunca concatenando JSON manualmente.
+- `sitemap.xml` dinámico con URLs absolutas y `lastmod` real, referencia desde `robots.txt` y alta posterior en Google Search Console.
+- Validación final con Rich Results Test, inspección de URL, depuradores sociales y pruebas de redirecciones/canonicals.
+
+### Implementación realizada
+
+1. Crear permalink, slug único e historial de redirects 301.
+2. Agregar migración idempotente y fallbacks SEO sin cambiar el resultado de las noticias existentes.
+3. Construir la card SEO al final del formulario, compartida por alta y edición, con controles de «Automático» y previews en vivo de Google y de la publicación compartida.
+4. Renderizar metadatos, Open Graph, tarjeta social y `NewsArticle` en la página individual.
+5. Generar sitemap/robots, conectar Compartir y validar en herramientas externas.
+
+La imagen SEO dedicada reutiliza `admin/upload-imagen.php`: aplica la misma validación segura, límite de 5 MB y marca de agua configurada que las imágenes editoriales.
+
+### Validación SEO realizada en DEV
+
+- Respaldo previo SHA-256 verificado; migración idempotente, 7 slugs no vacíos, cero duplicados e índice único activo.
+- Flujo autenticado real con noticia temporal: automático → personalización → guardado → cambio de slug → 301. La noticia y su historial temporal se eliminaron al finalizar y el total volvió a 7.
+- Metatags básicos, canonical, Open Graph, Twitter Card y JSON-LD `NewsArticle` coinciden con los valores efectivos.
+- `sitemap.php` produjo XML válido con 8 URLs (home + 7 noticias); `robots.php` referencia el sitemap y el 404 público envía `X-Robots-Tag: noindex`.
+- Chrome/Puppeteer: escritorio `1440×1000` y móvil `390×844`, sin overflow ni errores de consola. El plugin Browser no estaba disponible.
+
+### Despliegue y validación SEO en PROD
+
+- Plan incremental: 10 archivos reemplazados y respaldados en `.deploy/respaldos/2026-08-25_seo-prod/`, 5 archivos nuevos, cero eliminaciones y 15 hashes remotos iguales a los locales.
+- Migración PROD idempotente: 6 noticias, cero slugs vacíos o duplicados, índice único y tabla histórica activos, cero overrides SEO creados por la migración.
+- HTTPS: portada, noticia limpia, `robots.txt` y `sitemap.xml` responden 200; slug inexistente responde 404; migración y configuración privada responden 404.
+- La salida real contiene descripción, canonical, Open Graph, Twitter Card y JSON-LD `NewsArticle`; sitemap lista la portada y las 6 noticias y robots referencia su URL absoluta.
+- Puppeteer sobre PROD en `1440×1000` y `390×844`: identidad, contenido, imágenes, ausencia de overlay y overflow, consola, compartir y vuelta a la portada correctos. Capturas temporales en `/tmp/pntest/capturas/seo-prod-noticia-desktop.png` y `seo-prod-noticia-mobile.png`.
+- Queda pendiente la confirmación visual del usuario dentro del editor autenticado y, como tareas externas, Rich Results Test, depuradores sociales y alta en Google Search Console.
+
+### Rediseño móvil de la página individual — desplegado en PROD
+
+Solicitado, aprobado y desplegado en **PROD el 26 de agosto de 2026** después de comprobar que la primera página individual, aunque correcta para SEO, no conservaba la experiencia visual del portal. El rediseño vive en `noticia.php`; el ajuste visual de las acciones del slide-up vive en `index.php`. No hubo cambios de base ni de metatags.
+
+- Encabezado móvil equivalente al portal: hamburguesa funcional, `Logo2027v2.png` centrado y `Logo2027-radiosur.png` a la derecha; el menú de pantalla completa conserva Noticias, Videos y Contactos.
+- Hero a `100svh` con categoría y título sobre la foto, degradado de lectura y visor ampliado mediante lupa incluso cuando existe una sola imagen. El visor reutiliza el zoom aprobado de `100%` a `400%`, porcentaje visible, pinza táctil, arrastre ampliado y reinicio al cambiar/cerrar. Con varias fotos agrega desplazamiento horizontal, puntos y rotación cada 4 segundos.
+- Debajo aparecen fecha, autor, descripción enriquecida, audios, videos y acciones. Votos quedan a la izquierda; Facebook y WhatsApp, alineados a la derecha y separados por una línea vertical.
+- El pie reemplaza la firma pasiva por el enlace claro **«← Ver más noticias»**, que regresa a la portada.
+- La barra de acciones del slide-up **Nota completa** adopta el mismo estilo aprobado: votos a la izquierda y Facebook/WhatsApp negros a la derecha, alineados y separados por una línea vertical.
+- La rotación automática de la galería individual mueve solo el carrusel horizontal y ya no altera el scroll vertical de la página. El cuerpo de la noticia conserva visualmente el HTML enriquecido permitido por el editor, incluidas citas con línea azul, negritas, cursivas, listas, títulos, enlaces, código, resaltado y separadores.
+- QA local con Puppeteer: `390×844` y `360×800` sin overflow; hero de altura exacta, logo centrado, una foto con lupa y visor `1 / 1`, galería de 3 fotos con cambio mediante punto y visor `2 / 3`, menú abierto/cerrado y acciones correctamente separadas. Gestos multitáctiles reales validaron `100%` → `400%`, arrastre con un dedo y reinicio al cambiar/cerrar, tanto con una foto como con varias. Smoke test `1440×900` también sin overflow. Canonical, Open Graph, Twitter Card y `NewsArticle` permanecen intactos.
+- Evidencia temporal: `/tmp/pntest/capturas/seo-noticia-mobile-hero.png`, `seo-noticia-mobile-galeria.png`, `seo-noticia-mobile-menu.png` y `seo-noticia-mobile-acciones.png`.
+
+#### Despliegue incremental y validación en PROD
+
+- Delta exacto: `index.php` y `noticia.php`, ambos modificados; cero altas, cero eliminaciones y ninguna migración de base.
+- Antes de escribir, los dos archivos remotos coincidieron con el manifiesto previo y quedaron respaldados en `.deploy/respaldos/2026-08-26_mobile-noticia-prod/`.
+- FTPS explícito con hostname canónico, TLS validado externamente y sin `--insecure`; transferencia temporal, hash previo y renombrado atómico. Los hashes finales descargados desde PROD coinciden con los locales y no quedaron temporales.
+- HTTPS: portada y permalink real respondieron 200. Puppeteer en `390×844` y `360×800` verificó la galería de foto 1 a 3 con variación vertical exacta de `0px`, cita azul, negrita, títulos, ausencia de overflow y la barra de votos/redes alineada. No se emitieron votos ni se modificaron datos.
+- El único aviso descartado es el beacon de Cloudflare bloqueado por la CSP, ya conocido y ajeno al código del portal. Capturas: `/tmp/pntest/capturas/prod-noticia-formato-sin-salto.png` y `prod-story-sheet-acciones-unificadas.png`.
+
+## Mejora del texto con IA en TipTap — flujo completo implementado localmente
+
+Conversado y aprobado el **24 de agosto de 2026**. La primera etapa visual se desplegó el **25 de agosto de 2026**. Ese mismo día se completó el flujo funcional y se publicó en producción: el botón ahora se llama **«Crear con IA»** y abre inmediatamente un drawer editorial desde la derecha. El periodista carga o corrige la información base, puede añadir indicaciones opcionales, genera una noticia, solicita otra versión si no le convence y solo la incorpora a TipTap mediante **«Agregar al editor»**. **«Cancelar»** no modifica el editor y TipTap permite deshacer una aplicación.
+
+El endpoint `admin/mejorar-noticia.php` exige sesión, permiso de crear o editar noticias, POST y CSRF. Sanitiza entrada y salida, limita la fuente a 50.000 caracteres y las indicaciones a 2.000, aplica espera mínima de 4 segundos y un máximo de 20 solicitudes por hora y usuario. Usa Chat Completions sin razonamiento y restringe los hechos al material pegado. Para evitar resultados basados en páginas inaccesibles, fragmentos de buscador o fuentes incompletas, rechaza URLs tanto en la información base como en las indicaciones y explica que debe pegarse el contenido relevante. El prompt no permite inventar datos ni exponer explicaciones sobre el proceso. Redacta un mínimo de dos párrafos cuando la fuente lo permita, con extensión proporcional y formato periodístico moderado. El servidor compara grupos de palabras contra la fuente y contra la versión anterior: desde 84 % de similitud solicita automáticamente otra redacción y finalmente rechaza una propuesta demasiado parecida. En PC, el drawer recto ocupa aproximadamente 50 % del ancho, sin borde claro ni esquinas redondeadas; información e indicaciones quedan arriba, la noticia generada abajo y las acciones al pie.
+
+El asistente se integra directamente en la barra de TipTap mediante el botón con destellos **«Crear con IA»**. Cada vez que se abre, si TipTap contiene texto —incluido el contenido cargado al editar una noticia— ese texto actual reemplaza la información base del drawer, evitando reutilizar una fuente anterior. Si TipTap está vacío no sobrescribe el campo y permite empezar cargando información manualmente.
+
+### Flujo de edición previsto
+
+- Al pulsarlo, tomará el HTML completo del editor y enviará la solicitud a un endpoint PHP interno mediante `POST`.
+- La llamada al proveedor de IA se hará exclusivamente desde el servidor. La clave de API nunca debe aparecer en JavaScript, en el HTML ni en el repositorio.
+- El botón mostrará el estado **«Mejorando…»** y quedará temporalmente deshabilitado para impedir solicitudes duplicadas.
+- Antes de reemplazar el contenido se mostrará una vista previa clara del texto propuesto, con acciones **Aplicar cambios** y **Cancelar**. Es conveniente presentar original y propuesta de forma comparable.
+- **Aplicar cambios** actualizará todo el contenido mediante la API de TipTap y conservará la posibilidad de deshacer desde el historial normal del editor. **Cancelar** no modificará nada.
+- El resultado no se guardará automáticamente en la noticia: seguirá siendo necesario pulsar el botón general **Guardar** del formulario.
+
+### Reglas editoriales y seguridad
+
+- El pedido base debe corregir ortografía y gramática, mejorar claridad y redacción periodística, ordenar párrafos y agregar subtítulos o listas únicamente cuando ayuden a la lectura.
+- La IA no podrá inventar nombres, fechas, cifras, citas ni ningún otro dato. Debe conservar el sentido, los hechos y el tono de la noticia original.
+- La respuesta admitirá solamente el subconjunto de HTML soportado por TipTap y por `sanitizar_html()`. El servidor debe sanear igualmente el resultado antes de devolverlo o aplicarlo.
+- El endpoint requerirá sesión válida, permiso para editar noticias, token CSRF, límites de tamaño y control de frecuencia. Los errores, timeouts o respuestas vacías deben dejar intacto el contenido original y mostrar un mensaje comprensible.
+- Si la descripción está vacía, el botón no enviará ninguna solicitud y explicará que primero hay que escribir contenido.
+- El proveedor, modelo, costos y límites de uso se elegirán al iniciar esta etapa. Su configuración privada debe quedar fuera del repositorio, siguiendo el mismo criterio que `admin/config.local.php`.
+
+### Implementación sugerida por etapas
+
+1. Construir el botón, estados y vista previa utilizando una respuesta simulada, sin consumir ninguna API.
+2. Crear el endpoint autenticado, el prompt editorial y la validación/sanitización de la respuesta.
+3. Conectar el proveedor elegido mediante configuración privada y establecer límites de uso.
+4. Probar noticias cortas, extensas y con formato enriquecido, además de errores de red, cancelación, aplicación y deshacer.
+
+## Próxima mejora priorizada
+
+1. Diseñar la experiencia de la **página individual de la noticia en PC**. El usuario confirmó que la versión móvil quedó totalmente aprobada, pero la presentación actual del permalink en escritorio todavía no lo convence. La próxima sesión debe comenzar revisando esa superficie en PC, conversar el diseño y modificar únicamente el bloque de escritorio; no rediseñar ni degradar la experiencia móvil aprobada.
+2. Más adelante, confirmar visualmente en el editor autenticado de PROD las cards **SEO** y **Vista Previa**. Después corresponderá validar la URL real con Rich Results Test, depuradores sociales y Google Search Console.
+
+## Otros próximos pasos acordados
+
+1. Alimentar el slider del hero desde la base de datos. **Sigue estático** con las tres noticias de ejemplo de Unsplash, en PC y en móvil (`index.php`, bloque `.slider`). Es lo único del front que todavía no sale de la base.
+2. Los botones de **compartir** ya están desplegados con Facebook y WhatsApp usando el permalink canónico; queda revisar la caché de cada plataforma con sus depuradores.
+3. Evaluar más adelante la gestión dinámica de anuncios. El formato actual continúa provisorio aunque el flujo visual de la nota haya sido aprobado.
+4. El sitio no tiene `favicon.ico` y el navegador lo pide en cada carga, devolviendo 404. Hay un `isotipo.png` en el directorio padre que podría servir.
 
 El punto que antes figuraba como «implementar la ampliación y el zoom táctil de galerías cuando se trabaje en el feed móvil» quedó **hecho**; ver la sección de galerías.
 
 ## Validaciones realizadas en este punto
+
+### De Configuración y marca de agua editable (25 de agosto de 2026)
+
+- La migración `install/configuracion-v1.php` se ejecutó y verificó en la base de producción: tabla, permiso, asignación al administrador y valores iniciales correctos.
+- `php -l` correcto en funciones, encabezado, pie, endpoint y migración; `git diff --check` correcto.
+- Prueba de escritorio con sesión real en Chrome/Puppeteer a `1440×1000`: posición del botón, apertura/cierre, drawer derecho, encabezado degradado, card, preview, slider y estados accesibles correctos.
+- El slider se movió al 42% y la vista previa reflejó una opacidad calculada de `0.42`; el guardado real respondió correctamente y luego se restauró el 15%.
+- Se hizo una carga PNG real por HTTP al 31%, se verificó en la configuración activa y luego se restauró `imagenes/Logo2027v2.png` al 15%; el archivo exclusivo de prueba fue eliminado de forma controlada.
+- Prueba responsive a `390×844`: drawer de ancho completo, sin desborde horizontal, con la card y el preview visibles; al abrirlo se cierra el menú móvil. Sin errores de JavaScript ni pantallas superpuestas.
+- Las pruebas de navegador fueron en Chrome headless; queda pendiente la validación táctil en un teléfono real/Safari iOS.
+
+### Del feed resumido, galería y zoom móvil (24 de agosto de 2026)
+
+- Feed resumido: una portada, fecha, autor, extracto de 280 caracteres y botón; medios y votos reservados a la nota completa. Chrome/Puppeteer en `390×844` y control PC `1440×900`: **17/17**.
+- Galería de la hoja: autoplay, puntos, lupa, apertura tocando la foto, prioridad correcta de `Escape`, conservación de scroll/foco y reanudación del autoplay: **19/19**.
+- Zoom/pan: pinza emulada hasta 356%, arrastre con un dedo en X/Y sin cambiar de foto, límites del visor, reinicio a 100% y regresión de rueda PC: **14/14**.
+- Cobertura/altura: las tres imágenes reales midieron igual que sus marcos (`388×378,3px`), aumento exacto de 30%, sin franja azul y con puntos/lupa dentro: **9/9**.
+- `php -l` de los PHP modificados y `git diff --check` correctos. Las pruebas fueron de lectura; no emitieron votos ni modificaron datos.
+
+### De la vista completa móvil — validación inicial (24 de agosto de 2026)
+
+- `php -l` correcto en `index.php`, `partials/nota-completa.php`, `partials/mobile-feed.php`, `partials/pc-feed.php` y `partials/acciones-noticia.php`; `git diff --check` correcto.
+- Puppeteer/Chrome headless contra datos reales: **23/23 controles correctos** en móvil `390×844`, más verificación PC `1440×900`.
+- Geometría medida: panel `717/844px` (`85%`), encabezado `72px`, cierre `42×42px`, barrita `40×4px`, margen superior del primer anuncio `26px` y radio `18px`.
+- Se verificó que PC no renderiza el disparador y que la hoja está oculta fuera de móvil.
+- Gesto táctil emulado: arrastre corto de `70px` siguió al dedo y volvió exactamente a su posición; arrastre largo de `150px` aclaró el fondo y cerró completamente. La cruz continuó funcionando después del gesto.
+- Se verificaron los dos anuncios, la galería, el contenido editorial, los dos votos, el scroll interno, el encabezado fijo y la restauración del foco, sin errores relevantes de JavaScript o red.
+- Esta validación **no emitió votos ni modificó datos**. Chrome headless emula el dedo; la sensibilidad en hardware real sigue pendiente aunque el diseño actual ya fue aprobado.
 
 ### De los votos (23 de agosto de 2026)
 
@@ -199,14 +451,15 @@ El punto que antes figuraba como «implementar la ampliación y el zoom táctil 
 - Puppeteer 20.9.0 con su propio Chrome for Testing 115 en `~/.cache/puppeteer`. Se instaló sin root, con `npm`. Ocupa unos 370 MB entre las dos carpetas.
 - Se eligió la rama 20 de Puppeteer porque el Node del servidor es v16.20.2 y la 21 en adelante exige Node 18.
 - Las 19 librerías compartidas que Chromium necesita ya estaban en el sistema, que es el bloqueo habitual en hostings compartidos. No hubo que instalar nada del sistema.
-- Ejecutar con `~/tools/pruebas-navegador/correr.sh`. El script deja los votos en cero antes y después, levanta `php -S` si no está corriendo y lo baja al terminar, así que es repetible e inocuo.
-- Archivos: `prueba-feed.js` (29 pruebas), `medir.js` (geometría del feed móvil), `correr.sh` (envoltorio).
+- `~/tools/pruebas-navegador/correr.sh` y `prueba-feed.js` corresponden al feed anterior: todavía buscan carrusel y votos dentro del feed. **No usarlos como suite vigente sin actualizarlos** al resumen + hoja; además el wrapper pone los votos en cero antes y después.
+- Las verificaciones actuales de resumen, galería, pan y altura se ejecutaron con scripts dedicados temporales en `/tmp/pntest/`; no forman parte del repositorio y `/tmp` se limpia.
+- Archivos persistentes del entorno: `prueba-feed.js` (baseline histórico), `medir.js` y `correr.sh`.
 - Capturas en `/tmp/pntest/capturas`. Son temporales: `/tmp` se limpia.
 - Al escribir pruebas de votos, que las aserciones sean **relativas** al conteo previo, no a un número fijo. Cada corrida usa un perfil nuevo de navegador, o sea un visitante nuevo, así que el contador sube. Ese error ya se cometió una vez.
 
 ## Límites de validación
 
-- **Ya hay navegador en el entorno** (ver la sección anterior). Las 29 pruebas pasan, incluidas la pinza de dos dedos, el deslizamiento del carrusel, el visor en ambos dispositivos y el ciclo completo de voto con clic real. Se revisaron además las capturas.
+- **Ya hay navegador en el entorno** (ver la sección anterior). La suite vigente de esta etapa fue la batería temporal documentada arriba (17/17, 19/19, 14/14 y 9/9); la suite persistente de 29 controles queda como baseline histórico y necesita adaptación.
 - Lo que **sigue sin verificarse** es el comportamiento en hardware táctil real: Chrome headless emula los eventos de puntero, no un dedo. Los gestos finos, la inercia del deslizamiento nativo y el rendimiento en un teléfono de gama baja necesitan una prueba manual.
 - Tampoco se probó en Safari de iOS, que es el motor con más diferencias en `100svh`, `scroll-snap` y `touch-action`.
 - Quien confirmó visualmente el resultado en un dispositivo real fue el usuario, que aprobó el feed móvil, los anuncios y la marca de agua como impecables.
@@ -225,6 +478,8 @@ Después de esta etapa el front quedó repartido así. Conviene conocerlo antes 
 | `partials/mobile-feed.php` | Marcado del feed móvil. |
 | `partials/pc-feed.php` | Marcado del feed PC. |
 | `partials/publicidad.php` | Piezas de publicidad y su orden. Fuente única. |
+| `partials/boton-nota-completa.php` | Botón móvil «Ver nota completa». |
+| `partials/nota-completa.php` | Hoja móvil aprobada, contenido completo, galería y doble exposición publicitaria provisoria. |
 | `partials/lightbox.php` | Marcado del visor ampliado. Compartido. |
 | `partials/acciones-noticia.php` | Marcado de voto y compartir. Compartido. |
 | `votar.php` | Endpoint público de votos. Raíz, sin login. |
@@ -236,4 +491,10 @@ Se decidió mantener **dos partials de feed** en lugar de uno responsive, para n
 
 ## Regla al retomar
 
-Leer primero este archivo y `README.md`, confirmar la carpeta oficial y revisar el estado de los archivos sin descartar ni sobrescribir cambios existentes. No continuar con Configuración, el slider del hero, los permalinks, la gestión dinámica de anuncios ni la unificación de los partials hasta recibir una solicitud explícita.
+Leer primero `AGENDA.md`, este archivo y `README.md`, confirmar la carpeta oficial y revisar el estado de los archivos sin descartar ni sobrescribir cambios existentes. `AGENDA.md` contiene solo el trabajo pendiente elegido; este archivo conserva el detalle técnico y las decisiones aprobadas. El feed resumido, la hoja completa, la galería alta con autoplay, el visor con zoom/arrastre, **Crear con IA**, el drawer de **Configuración → Marca de Agua** y el login renovado están desplegados y fueron aprobados por el usuario como excelentes: preservarlos.
+
+El estándar operativo también quedó aprobado: `servicios.local.json` versión 2 separa DEV y PROD, el validador comprobó que cada bloque coincide con su runtime real, y toda migración futura debe declarar el entorno, respaldarlo y verificarlo por separado. La incidencia de la primera migración de Configuración quedó corregida en la base real de producción; el usuario confirmó que el menú apareció inmediatamente y lo calificó como impecable.
+
+Punto de cierre del **26 de agosto de 2026**: todo el trabajo aprobado quedó consolidado en el commit **`feat: consolidar portal aprobado en produccion`** y marcado con la etiqueta local **`prod-2026-08-26`**. SEO/permalinks, el rediseño móvil de la noticia individual, las correcciones de galería/formato enriquecido y la barra unificada de acciones fueron respaldados, desplegados y validados en PROD. El usuario revisó el resultado y cerró la etapa con **«Genial»** y **«totalmente aprobado todo»**; `.deploy/estado.json` quedó confirmado.
+
+Al retomar, la única prioridad nueva acordada es diseñar la experiencia de la página individual en **PC**, que todavía no convence. Preservar como baseline cerrado todo el comportamiento móvil actual y no desplegar una nueva propuesta de escritorio hasta que el usuario la revise. No descartar, resetear ni volver a desplegar por inferencia; hero, anuncios dinámicos y unificación de partials requieren pedido explícito. Desde este checkpoint, cada mejora aprobada debe quedar en un commit pequeño y descriptivo.

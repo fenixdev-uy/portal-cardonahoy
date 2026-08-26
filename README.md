@@ -1,6 +1,6 @@
 # Landing + Panel de Noticias
 
-Documentación del estado actual del proyecto y los pasos pendientes.
+Documentación del estado actual del proyecto. La prioridad activa y los pasos pendientes se mantienen en `AGENDA.md`; el detalle técnico y el punto de continuidad viven en `CONTINUIDAD.md`.
 
 ---
 
@@ -23,6 +23,8 @@ Backend de noticias para la landing page. Las noticias se administran desde un p
   - `pdo_mysql`
   - `dom` (para saneamiento de HTML del editor)
 
+- `.user.ini` eleva `upload_max_filesize` a 25 MB y `post_max_size` a 27 MB para las subidas de audio. El endpoint también detecta cuerpos descartados por PHP y responde con un error de tamaño, no con un falso error de sesión/CSRF.
+
 ---
 
 ## 3. Estructura de archivos
@@ -30,17 +32,22 @@ Backend de noticias para la landing page. Las noticias se administran desde un p
 ```
 landing/
 ├── README.md                   ← este documento
-├── index.php                   ← front: feed PC renderizado desde la BD
+├── index.php                   ← front: feeds PC/móvil, estilos e interacciones
+├── noticia.php                 ← página pública individual + metatags SEO/sociales
+├── sitemap.php / robots.php    ← descubrimiento e indexación de permalinks
 ├── db                          ← credenciales (texto plano, solo referencia)
 ├── imagenes/
 │   ├── Logo2027.png
 │   ├── Logo2027-radiosur.png
-│   └── Logo2027v2.png
+│   ├── Logo2027v2.png
+│   └── Logo2027v3.png
 │
 ├── install/
 │   ├── schema.sql              ← esquema seguro v3 para instalaciones nuevas
 │   ├── schema-v2-legacy.sql    ← esquema histórico, no usar en clientes nuevos
 │   ├── security-v1.php         ← migración CLI de autores a usuarios/roles
+│   ├── configuracion-v1.php    ← migración CLI de configuración y su permiso
+│   ├── seo-v1.php              ← migración idempotente de slugs y overrides SEO
 │   └── migrate.php             ← migración histórica v2, solo CLI
 │
 ├── votar.php                   ← endpoint público de votos (POST, sin login)
@@ -48,12 +55,19 @@ landing/
 ├── partials/
 │   ├── pc-feed.php             ← loop que renderiza el feed de noticias PC
 │   ├── mobile-feed.php         ← loop que renderiza el feed de noticias móvil
+│   ├── medios-noticia.php      ← audios HTML5 + videos opcionales compartidos
 │   ├── publicidad.php          ← piezas de publicidad y su orden (fuente única)
+│   ├── boton-nota-completa.php ← disparador aprobado de la vista completa móvil
+│   ├── nota-completa.php       ← hoja móvil + contenido y anuncios
 │   ├── lightbox.php            ← visor ampliado de galerías (PC + móvil)
 │   └── acciones-noticia.php    ← bloque de voto y compartir (PC + móvil)
 │
-├── uploads/                    ← imágenes subidas desde el panel (se crea solo)
-│   └── noticias/
+├── uploads/                    ← archivos persistentes subidos desde el panel
+│   ├── noticias/
+│   └── configuracion/          ← marcas de agua PNG (protegidas por .htaccess)
+│
+├── tools/                      ← utilidades CLI locales, nunca se despliega
+│   └── validar-servicios.php   ← valida DEV/PROD sin revelar secretos
 │
 └── admin/                      ← panel de administración
     ├── login.php / logout.php  ← autenticación del panel
@@ -64,7 +78,9 @@ landing/
     ├── noticia-form.php        ← crear/editar noticia (editor TipTap + galería)
     ├── noticia-borrar.php      ← eliminar noticia (y su galería)
     ├── noticia-detalle.php     ← endpoint JSON del detalle de una noticia
+    ├── configuracion-marca-agua.php ← guarda logo y opacidad de la marca de agua
     ├── upload-imagen.php       ← endpoint de subida de imágenes (editor y galería)
+    ├── upload-audio.php        ← endpoint de subida de audios (MP3/M4A/OGG/WAV)
     ├── galeria-borrar.php      ← elimina una foto recién subida (aún sin guardar)
     ├── categorias.php          ← CRUD de categorías
     ├── usuarios.php            ← alta y gestión de usuarios por administrador
@@ -72,6 +88,7 @@ landing/
     ├── votaciones.php          ← ranking de noticias más votadas (gráfico)
     ├── assets/
     │   ├── admin.css           ← estilos del panel, editor, drawer, galería y responsive
+    │   ├── seo-noticia.js      ← modo automático/manual y previews SEO en vivo
     │   └── votaciones.js       ← dibuja el gráfico de votaciones (SVG a mano)
     └── includes/
         ├── funciones.php       ← helpers (sesión, flash, subida, sanitización, etc.)
@@ -110,8 +127,17 @@ landing/
 | categoria_id   | INT UNSIGNED  | FK → categorias.id (on delete set null)|
 | usuario_id     | INT UNSIGNED  | FK → usuarios.id (on delete set null)  |
 | titulo         | VARCHAR(255)  |                                        |
+| slug           | VARCHAR(190)  | único; permalink público estable       |
 | descripcion    | TEXT          | HTML enriquecido (saneado)             |
-| youtube        | VARCHAR(255)  | URL de YouTube (se convierte a embed)  |
+| seo_titulo     | VARCHAR(255)  | override opcional; `NULL` = automático |
+| seo_descripcion| VARCHAR(500)  | override opcional; `NULL` = automático |
+| seo_imagen     | VARCHAR(255)  | override opcional; `NULL` = portada    |
+| youtube        | VARCHAR(255)  | URL de YouTube 1 (se convierte a embed)|
+| youtube_2      | VARCHAR(255)  | URL opcional de YouTube 2              |
+| youtube_3      | VARCHAR(255)  | URL opcional de YouTube 3              |
+| audio_1        | VARCHAR(500)  | URL opcional de audio 1                |
+| audio_2        | VARCHAR(500)  | URL opcional de audio 2                |
+| audio_3        | VARCHAR(500)  | URL opcional de audio 3                |
 | created_at     | TIMESTAMP     |                                        |
 | updated_at     | TIMESTAMP     | on update                              |
 
@@ -127,13 +153,17 @@ landing/
 
 > La foto con `posicion = 0` es siempre la portada. El formulario permite subir varias, reordenarlas y eliminar.
 
+### Tabla `noticias_slugs_historial`
+
+Conserva cada slug anterior con su `noticia_id`. La URL vieja responde 301 hacia el slug vigente y la tabla se elimina en cascada si se borra la noticia.
+
 ### Votos (`me_gusta` / `no_me_gusta`)
 
 - `noticias.me_gusta` y `noticias.no_me_gusta`: `INT UNSIGNED NOT NULL DEFAULT 0`. Solo se incrementan; nunca se restan.
 - `noticias_votos`: un voto por visitante y por noticia, **definitivo**. Clave primaria `(noticia_id, visitante)` — es lo que impide el segundo voto.
 - `votos_limite`: techo de 60 votos por hora, por hash de IP (nunca la IP en claro).
 
-La migración para bases existentes es `install/votos-v1.php`, idempotente.
+Las migraciones para bases existentes incluyen `install/votos-v1.php`, `install/medios-v1.php` e `install/seo-v1.php`; son idempotentes.
 
 El esquema completo y los datos de ejemplo están en `install/schema.sql`. La migración de la versión anterior (que reemplaza `foto_principal` por la galería) está en `install/migrate.php`.
 
@@ -143,14 +173,16 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 
 - **Menú lateral** (izquierda) + contenido a la derecha. Responsive (hamburguesa en móvil).
 - **Noticias** (`index.php`):
-  - Listado (foto de portada, título, descripción, categoría, autor, fecha y acciones).
+  - Listado (foto de portada, título, descripción, categoría, autor, fecha y acciones), con buscador instantáneo y orden por fecha en ambos sentidos.
+  - Columna **Peso** calculada desde los archivos locales reales: galería, imágenes insertadas en el editor y audios subidos. Ordena en ambos sentidos y muestra el desglose Fotos/Audios; YouTube y URLs externas no se cuentan porque no consumen disco local.
   - Vista previa en drawer lateral (40% del ancho) al hacer clic en la foto: foto de portada, miniaturas de la galería, categoría, título, fecha larga, autor, descripción formateada y reproductor de YouTube embebido si tiene URL.
-  - Acciones de editar / eliminar.
+  - Acciones de editar / eliminar. El borrado limpia galería, imágenes internas y audios locales únicamente cuando ningún otro contenido conserva la misma referencia.
 - **Crear/editar noticia** (`noticia-form.php`):
-  - Campos: categoría, autor, título, descripción (editor TipTap), YouTube y **galería de fotos**.
+  - Campos: categoría, autor, título, descripción (editor TipTap), hasta 3 audios, hasta 3 videos de YouTube y **galería de fotos**.
+  - Medios: dos cards en columnas; los audios aceptan URL HTTPS o subida inmediata MP3/M4A/OGG/WAV (máx. 25 MB) y la base guarda únicamente la URL.
   - Galería: subida **inmediata** por AJAX al elegir cada foto (muestra la miniatura al instante, sin esperar el guardado), **arrastrar y soltar** para reordenar (SortableJS), eliminar con × y la primera foto es la portada.
 - **Categorías** (`categorias.php`):
-  - CRUD completo con contador de noticias por categoría.
+  - CRUD completo con buscador, contador y alta/edición en panel lateral; cada categoría muestra cuántas noticias la utilizan.
 - **Usuarios** (`usuarios.php`):
   - Alta, edición, activación y desactivación solamente por administradores.
   - Rol, firma editorial, contraseña temporal y cambio obligatorio al ingresar.
@@ -195,9 +227,9 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
   - **Arrastrar y soltar** para reordenar (SortableJS).
   - Eliminar fotos y portada = primera foto.
 - [x] Vista previa (drawer) con galería, autor y fecha larga.
-- [x] Campo YouTube con reproductor embebido (`youtube-nocookie.com`).
+- [x] Hasta tres audios con reproductor HTML5 y tres videos de YouTube embebidos (`youtube-nocookie.com`); los campos vacíos no generan ningún bloque.
 - [x] Fecha en español largo (`fecha_larga()`: "22 de agosto de 2026").
-- [x] Marca de agua automática en nuevas imágenes: `Logo2027v2.png` centrado, al 36% del ancho y con aproximadamente 15% de opacidad.
+- [x] Configuración de marca de agua en un drawer lateral: carga PNG, intensidad entre 5% y 100% y vista previa inmediata sobre una foto real. Se aplica centrada al 36% del ancho en las imágenes nuevas; el valor inicial y fallback sigue siendo `Logo2027v2.png` al 15%.
 
 ### Hecho — front PC
 - [x] Front conectado al backend (`index.php` + `partials/pc-feed.php`).
@@ -212,11 +244,13 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 
 ### Hecho — front móvil
 - [x] Feed móvil conectado al backend (`index.php` + `partials/mobile-feed.php`), sin consultas adicionales: reutiliza los datos del feed PC.
-- [x] Noticias completas una debajo de la otra, estilo red social: foto a `100svh` con título encima y a continuación el texto entero.
+- [x] Feed resumido aprobado: una portada a `100svh`, categoría y título encima; debajo, fecha, autor, extracto en texto plano de hasta 280 caracteres y botón «Ver nota completa».
 - [x] Sin `scroll-snap` en móvil, a propósito: el encaje pelea con las noticias de texto largo.
-- [x] Galerías con deslizamiento nativo (`scroll-snap-type: x mandatory`) y puntos sincronizados con `IntersectionObserver`. Sin rotación automática.
+- [x] El feed muestra solamente la portada aunque haya varias fotos; galería, texto completo, audios, videos y votos viven en la vista completa.
 - [x] Fotos como `<img loading="lazy">` en lugar de `background-image`, para que el lazy loading se aplique de verdad.
-- [x] Ampliación de galerías en móvil: lupa, visor a pantalla completa, deslizar para cambiar de foto, deslizar hacia abajo para cerrar y zoom de 100% a 400% con pinza de dos dedos.
+- [x] Vista completa en hoja al `85%`, aprobada: encabezado blanco, portada o galería, datos editoriales, primer anuncio, contenido completo, medios, votos y segundo anuncio. Cierra con cruz, fondo, `Escape` o arrastre del encabezado.
+- [x] Galería de la hoja 30% más alta que el antiguo 4:3, sin franjas: autoplay cada 3,2s y puntos cuando hay varias fotos; la lupa y la apertura fullscreen tocando directamente la imagen están disponibles incluso con una única portada.
+- [x] Visor móvil: deslizar para cambiar/cerrar al 100%, pinza de dos dedos de 100% a 400% y arrastre de la imagen ampliada con un dedo, limitado al área visible.
 - [x] Video de YouTube embebido y fondo degradado neutro para noticias sin fotos.
 - [x] Un anuncio provisorio a ancho completo después de cada noticia, rotando por las cuatro piezas.
 
@@ -241,14 +275,18 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 - [x] Estilos del HTML enriquecido unificados en una clase `.rich-text` compartida por los dos feeds. Antes solo existían para PC, así que en móvil los subtítulos y las listas se veían sin formato.
 
 ### Pendiente / próximas versiones
+- [x] **SEO por noticia desplegado en PROD:** permalink estable, historial 301, título/descripción/imagen automáticos con overrides opcionales, previews Google/social, página pública, canonical, Open Graph, Twitter Card, `NewsArticle`, sitemap, robots y botones Compartir. La base de producción fue respaldada y migrada de forma idempotente; la salida pública pasó QA HTTPS.
+- [x] **Página individual móvil desplegada y aprobada:** encabezado del portal, hero/galería con lupa incluso para una foto, visor con zoom de 100% a 400%, fecha, autor, HTML enriquecido, medios, votos, redes alineadas y regreso a la portada. La rotación automática mueve solamente el carrusel horizontal y no altera el scroll vertical.
+- [ ] **Próxima etapa:** rediseñar la experiencia de la página individual en PC. La versión móvil es el baseline aprobado y debe permanecer intacta; el trabajo de escritorio comenzará en la próxima sesión después de acordar la nueva composición visual.
+- [x] **Asistente editorial desplegado:** el botón **«Crear con IA»** abre un drawer lateral donde el periodista puede pegar información cruda o fragmentos de otras fuentes y agregar indicaciones. Siempre que TipTap tenga contenido —especialmente al editar una noticia— su texto actual reemplaza la información base al abrir el asistente; si está vacío no la sobrescribe. DeepSeek construye una propuesta, permite crear otra versión y solo la agrega a TipTap al confirmar. Para garantizar exactitud no admite URLs: el periodista debe copiar el contenido relevante del enlace. La clave nunca llega al navegador. Código, runtime privado y bloqueo HTTP quedaron publicados y verificados en producción el 25 de agosto de 2026.
 - [ ] Conectar el slider del home (`hero`) al backend; es lo último del front que sigue estático.
 - [x] Autenticación y protección completa del panel.
-- [ ] Botones de **compartir** funcionales; siguen siendo `href="#"`. Necesitan primero un permalink por noticia.
+- [x] Botones de **compartir** funcionales para Facebook y WhatsApp mediante el permalink canónico.
 - [ ] Limpiar archivos huérfanos: si se suben fotos y se abandona el formulario sin guardar, quedan en `uploads/noticias/` sin asociar.
 - [ ] Mejoras futuras: subir videos al servidor (hoy es URL de YouTube), más de un video por noticia, arrastrar archivos desde el escritorio a la galería, previsualizar fotos antes de subir.
-- [ ] Crear la sección **Configuración** del panel y permitir subir desde allí el logo que se utilizará como marca de agua, reemplazando la selección fija actual.
+- [x] Sección **Configuración** del panel, ubicada encima del usuario conectado, con gestión visual de la marca de agua.
 - [ ] Evaluar el formato provisorio de anuncios antes de convertirlo en una gestión dinámica desde el panel.
-- [ ] Evaluar si el zoom táctil de galerías necesita además arrastre de la imagen ya ampliada; hoy la pinza amplía pero no permite desplazar la foto.
+- [ ] Probar los gestos ya aprobados en un teléfono real, especialmente Safari iOS, para evaluar sensibilidad, inercia y rendimiento fuera de Chrome headless.
 - [ ] Evaluar unificar `pc-feed.php` y `mobile-feed.php` en un único partial responsive. Hoy cada dispositivo descarga el marcado del otro oculto por CSS, con el contenido duplicado que eso implica para lectores de pantalla y para SEO.
 
 ---
@@ -261,6 +299,15 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 - **Usuarios:** `/landing/admin/usuarios.php`
 - **Roles:** `/landing/admin/roles.php`
 - **Front (feeds PC y móvil desde la BD):** `/landing/index.php`
+- **Noticia pública:** `/landing/noticia/{slug}`
+- **Sitemap:** `/landing/sitemap.xml`
+- **Estándar de publicación:** `ESTANDAR_DESPLIEGUE_FTPS.md`
+- **Plantilla de servicios sin secretos:** `servicios.example.json`
+- **Validador privado DEV/PROD:** `php tools/validar-servicios.php`
+
+El archivo real `servicios.local.json` es privado y usa el esquema **versión 2**: reúne proyecto, despliegue, `databases.development`, `databases.production` y DeepSeek. `deployment.database_environment` declara qué base corresponde al sitio publicado. Está ignorado por Git, bloqueado por Apache y conserva permisos `600`. Nunca se sube completo: cada ambiente mantiene su propio `admin/config.local.php` y producción recibe únicamente los runtimes específicos necesarios, jamás credenciales FTPS. Toda migración debe nombrar DEV o PROD y generar el respaldo de ese mismo entorno. Los despliegues directos siguen el estándar documentado; tampoco se publican archivos de continuidad ni estado local de despliegue.
+
+En el cloud cPanel/WHM actual todas las cuentas usan el servicio FTPS global mediante `vps-4962765-x.dattaweb.com:21`. El certificado y su cadena se corrigen una vez por servidor; cada proyecto mantiene usuario, contraseña y ruta confinada propios. El procedimiento, la recuperación y las verificaciones posteriores a cambios de cPanel están documentados en la sección 14 del estándar.
 
 ---
 
@@ -270,7 +317,7 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 - `index.php` es PHP (antes era `index.html`). Incluye `admin/includes/funciones.php`, consulta las noticias (`ORDER BY created_at DESC, id DESC`) más las galerías en una segunda consulta, y delega el dibujo de los feeds en `partials/pc-feed.php` y `partials/mobile-feed.php`. Ambos partials consumen las mismas variables, así que agregar el feed móvil no sumó consultas.
 - El único bloque que sigue siendo HTML estático es el slider del home (`hero`).
 - Todo el CSS y el JavaScript viven dentro de `index.php`; los partials solo aportan marcado.
-- Los estilos del HTML de la descripción están en la clase global `.rich-text`, fuera de media queries, y se aplican en `pc-content rich-text` y `feed-text rich-text`. El bloque de PC solo reajusta tamaños. Al permitir una etiqueta nueva en `sanitizar_html()`, darle estilo en `.rich-text`.
+- Los estilos del HTML de la descripción están en la clase global `.rich-text`, fuera de media queries, y se aplican al contenido PC y a la hoja móvil. El resumen del feed es texto plano. Al permitir una etiqueta nueva en `sanitizar_html()`, darle estilo en `.rich-text`.
 
 ### Galería y subida de fotos
 - Las fotos se guardan en `noticias_fotos` (ruta relativa a `landing/` o URL externa). La de `posicion = 0` es la portada.
@@ -278,7 +325,7 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 - Subida inmediata: `upload-imagen.php` recibe un archivo (`imagen`) y devuelve `{url}`; `galeria-borrar.php` elimina una foto recién subida (solo rutas `uploads/noticias/`).
 - Arrastrar y soltar: se usa **SortableJS** (CDN jsdelivr). Si el CDN no carga, la galería sigue funcionando (subir/eliminar/mostrar) y solo se deshabilita el arrastre.
 - **Caveat:** si se suben fotos y se abandona el formulario sin guardar, quedan huérfanas en `uploads/noticias/` (ver pendientes).
-- Cada imagen nueva pasa por `aplicar_marca_agua_centrada()` antes de quedar publicada. Usa GD y el archivo `imagenes/Logo2027v2.png`, centrado al 36% del ancho y con aproximadamente 15% de opacidad.
+- Cada imagen nueva pasa por `aplicar_marca_agua_centrada()` antes de quedar publicada. La función consulta `marca_agua_ruta` y `marca_agua_opacidad` en la tabla `configuracion`; centra el PNG al 36% del ancho. Si la tabla, el archivo o el valor aún no están disponibles, conserva como fallback seguro `imagenes/Logo2027v2.png` al 15%.
 - La marca se aplica a JPG, PNG y WEBP. Si el procesamiento falla, se elimina el archivo incompleto y la subida devuelve error.
 - Las imágenes existentes no se modifican retroactivamente.
 
@@ -287,14 +334,17 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 - Pareja 1: `Publicidad-facha.jpg` + `Publicidad-intendencia.jpg`.
 - Pareja 2: `Publicidad-Fenix.jpg` + `Publicidad-Digitales.jpg`.
 - **PC:** después de cada noticia se inserta una pantalla completa con la pareja correspondiente; las parejas se alternan por noticia y vuelven a comenzar al terminar la secuencia. Presentación aprobada: fondo blanco, piezas cuadradas sin bordes redondeados, margen exterior de `64px`, separación de `40px` y sombra inferior con relieve.
-- **Móvil:** después de cada noticia se inserta **un solo** anuncio a ancho completo, cuadrado, para que se lea como una tarjeta más del feed y no encadene dos pantallas de publicidad seguidas. La secuencia recorre las cuatro piezas de a una.
+- **Móvil:** después de cada noticia se inserta **un solo** anuncio a ancho completo, cuadrado, para que se lea como una tarjeta más del feed y no encadene dos pantallas de publicidad seguidas. La secuencia recorre las cuatro piezas de a una. Dentro de la nota completa se conserva el encabezado blanco y primero aparece la portada o galería; el primer anuncio de la pareja asignada queda después de categoría, título, fecha y autor, antes del cuerpo, y el segundo permanece al final.
+- **Flujo móvil aprobado:** «Ver nota completa» abre una hoja al `85%`. Conserva el encabezado blanco y comienza con la portada o galería; después de categoría, título, fecha y autor aparece la primera pieza cuadrada, seguida por el cuerpo, los medios y votos, y al final la segunda pieza. Los anuncios siguen siendo provisorios y este flujo no constituye una gestión dinámica.
+- La hoja conserva un encabezado fijo «RADIO SUR - NOTICIAS» y puede cerrarse arrastrándolo hacia abajo. Un gesto corto rebota a su posición; al superar el umbral termina de bajar. Detalle técnico y validaciones en `CONTINUIDAD.md`.
 
 ### Ampliación de galerías
 - El visor es uno solo, en `partials/lightbox.php`, incluido una única vez desde `index.php` y compartido por los dos feeds.
-- La lupa aparece abajo a la derecha solamente cuando la noticia tiene más de una foto.
+- En PC, la lupa aparece abajo a la derecha cuando la noticia tiene más de una foto. En la hoja móvil aparece siempre que exista al menos una portada, incluso si es la única imagen.
 - El visor ocupa la pantalla completa y recorre las fotos de forma circular. Cerrar: la cruz, `Escape` o clic en el fondo exterior.
 - **PC:** botones anterior/siguiente o teclas de dirección; la rueda del mouse controla el zoom entre 100% y 400%, orientado al punto del cursor.
-- **Móvil:** sin flechas. Se navega deslizando en horizontal, se cierra deslizando hacia abajo y se amplía con pinza de dos dedos entre 100% y 400%. Con zoom activo el dedo deja de navegar y queda reservado para la pinza.
+- **Hoja móvil:** galería 30% más alta que el 4:3 anterior; con varias fotos suma carrusel horizontal, autoplay de 3,2s y puntos. La lupa queda siempre superpuesta y tocar la foto también abre el visor. Las fotos cubren el marco completo con `object-fit: cover`.
+- **Visor móvil:** sin flechas. Al 100% se navega deslizando en horizontal y se cierra hacia abajo. La pinza de dos dedos amplía entre 100% y 400%; con zoom activo, un dedo arrastra la imagen dentro de límites seguros.
 - Cambiar de imagen reinicia el zoom al 100%.
 
 ### Votos del feed
@@ -319,8 +369,8 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 ### Pruebas de navegador
 - Suite en `~/tools/pruebas-navegador`, **fuera de `public_html`** para que `node_modules` no quede accesible por HTTP.
 - Puppeteer 20.9.0 (la rama 21+ exige Node 18 y el servidor tiene v16.20.2) con su propio Chrome for Testing 115. Instalado sin root.
-- Correr con `~/tools/pruebas-navegador/correr.sh`: deja los votos en cero antes y después, levanta y baja `php -S`, y es repetible.
-- Cubre 29 comprobaciones en móvil (390x844) y PC (1440x900): visibilidad de cada feed, foto a pantalla completa, avance del carrusel y sincronía de los puntos, visor con pinza en móvil y rueda en PC, ciclo completo de voto con clic real, formato de la publicidad en cada dispositivo y ausencia de errores de JavaScript.
+- `correr.sh` y `prueba-feed.js` son el baseline del feed anterior y todavía esperan carrusel/votos dentro del feed. **Deben actualizarse antes de volver a usarlos**; el wrapper además deja los votos en cero antes y después.
+- La etapa actual se validó con scripts temporales en `/tmp/pntest/`: resumen **17/17**, galería/autoplay/fullscreen **19/19**, zoom y arrastre **14/14**, cobertura y altura **9/9**, en móvil `390×844` y con regresiones PC `1440×900`.
 - `medir.js` mide la geometría del feed móvil; sirvió para detectar que el título se montaba sobre la lupa.
 - Al escribir pruebas de votos, usar aserciones **relativas** al conteo previo: cada corrida es un visitante nuevo y el contador sube.
 
@@ -372,5 +422,17 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
    - Lupa solo en noticias con varias fotos.
    - Lightbox de pantalla completa con navegación, cierre y zoom por rueda.
 9. **Marca de agua automática**:
-   - `Logo2027v2.png` centrado y muy transparente en todas las imágenes nuevas.
+   - Logo PNG e intensidad configurables desde el drawer **Configuración**, con vista previa en vivo.
+   - `Logo2027v2.png` al 15% se conserva como valor inicial y fallback.
    - Procesamiento seguro con GD para JPG, PNG y WEBP.
+10. **Vista completa, resumen y publicidad móvil**:
+   - Evolucionó al flujo resumido aprobado: portada, fecha, autor, resumen de 280 caracteres y botón exclusivo del feed móvil; PC conserva su diseño.
+   - Hoja inferior al 85%, encabezado compacto y cierre por botón/fondo/teclado/arrastre.
+   - Primer anuncio antes de la noticia completa y segundo anuncio al final.
+   - Galería alta con autoplay, apertura por lupa/foto y visor con pinza + arrastre de un dedo.
+   - Estado: funcional, validado y aprobado por el usuario; queda pendiente solamente la prueba de sensibilidad en hardware real/Safari iOS.
+11. **SEO y página pública individual**:
+   - Permalinks, metadatos sociales, datos estructurados, sitemap y robots desplegados en PROD.
+   - La experiencia móvil de la página individual quedó unificada con el portal, con galería, zoom, contenido enriquecido, medios y acciones.
+   - La corrección final evita que el autoplay lleve la página nuevamente al hero y conserva citas, negritas, títulos y demás formato seguro del editor.
+   - Estado al 26 de agosto de 2026: móvil totalmente aprobado y PROD confirmado; queda como siguiente trabajo diseñar la experiencia específica de PC.

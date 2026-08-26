@@ -19,11 +19,23 @@ $noticia = [
     'categoria_id' => '',
     'usuario_id' => '',
     'titulo' => '',
+    'slug' => '',
     'descripcion' => '',
+    'seo_titulo' => '',
+    'seo_descripcion' => '',
+    'seo_imagen' => '',
     'youtube' => '',
+    'youtube_2' => '',
+    'youtube_3' => '',
+    'audio_1' => '',
+    'audio_2' => '',
+    'audio_3' => '',
 ];
 
 $fotos = [];
+$audiosOriginales = [];
+$slugOriginal = '';
+$seoImagenOriginal = '';
 
 if ($editando) {
     $stmt = $pdo->prepare('SELECT * FROM noticias WHERE id = ?');
@@ -36,7 +48,14 @@ if ($editando) {
     }
 
     $noticia = $existente;
+    $slugOriginal = (string) ($existente['slug'] ?? '');
+    $seoImagenOriginal = (string) ($existente['seo_imagen'] ?? '');
     $fotos = obtener_fotos_noticia($id);
+    $audiosOriginales = array_filter([
+        (string) ($existente['audio_1'] ?? ''),
+        (string) ($existente['audio_2'] ?? ''),
+        (string) ($existente['audio_3'] ?? ''),
+    ]);
 }
 
 $errores = [];
@@ -56,11 +75,47 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
     $titulo = trim((string) ($_POST['titulo'] ?? ''));
     $descripcion = sanitizar_html((string) ($_POST['descripcion'] ?? ''));
-    $youtube = trim((string) ($_POST['youtube'] ?? ''));
+    $slugEnviado = trim((string) ($_POST['slug'] ?? ''));
+    if ($slugEnviado === '') {
+        $slug = $editando && $slugOriginal !== ''
+            ? $slugOriginal
+            : generar_slug_noticia_unico($pdo, $titulo, $id);
+    } else {
+        $slug = normalizar_slug_noticia($slugEnviado);
+        if (slug_noticia_en_uso($pdo, $slug, $id)) {
+            $errores[] = 'La URL elegida ya pertenece a otra noticia o a una redirección anterior.';
+        }
+    }
 
-    // Solo se conserva si es una URL de YouTube válida; en caso contrario queda vacía.
-    if ($youtube !== '' && youtube_embed_url($youtube) === '') {
-        $youtube = '';
+    $seoTituloPersonalizado = ($_POST['seo_titulo_personalizado'] ?? '') === '1';
+    $seoDescripcionPersonalizada = ($_POST['seo_descripcion_personalizada'] ?? '') === '1';
+    $seoTitulo = $seoTituloPersonalizado ? trim(strip_tags((string) ($_POST['seo_titulo'] ?? ''))) : null;
+    $seoDescripcion = $seoDescripcionPersonalizada ? trim(strip_tags((string) ($_POST['seo_descripcion'] ?? ''))) : null;
+    $seoImagen = trim((string) ($_POST['seo_imagen'] ?? ''));
+    if ($seoTituloPersonalizado && $seoTitulo === '') $errores[] = 'El título SEO personalizado no puede quedar vacío.';
+    if ($seoDescripcionPersonalizada && $seoDescripcion === '') $errores[] = 'La descripción SEO personalizada no puede quedar vacía.';
+    if ($seoTitulo !== null && mb_strlen($seoTitulo) > 255) $errores[] = 'El título SEO supera los 255 caracteres.';
+    if ($seoDescripcion !== null && mb_strlen($seoDescripcion) > 500) $errores[] = 'La descripción SEO supera los 500 caracteres.';
+    if ($seoImagen !== '' && !ruta_imagen_subida_valida($seoImagen)) {
+        $errores[] = 'La imagen SEO seleccionada no es válida.';
+    }
+    $videos = [];
+    foreach (['youtube', 'youtube_2', 'youtube_3'] as $i => $campo) {
+        $valor = trim((string) ($_POST[$campo] ?? ''));
+        if ($valor !== '' && youtube_embed_url($valor) === '') {
+            $errores[] = 'La URL de YouTube ' . ($i + 1) . ' no es válida.';
+        }
+        $videos[$campo] = $valor;
+    }
+
+    $audios = [];
+    foreach (['audio_1', 'audio_2', 'audio_3'] as $i => $campo) {
+        $valor = trim((string) ($_POST[$campo] ?? ''));
+        $normalizada = normalizar_url_audio($valor);
+        if ($valor !== '' && $normalizada === '') {
+            $errores[] = 'La URL de audio ' . ($i + 1) . ' no es válida. Usá HTTPS o subí un archivo.';
+        }
+        $audios[$campo] = $valor === '' ? '' : $normalizada;
     }
 
     $noticia = [
@@ -68,8 +123,17 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         'categoria_id' => $categoriaId ?: '',
         'usuario_id' => $usuarioId ?: '',
         'titulo' => $titulo,
+        'slug' => $slug,
         'descripcion' => $descripcion,
-        'youtube' => $youtube,
+        'seo_titulo' => $seoTitulo,
+        'seo_descripcion' => $seoDescripcion,
+        'seo_imagen' => $seoImagen,
+        'youtube' => $videos['youtube'],
+        'youtube_2' => $videos['youtube_2'],
+        'youtube_3' => $videos['youtube_3'],
+        'audio_1' => $audios['audio_1'],
+        'audio_2' => $audios['audio_2'],
+        'audio_3' => $audios['audio_3'],
     ];
 
     if ($titulo === '') {
@@ -101,16 +165,41 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
       try {
         $pdo->beginTransaction();
         if ($editando) {
-            $stmt = $pdo->prepare('UPDATE noticias SET categoria_id=?, usuario_id=?, titulo=?, descripcion=?, youtube=? WHERE id=?');
-            $stmt->execute([$categoriaId, $usuarioId, $titulo, $descripcion, $youtube, $id]);
+            $stmt = $pdo->prepare(
+                'UPDATE noticias
+                    SET categoria_id=?, usuario_id=?, titulo=?, slug=?, descripcion=?,
+                        seo_titulo=?, seo_descripcion=?, seo_imagen=?,
+                        youtube=?, youtube_2=?, youtube_3=?, audio_1=?, audio_2=?, audio_3=?
+                  WHERE id=?'
+            );
+            if ($slugOriginal !== '' && $slugOriginal !== $slug) {
+                $pdo->prepare('DELETE FROM noticias_slugs_historial WHERE noticia_id=? AND slug=?')->execute([$id, $slug]);
+                $pdo->prepare('INSERT INTO noticias_slugs_historial (noticia_id, slug) VALUES (?, ?)')->execute([$id, $slugOriginal]);
+            }
+            $stmt->execute([
+                $categoriaId, $usuarioId, $titulo, $slug, $descripcion,
+                $seoTitulo, $seoDescripcion, $seoImagen !== '' ? $seoImagen : null,
+                $videos['youtube'], $videos['youtube_2'], $videos['youtube_3'],
+                $audios['audio_1'], $audios['audio_2'], $audios['audio_3'], $id,
+            ]);
             if ($stmt->rowCount() === 0) {
                 $comprobar = $pdo->prepare('SELECT COUNT(*) FROM noticias WHERE id=?');
                 $comprobar->execute([$id]);
                 if (!(int)$comprobar->fetchColumn()) throw new RuntimeException('La noticia ya no existe.');
             }
         } else {
-            $stmt = $pdo->prepare('INSERT INTO noticias (categoria_id,usuario_id,titulo,descripcion,youtube) VALUES (?,?,?,?,?)');
-            $stmt->execute([$categoriaId, $usuarioId, $titulo, $descripcion, $youtube]);
+            $stmt = $pdo->prepare(
+                'INSERT INTO noticias
+                    (categoria_id, usuario_id, titulo, slug, descripcion, seo_titulo, seo_descripcion, seo_imagen,
+                     youtube, youtube_2, youtube_3, audio_1, audio_2, audio_3)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            );
+            $stmt->execute([
+                $categoriaId, $usuarioId, $titulo, $slug, $descripcion,
+                $seoTitulo, $seoDescripcion, $seoImagen !== '' ? $seoImagen : null,
+                $videos['youtube'], $videos['youtube_2'], $videos['youtube_3'],
+                $audios['audio_1'], $audios['audio_2'], $audios['audio_3'],
+            ]);
             $id = (int) $pdo->lastInsertId();
         }
 
@@ -152,6 +241,17 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
         $pdo->commit();
         foreach ($archivosAEliminar as $ruta) eliminar_imagen($ruta);
+        $audiosVigentes = array_filter(array_values($audios));
+        foreach ($audiosOriginales as $ruta) {
+            if (ruta_audio_subido_valida($ruta) && !in_array($ruta, $audiosVigentes, true)) {
+                eliminar_audio($ruta);
+            }
+        }
+        if ($seoImagenOriginal !== '' && $seoImagenOriginal !== $seoImagen
+            && ruta_imagen_subida_valida($seoImagenOriginal)
+            && !imagen_subida_referenciada($seoImagenOriginal)) {
+            eliminar_imagen($seoImagenOriginal);
+        }
 
         flash('success', $editando ? 'Noticia actualizada correctamente.' : 'Noticia creada correctamente.');
         redirigir('index.php');
@@ -180,13 +280,24 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     );
 }
 
+$valoresSeoForm = valores_seo_noticia($noticia, $fotos);
+$seoTituloPersonalizadoForm = trim((string) ($noticia['seo_titulo'] ?? '')) !== '';
+$seoDescripcionPersonalizadaForm = trim((string) ($noticia['seo_descripcion'] ?? '')) !== '';
+$seoPersonalizadoForm = $seoTituloPersonalizadoForm
+    || $seoDescripcionPersonalizadaForm
+    || trim((string) ($noticia['seo_imagen'] ?? '')) !== '';
+$slugForm = trim((string) ($noticia['slug'] ?? ''));
+if ($slugForm === '' && trim((string) ($noticia['titulo'] ?? '')) !== '') {
+    $slugForm = normalizar_slug_noticia((string) $noticia['titulo']);
+}
+
 $titulo = $editando ? 'Editar noticia' : 'Nueva noticia';
 $active = 'noticias';
 
 require __DIR__ . '/includes/header.php';
 ?>
 
-<div class="form-card">
+<div class="form-card noticia-form-card">
   <form method="post" action="noticia-form.php" enctype="multipart/form-data" id="noticiaForm">
     <?= csrf_input() ?>
     <input type="hidden" name="id" value="<?= (int) $noticia['id'] ?>" />
@@ -202,27 +313,45 @@ require __DIR__ . '/includes/header.php';
     <?php endif; ?>
 
     <div class="form-group">
-      <label for="categoria_id">Categoría</label>
-      <select class="form-control" id="categoria_id" name="categoria_id">
-        <option value="">— Sin categoría —</option>
-        <?php foreach ($categorias as $c): ?>
-          <option value="<?= (int) $c['id'] ?>" <?= $noticia['categoria_id'] == $c['id'] ? 'selected' : '' ?>>
-            <?= e($c['nombre']) ?>
-          </option>
-        <?php endforeach; ?>
-      </select>
+      <label>Galería de fotos</label>
+
+      <div class="gallery" id="galeria"></div>
+
+      <div class="gallery-upload">
+        <button type="button" class="btn btn-outline" id="btnAgregarFotos">＋ Agregar fotos</button>
+        <span class="gallery-status" id="galeriaEstado"></span>
+      </div>
+      <input type="file" id="galeriaInput" accept="image/jpeg,image/png,image/webp" multiple style="display:none;" />
+
+      <div class="form-hint">Cada foto se sube al momento de elegirla y se muestra su miniatura. La primera es la portada. Reordená con las flechas y eliminá con la ×. El orden se guarda al guardar la noticia.</div>
+
+      <input type="hidden" name="fotos_json" id="fotos_json" value="<?= e($fotosJsonRender) ?>" />
     </div>
 
-    <div class="form-group">
-      <label for="usuario_id">Firma de la noticia</label>
-      <select class="form-control" id="usuario_id" name="usuario_id">
-        <option value="">— Sin firma —</option>
-        <?php foreach ($usuariosFirma as $a): ?>
-          <option value="<?= (int) $a['id'] ?>" <?= $noticia['usuario_id'] == $a['id'] ? 'selected' : '' ?>>
-            <?= e($a['nombre']) ?> · <?= e($a['rol_nombre']) ?><?= (int)$a['activo']===0 ? ' (inactivo)' : '' ?>
-          </option>
-        <?php endforeach; ?>
-      </select>
+    <div class="noticia-form-grid">
+      <div class="form-group">
+        <label for="categoria_id">Categoría</label>
+        <select class="form-control" id="categoria_id" name="categoria_id">
+          <option value="">— Sin categoría —</option>
+          <?php foreach ($categorias as $c): ?>
+            <option value="<?= (int) $c['id'] ?>" <?= $noticia['categoria_id'] == $c['id'] ? 'selected' : '' ?>>
+              <?= e($c['nombre']) ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="usuario_id">Firma de la noticia</label>
+        <select class="form-control" id="usuario_id" name="usuario_id">
+          <option value="">— Sin firma —</option>
+          <?php foreach ($usuariosFirma as $a): ?>
+            <option value="<?= (int) $a['id'] ?>" <?= $noticia['usuario_id'] == $a['id'] ? 'selected' : '' ?>>
+              <?= e($a['nombre']) ?> · <?= e($a['rol_nombre']) ?><?= (int)$a['activo']===0 ? ' (inactivo)' : '' ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
+      </div>
     </div>
 
     <div class="form-group">
@@ -323,33 +452,150 @@ require __DIR__ . '/includes/header.php';
         <button type="button" class="toolbar-btn" data-tiptap="redo" title="Rehacer">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 7v6h-6"></path><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"></path></svg>
         </button>
+
+        <button type="button" class="toolbar-btn toolbar-btn-ai" id="btnMejorarIa"
+                title="Crear una noticia con IA" aria-label="Crear una noticia con IA">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3l1.2 3.8L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.2L12 3z"></path>
+            <path d="M18.5 13l.75 2.25L21.5 16l-2.25.75L18.5 19l-.75-2.25L15.5 16l2.25-.75L18.5 13z"></path>
+            <path d="M5 3.5l.55 1.45L7 5.5l-1.45.55L5 7.5l-.55-1.45L3 5.5l1.45-.55L5 3.5z"></path>
+          </svg>
+          <span>Crear con IA</span>
+        </button>
       </div>
 
       <div class="tiptap-editor">
         <div id="editorHtml"></div>
       </div>
+      <p class="ia-editor-status" id="iaEditorStatus" aria-live="polite"></p>
     </div>
 
-    <div class="form-group">
-      <label for="youtube">YouTube</label>
-      <input class="form-control" type="url" id="youtube" name="youtube" value="<?= e($noticia['youtube']) ?>" maxlength="255" placeholder="https://www.youtube.com/watch?v=..." />
-      <div class="form-hint">Pegá la URL de un video de YouTube. Se mostrará como reproductor embebido debajo de la descripción.</div>
+    <div class="media-fields-grid">
+      <section class="media-fields-card" aria-labelledby="audiosHeading">
+        <button class="media-fields-head media-fields-toggle" type="button" data-media-toggle aria-expanded="false" aria-controls="audiosFields">
+          <span class="media-fields-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+          </span>
+          <span class="media-fields-copy"><span class="media-fields-title" id="audiosHeading">Audios</span><span class="media-fields-description">URL HTTPS o archivo MP3, M4A, OGG o WAV.</span></span>
+          <span class="media-fields-chevron" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+        </button>
+        <div class="media-fields-body" id="audiosFields" hidden>
+<?php for ($i = 1; $i <= 3; $i++): $campoAudio = 'audio_' . $i; ?>
+        <div class="form-group media-url-group">
+          <label for="<?= $campoAudio ?>">Audio <?= $i ?></label>
+          <div class="media-url-row">
+            <input class="form-control" type="text" id="<?= $campoAudio ?>" name="<?= $campoAudio ?>" value="<?= e($noticia[$campoAudio] ?? '') ?>" maxlength="500" placeholder="https://... o subí un archivo" />
+            <button class="media-upload-btn" type="button" data-audio-upload="<?= $i ?>" aria-label="Subir audio <?= $i ?>" title="Subir audio <?= $i ?>">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"></path><polyline points="7 9 12 4 17 9"></polyline><path d="M20 15v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4"></path></svg>
+            </button>
+            <input type="file" data-audio-input="<?= $i ?>" accept="audio/mpeg,audio/mp4,audio/ogg,audio/wav,.mp3,.m4a,.ogg,.wav" hidden />
+          </div>
+          <span class="media-upload-status" data-audio-status="<?= $i ?>" aria-live="polite"></span>
+        </div>
+<?php endfor; ?>
+        </div>
+      </section>
+
+      <section class="media-fields-card" aria-labelledby="videosHeading">
+        <button class="media-fields-head media-fields-toggle" type="button" data-media-toggle aria-expanded="false" aria-controls="videosFields">
+          <span class="media-fields-icon media-fields-icon-video" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          </span>
+          <span class="media-fields-copy"><span class="media-fields-title" id="videosHeading">Videos de YouTube</span><span class="media-fields-description">Podés agregar hasta tres enlaces.</span></span>
+          <span class="media-fields-chevron" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+        </button>
+        <div class="media-fields-body" id="videosFields" hidden>
+<?php foreach (['youtube', 'youtube_2', 'youtube_3'] as $i => $campoVideo): ?>
+        <div class="form-group media-url-group">
+          <label for="<?= $campoVideo ?>">YouTube <?= $i + 1 ?></label>
+          <input class="form-control" type="url" id="<?= $campoVideo ?>" name="<?= $campoVideo ?>" value="<?= e($noticia[$campoVideo] ?? '') ?>" maxlength="255" placeholder="https://www.youtube.com/watch?v=..." />
+        </div>
+<?php endforeach; ?>
+        </div>
+      </section>
     </div>
 
-    <div class="form-group">
-      <label>Galería de fotos</label>
+    <div class="media-fields-grid seo-preview-grid" data-seo-root
+         data-public-base="<?= e(url_base_portal()) ?>"
+         data-default-image="<?= e(url_portal('imagenes/Logo2027v3.png')) ?>"
+         data-csrf="<?= e(csrf_token()) ?>" data-editing="<?= $editando ? '1' : '0' ?>">
+      <section class="media-fields-card seo-fields-card" aria-labelledby="seoHeading">
+        <button class="media-fields-head media-fields-toggle" type="button" data-media-toggle aria-expanded="false" aria-controls="seoFields">
+          <span class="media-fields-icon media-fields-icon-seo" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path><path d="M8 11h6"></path><path d="M11 8v6"></path></svg>
+          </span>
+          <span class="media-fields-copy"><span class="media-fields-title" id="seoHeading">SEO</span><span class="media-fields-description">Datos automáticos con personalización opcional.</span></span>
+          <span class="seo-mode-badge<?= $seoPersonalizadoForm ? ' is-custom' : '' ?>" id="seoModeBadge"><?= $seoPersonalizadoForm ? 'Personalizado' : 'Automático' ?></span>
+          <span class="media-fields-chevron" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+        </button>
+        <div class="media-fields-body seo-fields-body" id="seoFields" hidden>
+          <div class="seo-field-group">
+            <div class="seo-field-heading"><label for="slug">URL de la noticia</label><span>Permalink estable</span></div>
+            <div class="seo-url-field"><span><?= e(url_base_portal()) ?>/noticia/</span><input type="text" id="slug" name="slug" value="<?= e($slugForm) ?>" maxlength="190" autocomplete="off" /></div>
+            <p class="seo-field-help">Si la cambiás después de publicar, la dirección anterior redirigirá automáticamente.</p>
+          </div>
 
-      <div class="gallery" id="galeria"></div>
+          <div class="seo-field-group" data-seo-field="titulo">
+            <div class="seo-field-heading"><label for="seo_titulo">Título SEO</label><button type="button" class="seo-auto-action" data-seo-auto="titulo"><?= $seoTituloPersonalizadoForm ? 'Volver a automático' : 'Personalizar' ?></button></div>
+            <input type="hidden" id="seo_titulo_personalizado" name="seo_titulo_personalizado" value="<?= $seoTituloPersonalizadoForm ? '1' : '0' ?>" />
+            <input class="form-control" type="text" id="seo_titulo" name="seo_titulo" value="<?= e($seoTituloPersonalizadoForm ? $noticia['seo_titulo'] : $valoresSeoForm['titulo']) ?>" maxlength="255" <?= $seoTituloPersonalizadoForm ? '' : 'readonly ' ?>/>
+            <span class="seo-counter" data-seo-counter="titulo">0 caracteres</span>
+          </div>
 
-      <div class="gallery-upload">
-        <button type="button" class="btn btn-outline" id="btnAgregarFotos">＋ Agregar fotos</button>
-        <span class="gallery-status" id="galeriaEstado"></span>
-      </div>
-      <input type="file" id="galeriaInput" accept="image/jpeg,image/png,image/webp" multiple style="display:none;" />
+          <div class="seo-field-group" data-seo-field="descripcion">
+            <div class="seo-field-heading"><label for="seo_descripcion">Descripción SEO</label><button type="button" class="seo-auto-action" data-seo-auto="descripcion"><?= $seoDescripcionPersonalizadaForm ? 'Volver a automático' : 'Personalizar' ?></button></div>
+            <input type="hidden" id="seo_descripcion_personalizada" name="seo_descripcion_personalizada" value="<?= $seoDescripcionPersonalizadaForm ? '1' : '0' ?>" />
+            <textarea class="form-control seo-description-input" id="seo_descripcion" name="seo_descripcion" maxlength="500" <?= $seoDescripcionPersonalizadaForm ? '' : 'readonly ' ?>><?= e($seoDescripcionPersonalizadaForm ? $noticia['seo_descripcion'] : $valoresSeoForm['descripcion']) ?></textarea>
+            <span class="seo-counter" data-seo-counter="descripcion">0 caracteres</span>
+          </div>
 
-      <div class="form-hint">Cada foto se sube al momento de elegirla y se muestra su miniatura. La primera es la portada. Reordená con las flechas y eliminá con la ×. El orden se guarda al guardar la noticia.</div>
+          <div class="seo-field-group">
+            <div class="seo-field-heading"><label for="seo_imagen">Imagen SEO/social</label><span>Recomendado 1200 × 630 px</span></div>
+            <div class="seo-image-controls">
+              <select class="form-control" id="seo_imagen" name="seo_imagen" data-current-value="<?= e((string) ($noticia['seo_imagen'] ?? '')) ?>">
+                <option value="">Automática — usar portada</option>
+<?php foreach ($fotos as $indiceFotoSeo => $fotoSeo): ?>
+                <option value="<?= e($fotoSeo['ruta']) ?>" <?= (string) ($noticia['seo_imagen'] ?? '') === (string) $fotoSeo['ruta'] ? 'selected' : '' ?>>Foto <?= $indiceFotoSeo + 1 ?><?= $indiceFotoSeo === 0 ? ' — portada' : '' ?></option>
+<?php endforeach; ?>
+<?php if (($noticia['seo_imagen'] ?? '') !== '' && !in_array((string) $noticia['seo_imagen'], array_column($fotos, 'ruta'), true)): ?>
+                <option value="<?= e((string) $noticia['seo_imagen']) ?>" selected>Imagen SEO subida</option>
+<?php endif; ?>
+              </select>
+              <button class="media-upload-btn seo-image-upload" type="button" id="seoImageUpload" aria-label="Subir imagen SEO" title="Subir imagen SEO">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"></path><polyline points="7 9 12 4 17 9"></polyline><path d="M20 15v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4"></path></svg>
+              </button>
+              <input type="file" id="seoImageInput" accept="image/jpeg,image/png,image/webp" hidden />
+            </div>
+            <span class="media-upload-status" id="seoImageStatus" aria-live="polite"></span>
+          </div>
+        </div>
+      </section>
 
-      <input type="hidden" name="fotos_json" id="fotos_json" value="<?= e($fotosJsonRender) ?>" />
+      <section class="media-fields-card seo-preview-card" aria-labelledby="vistaPreviaHeading">
+        <button class="media-fields-head media-fields-toggle" type="button" data-media-toggle aria-expanded="true" aria-controls="seoPreviewFields">
+          <span class="media-fields-icon media-fields-icon-preview" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </span>
+          <span class="media-fields-copy"><span class="media-fields-title" id="vistaPreviaHeading">Vista Previa</span><span class="media-fields-description">Resultado efectivo antes de guardar.</span></span>
+          <span class="media-fields-chevron" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+        </button>
+        <div class="media-fields-body seo-preview-body" id="seoPreviewFields">
+          <div class="seo-preview-tabs" role="tablist" aria-label="Tipo de vista previa">
+            <button type="button" role="tab" aria-selected="true" data-seo-tab="social">Al compartir</button>
+            <button type="button" role="tab" aria-selected="false" data-seo-tab="google">En Google</button>
+          </div>
+          <div class="seo-social-preview" data-seo-panel="social">
+            <div class="seo-social-image"><img id="seoPreviewImage" src="<?= e($valoresSeoForm['imagen']) ?>" alt="" /></div>
+            <div class="seo-social-copy"><span id="seoPreviewDomain"><?= e((string) parse_url(url_base_portal(), PHP_URL_HOST)) ?></span><strong id="seoPreviewTitle"><?= e($valoresSeoForm['titulo']) ?></strong><p id="seoPreviewDescription"><?= e($valoresSeoForm['descripcion']) ?></p><small id="seoPreviewUrl"><?= e($valoresSeoForm['url']) ?></small></div>
+          </div>
+          <div class="seo-google-preview" data-seo-panel="google" hidden>
+            <span id="seoGoogleUrl"><?= e($valoresSeoForm['url']) ?></span>
+            <strong id="seoGoogleTitle"><?= e($valoresSeoForm['titulo']) ?></strong>
+            <p id="seoGoogleDescription"><?= e($valoresSeoForm['descripcion']) ?></p>
+          </div>
+          <p class="seo-preview-note">La vista es orientativa: cada plataforma puede recortar imágenes o textos de forma diferente.</p>
+        </div>
+      </section>
     </div>
 
     <div class="form-actions">
@@ -357,6 +603,52 @@ require __DIR__ . '/includes/header.php';
       <a href="index.php" class="btn btn-outline">Cancelar</a>
     </div>
   </form>
+</div>
+
+<div class="ia-preview-overlay" id="iaPreviewOverlay" hidden>
+  <section class="ia-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="iaPreviewTitle" aria-describedby="iaPreviewDescription">
+    <header class="ia-preview-header">
+      <div>
+        <span class="ia-preview-eyebrow">Asistente editorial</span>
+        <h2 id="iaPreviewTitle">Crear noticia con IA</h2>
+        <p id="iaPreviewDescription">Sumá información e indicaciones y revisá el resultado.</p>
+      </div>
+      <button type="button" class="ia-preview-close" id="iaPreviewClose" aria-label="Cerrar vista previa">×</button>
+    </header>
+    <div class="ia-preview-grid">
+      <section class="ia-preview-column ia-source-column">
+        <div class="ia-section-heading">
+          <div>
+            <h3>Información base</h3>
+            <p>Pegá texto crudo, apuntes o fragmentos de otras fuentes.</p>
+          </div>
+        </div>
+        <textarea class="ia-source-input" id="iaSourceInput" maxlength="50000" placeholder="Pegá acá toda la información disponible para construir la noticia…"></textarea>
+        <label class="ia-instructions-label" for="iaInstructionsInput">Indicaciones opcionales</label>
+        <textarea class="ia-instructions-input" id="iaInstructionsInput" maxlength="2000" placeholder="Ej.: priorizar el impacto local, usar un tono institucional o destacar determinado aspecto."></textarea>
+        <div class="ia-source-actions">
+          <span class="ia-generation-status" id="iaGenerationStatus" aria-live="polite"></span>
+          <button type="button" class="btn btn-primary" id="iaGenerate">Crear noticia</button>
+        </div>
+      </section>
+      <section class="ia-preview-column ia-preview-column-proposal" id="iaProposalSection" hidden>
+        <div class="ia-section-heading">
+          <div>
+            <h3>Noticia generada</h3>
+            <p>Revisala antes de agregarla al editor.</p>
+          </div>
+        </div>
+        <div class="ia-preview-content" id="iaPreviewProposal"></div>
+      </section>
+    </div>
+    <footer class="ia-preview-actions">
+      <button type="button" class="btn btn-outline" id="iaPreviewCancel">Cancelar</button>
+      <div class="ia-preview-actions-main">
+        <button type="button" class="btn btn-outline" id="iaRegenerate" hidden>Crear otra versión</button>
+        <button type="button" class="btn btn-primary" id="iaPreviewApply" disabled>Agregar al editor</button>
+      </div>
+    </footer>
+  </section>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
@@ -406,6 +698,7 @@ require __DIR__ . '/includes/header.php';
         return { url: item.getAttribute('data-url') || '' };
       });
       jsonInput.value = JSON.stringify(items);
+      document.dispatchEvent(new CustomEvent('noticia-galeria-update', { detail: { items } }));
     }
 
     function crearItem({ id, url }) {
@@ -507,14 +800,19 @@ require __DIR__ . '/includes/header.php';
       if (!btn.hasAttribute('data-del')) return;
 
       if (!confirm('¿Eliminar esta foto de la galería?')) return;
+      const urlEliminada = item.getAttribute('data-url') || '';
+      const selectorSeo = document.getElementById('seo_imagen');
+      if (selectorSeo && selectorSeo.value === urlEliminada) {
+        selectorSeo.value = '';
+        selectorSeo.dispatchEvent(new Event('change', { bubbles: true }));
+      }
       // Si es una foto recién subida (sin id), se borra también el archivo del servidor.
       if (!item.hasAttribute('data-id')) {
-        const url = item.getAttribute('data-url') || '';
         try {
           await fetch('galeria-borrar.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'url=' + encodeURIComponent(url) + '&csrf_token=' + encodeURIComponent(csrfToken)
+            body: 'url=' + encodeURIComponent(urlEliminada) + '&csrf_token=' + encodeURIComponent(csrfToken)
           });
         } catch (err) {
           /* se ignora: el archivo quedaría huérfano en el servidor */
@@ -529,6 +827,71 @@ require __DIR__ . '/includes/header.php';
     form.addEventListener('submit', () => sincronizarJson());
   })();
 </script>
+
+<script>
+  (function () {
+    document.querySelectorAll('[data-media-toggle]').forEach((toggle) => {
+      const body = document.getElementById(toggle.getAttribute('aria-controls'));
+      if (!body) return;
+
+      toggle.addEventListener('click', () => {
+        const expandir = toggle.getAttribute('aria-expanded') !== 'true';
+        toggle.setAttribute('aria-expanded', expandir ? 'true' : 'false');
+        body.hidden = !expandir;
+        toggle.closest('.media-fields-card')?.classList.toggle('is-expanded', expandir);
+      });
+    });
+  })();
+</script>
+
+<script>
+  (function () {
+    const csrfToken = <?= json_encode(csrf_token()) ?>;
+    const maxAudioBytes = 25 * 1024 * 1024;
+
+    document.querySelectorAll('[data-audio-upload]').forEach((button) => {
+      const slot = button.getAttribute('data-audio-upload');
+      const picker = document.querySelector('[data-audio-input="' + slot + '"]');
+      const target = document.getElementById('audio_' + slot);
+      const status = document.querySelector('[data-audio-status="' + slot + '"]');
+      if (!picker || !target || !status) return;
+
+      button.addEventListener('click', () => picker.click());
+      picker.addEventListener('change', async () => {
+        const file = picker.files && picker.files[0];
+        if (!file) return;
+        if (file.size > maxAudioBytes) {
+          picker.value = '';
+          status.textContent = '';
+          alert('El audio debe pesar como máximo 25 MB.');
+          return;
+        }
+
+        button.disabled = true;
+        status.textContent = 'Subiendo ' + file.name + '…';
+        const data = new FormData();
+        data.append('audio', file);
+        data.append('csrf_token', csrfToken);
+
+        try {
+          const response = await fetch('upload-audio.php', { method: 'POST', body: data });
+          const result = await response.json();
+          if (!response.ok || result.error) throw new Error(result.error || 'No se pudo subir el audio.');
+          target.value = result.url;
+          status.textContent = 'Audio cargado';
+        } catch (error) {
+          status.textContent = '';
+          alert(error.message || 'No se pudo subir el audio.');
+        } finally {
+          button.disabled = false;
+          picker.value = '';
+        }
+      });
+    });
+  })();
+</script>
+
+<script src="assets/seo-noticia.js?v=<?= (int) @filemtime(__DIR__ . '/assets/seo-noticia.js') ?>"></script>
 
 <script type="importmap">
 {
@@ -564,6 +927,22 @@ require __DIR__ . '/includes/header.php';
   const editorEl = document.getElementById('editorHtml');
   const input = document.getElementById('descripcionInput');
   const form = document.getElementById('noticiaForm');
+  const btnMejorarIa = document.getElementById('btnMejorarIa');
+  const iaStatus = document.getElementById('iaEditorStatus');
+  const iaOverlay = document.getElementById('iaPreviewOverlay');
+  const iaSourceInput = document.getElementById('iaSourceInput');
+  const iaInstructionsInput = document.getElementById('iaInstructionsInput');
+  const iaGenerate = document.getElementById('iaGenerate');
+  const iaGenerationStatus = document.getElementById('iaGenerationStatus');
+  const iaProposalSection = document.getElementById('iaProposalSection');
+  const iaProposal = document.getElementById('iaPreviewProposal');
+  const iaClose = document.getElementById('iaPreviewClose');
+  const iaCancel = document.getElementById('iaPreviewCancel');
+  const iaRegenerate = document.getElementById('iaRegenerate');
+  const iaApply = document.getElementById('iaPreviewApply');
+  const csrfTokenIa = <?= json_encode(csrf_token()) ?>;
+  let propuestaIa = '';
+  let iaEnProceso = false;
 
   // Las imágenes se guardan con una ruta relativa a la raíz de landing/
   // (ej. "uploads/noticias/..."). Como el editor vive en landing/admin/,
@@ -582,7 +961,10 @@ require __DIR__ . '/includes/header.php';
   const editor = new Editor({
     element: editorEl,
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        link: false,
+        underline: false
+      }),
       Underline,
       Link.configure({
         openOnClick: false,
@@ -604,6 +986,130 @@ require __DIR__ . '/includes/header.php';
       })
     ],
     content: aRutaEditor(input.value)
+  });
+
+  function informarContenidoSeo() {
+    document.dispatchEvent(new CustomEvent('noticia-editor-update', {
+      detail: { texto: editor.getText().replace(/\s+/g, ' ').trim() }
+    }));
+  }
+  editor.on('update', informarContenidoSeo);
+  informarContenidoSeo();
+
+  function textoVisibleEditor() {
+    return editor.getText().replace(/\s+/g, ' ').trim();
+  }
+
+  function mostrarEstadoIa(mensaje, tipo = '') {
+    iaStatus.textContent = mensaje;
+    iaStatus.className = 'ia-editor-status' + (tipo ? ' is-' + tipo : '');
+  }
+
+  function cambiarEstadoGeneracion(mensaje, tipo = '') {
+    iaGenerationStatus.textContent = mensaje;
+    iaGenerationStatus.className = 'ia-generation-status' + (tipo ? ' is-' + tipo : '');
+  }
+
+  function cerrarPreviewIa() {
+    iaOverlay.hidden = true;
+    document.body.classList.remove('ia-preview-open');
+    propuestaIa = '';
+    iaProposal.innerHTML = '';
+    iaProposalSection.hidden = true;
+    iaRegenerate.hidden = true;
+    iaApply.disabled = true;
+    cambiarEstadoGeneracion('');
+    btnMejorarIa.focus();
+  }
+
+  function abrirAsistenteIa() {
+    if (textoVisibleEditor()) {
+      iaSourceInput.value = editor.getText();
+    }
+    iaOverlay.hidden = false;
+    document.body.classList.add('ia-preview-open');
+    window.setTimeout(() => iaSourceInput.focus(), 320);
+  }
+
+  async function generarConIa(otraVersion = false) {
+    if (iaEnProceso) return;
+    const contenido = iaSourceInput.value.trim();
+    const instrucciones = iaInstructionsInput.value.trim();
+    const contieneUrl = /(?:https?:\/\/|www\.)\S+/i.test(contenido + '\n' + instrucciones);
+    if (contieneUrl) {
+      cambiarEstadoGeneracion('Para garantizar exactitud, copiá y pegá el contenido relevante del enlace en Información base.', 'error');
+      iaSourceInput.focus();
+      return;
+    }
+    if (contenido.length < 30) {
+      cambiarEstadoGeneracion('Pegá información suficiente para comenzar.', 'error');
+      iaSourceInput.focus();
+      return;
+    }
+
+    iaEnProceso = true;
+    iaGenerate.disabled = true;
+    iaRegenerate.disabled = true;
+    iaApply.disabled = true;
+    iaGenerate.textContent = otraVersion ? 'Creando otra…' : 'Creando…';
+    cambiarEstadoGeneracion('Redactando una noticia profesional…', 'loading');
+
+    const body = new URLSearchParams({
+      contenido,
+      instrucciones,
+      version_anterior: otraVersion ? propuestaIa : '',
+      csrf_token: csrfTokenIa
+    });
+
+    try {
+      const response = await fetch('mejorar-noticia.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+        body: body.toString()
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.html) {
+        throw new Error(result.error || 'No se pudo generar la propuesta.');
+      }
+      propuestaIa = result.html;
+      iaProposal.innerHTML = aRutaEditor(result.html);
+      iaProposalSection.hidden = false;
+      iaRegenerate.hidden = false;
+      iaApply.disabled = false;
+      cambiarEstadoGeneracion('Noticia creada.', 'success');
+      iaProposalSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (error) {
+      cambiarEstadoGeneracion(error.message || 'No se pudo conectar con DeepSeek. Intentá nuevamente.', 'error');
+    } finally {
+      iaEnProceso = false;
+      iaGenerate.disabled = false;
+      iaRegenerate.disabled = false;
+      iaApply.disabled = !propuestaIa;
+      iaGenerate.textContent = 'Crear noticia';
+    }
+  }
+
+  btnMejorarIa.addEventListener('click', abrirAsistenteIa);
+  iaGenerate.addEventListener('click', () => generarConIa(false));
+  iaRegenerate.addEventListener('click', () => generarConIa(true));
+  iaClose.addEventListener('click', cerrarPreviewIa);
+  iaCancel.addEventListener('click', () => {
+    cerrarPreviewIa();
+  });
+  iaApply.addEventListener('click', () => {
+    if (!propuestaIa) return;
+    editor.commands.setContent(aRutaEditor(propuestaIa), { emitUpdate: true });
+    cerrarPreviewIa();
+    iaSourceInput.value = '';
+    iaInstructionsInput.value = '';
+    mostrarEstadoIa('Noticia agregada. Podés deshacerla desde la barra del editor.', 'success');
+    editor.commands.focus('end');
+  });
+  iaOverlay.addEventListener('click', (event) => {
+    if (event.target === iaOverlay) cerrarPreviewIa();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !iaOverlay.hidden) cerrarPreviewIa();
   });
 
   // Sincroniza el HTML hacia el campo oculto antes de enviar el formulario.
