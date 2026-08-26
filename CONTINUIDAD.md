@@ -12,12 +12,16 @@ No mezclar cambios con las demás carpetas que pertenecen al repositorio Git sup
 
 ## Control de versiones
 
-Este proyecto tiene **su propio repositorio git**, independiente del repo grande de `/home/fenixdev/public_html` (que mezcla otros proyectos de clientes sin relación). Se creó el 23 de agosto de 2026, rama `main`, sin remoto configurado — vive solo en este disco por ahora.
+Este proyecto tiene **su propio repositorio git**, independiente del repo grande de `/home/fenixdev/public_html` (que mezcla otros proyectos de clientes sin relación). Se creó el 23 de agosto de 2026 y trabaja sobre la rama `main`.
+
+- Remoto privado `origin`: `git@github.com:fenixdev-uy/portal-rsmedios.git`, configurado y verificado el 26 de agosto de 2026 mediante una Deploy Key ED25519 exclusiva para este repositorio.
+- La rama local `main` sigue `origin/main`. El checkpoint aprobado `27ca624` y la etiqueta `prod-2026-08-26` fueron comprobados en GitHub.
+- La clave privada permanece únicamente en el servidor; GitHub recibió solo la clave pública. El repositorio remoto respalda código e historial, no bases de datos, secretos ni uploads persistentes.
 
 - El primer commit (`440a41b`) incluye todo el estado aprobado hasta esa fecha: feeds, votos, panel de votaciones, administración completa.
 - El `.gitignore` propio del proyecto ya excluye `admin/config.local.php` (credenciales de la base de datos), `/error_log` y las imágenes subidas en `/uploads/noticias/` (contenido de usuarios, no código fuente). **Las fotos de las noticias no viajan con el repo** — si se clona en otra máquina, `uploads/noticias/` aparece vacío salvo el `.htaccess`.
 - Antes de cualquier commit, revisar `git status --short` y `git diff --cached --name-only` para confirmar que no se cuela nada de `config.local.php` ni de logs.
-- Si en el futuro se agrega un remoto (GitHub/GitLab privado), documentarlo acá.
+- Después de cada commit aprobado, subir `main` a `origin`. Las etiquetas se publican explícitamente cuando corresponda.
 
 ## Estándar de despliegue directo
 
