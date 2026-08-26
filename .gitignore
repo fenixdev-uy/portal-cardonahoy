@@ -14,3 +14,5 @@
 !/uploads/audios/.htaccess
 /uploads/configuracion/*
 !/uploads/configuracion/.htaccess
+/uploads/publicidad/*
+!/uploads/publicidad/.htaccess

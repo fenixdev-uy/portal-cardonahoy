@@ -54,6 +54,7 @@ landing/
 │   ├── schema-v2-legacy.sql    ← esquema histórico, no usar en clientes nuevos
 │   ├── security-v1.php         ← migración CLI de autores a usuarios/roles
 │   ├── configuracion-v1.php    ← migración CLI de configuración y su permiso
+│   ├── publicidad-v1.php       ← tabla de anuncios + permiso de publicidad
 │   ├── seo-v1.php              ← migración idempotente de slugs y overrides SEO
 │   └── migrate.php             ← migración histórica v2, solo CLI
 │
@@ -71,7 +72,8 @@ landing/
 │
 ├── uploads/                    ← archivos persistentes subidos desde el panel
 │   ├── noticias/
-│   └── configuracion/          ← marcas de agua PNG (protegidas por .htaccess)
+│   ├── configuracion/          ← marcas de agua PNG (protegidas por .htaccess)
+│   └── publicidad/             ← imágenes de anuncios, sin marca editorial
 │
 ├── tools/                      ← utilidades CLI locales, nunca se despliega
 │   └── validar-servicios.php   ← valida DEV/PROD sin revelar secretos
@@ -92,7 +94,7 @@ landing/
     ├── categorias.php          ← CRUD de categorías
     ├── usuarios.php            ← alta y gestión de usuarios por administrador
     ├── roles.php               ← perfiles de roles y permisos
-    ├── anuncios.php            ← entrada inicial de Publicidad → Anuncios
+    ├── anuncios.php            ← CRUD de Publicidad → Anuncios
     ├── popups.php              ← entrada inicial de Publicidad → Popups
     ├── votaciones.php          ← ranking de noticias más votadas (gráfico)
     ├── assets/
@@ -166,6 +168,23 @@ landing/
 
 Conserva cada slug anterior con su `noticia_id`. La URL vieja responde 301 hacia el slug vigente y la tabla se elimina en cascada si se borra la noticia.
 
+### Tabla `anuncios`
+
+| Campo               | Tipo         | Notas                                      |
+|---------------------|--------------|--------------------------------------------|
+| id                  | INT UNSIGNED | PK, autoincrement                          |
+| nombre              | VARCHAR(120) | nombre comercial obligatorio               |
+| imagen              | VARCHAR(255) | ruta local obligatoria                     |
+| facebook_url        | VARCHAR(500) | URL HTTP/HTTPS opcional                    |
+| instagram_url       | VARCHAR(500) | URL HTTP/HTTPS opcional                    |
+| whatsapp_url        | VARCHAR(500) | URL HTTP/HTTPS opcional                    |
+| sitio_web_url       | VARCHAR(500) | URL HTTP/HTTPS opcional                    |
+| fecha_vencimiento   | DATE         | `NULL` = permanente; vencido desde esa fecha |
+| created_at          | TIMESTAMP    | fecha de creación automática               |
+| updated_at          | TIMESTAMP    | actualización automática                   |
+
+La migración idempotente `install/publicidad-v1.php` crea la tabla, el índice de vencimiento y el permiso `publicidad.gestionar`, asignado inicialmente al rol administrador.
+
 ### Votos (`me_gusta` / `no_me_gusta`)
 
 - `noticias.me_gusta` y `noticias.no_me_gusta`: `INT UNSIGNED NOT NULL DEFAULT 0`. Solo se incrementan; nunca se restan.
@@ -199,8 +218,9 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
   - Alta y edición dentro de un panel lateral derecho; la edición incluye acceso a **Editar roles**.
 - **Roles** (`roles.php`): perfiles Administrador, Editor y Autor con permisos configurables.
 - **Publicidad**:
-  - **Anuncios** (`anuncios.php`) y **Popups** (`popups.php`) ya cuentan con entradas y pantallas iniciales dentro del menú.
-  - Son placeholders de navegación: la gestión, los permisos específicos y la persistencia se incorporarán en una etapa posterior.
+  - **Anuncios** (`anuncios.php`) incluye tabla con miniatura, destinos, vencimiento, creación, estado y acciones; alta/edición en drawer, vista previa local, borrado e imágenes aisladas en `uploads/publicidad/`.
+  - Facebook, Instagram, WhatsApp y Web son URLs opcionales HTTP/HTTPS. La imagen y el nombre son obligatorios; la fecha vacía significa que no vence.
+  - El acceso exige `publicidad.gestionar`. **Popups** (`popups.php`) continúa como placeholder protegido por el mismo permiso.
 - **Análisis**:
   - **Votaciones** (`votaciones.php`) reúne el ranking y sus métricas dentro de este grupo, identificado con iconos de gráfica y aprobación.
 - **Seguridad**:
@@ -300,7 +320,9 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 - [ ] Limpiar archivos huérfanos: si se suben fotos y se abandona el formulario sin guardar, quedan en `uploads/noticias/` sin asociar.
 - [ ] Mejoras futuras: subir videos al servidor (hoy es URL de YouTube), más de un video por noticia, arrastrar archivos desde el escritorio a la galería, previsualizar fotos antes de subir.
 - [x] Sección **Configuración** del panel, ubicada encima del usuario conectado, con gestión visual de la marca de agua.
-- [ ] Implementar la gestión dinámica de **Publicidad → Anuncios** y **Publicidad → Popups**. La jerarquía del menú y las pantallas iniciales ya existen; faltan permisos, modelo de datos, formularios y reglas de publicación.
+- [x] CRUD inicial de **Publicidad → Anuncios** en DEV: tabla, permiso, imágenes, destinos, vencimiento, alta, edición y borrado.
+- [ ] Conectar los anuncios vigentes de la base con la portada pública; hasta entonces el front conserva el banco provisorio aprobado en `partials/publicidad.php`.
+- [ ] Implementar **Publicidad → Popups**; hoy permanece como pantalla inicial sin persistencia.
 - [ ] Probar los gestos ya aprobados en un teléfono real, especialmente Safari iOS, para evaluar sensibilidad, inercia y rendimiento fuera de Chrome headless.
 - [ ] Evaluar unificar `pc-feed.php` y `mobile-feed.php` en un único partial responsive. Hoy cada dispositivo descarga el marcado del otro oculto por CSS, con el contenido duplicado que eso implica para lectores de pantalla y para SEO.
 

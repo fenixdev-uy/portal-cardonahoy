@@ -131,6 +131,59 @@ function subir_imagen(array $archivo): ?string
 }
 
 /**
+ * Guarda una pieza publicitaria sin aplicar la marca de agua editorial.
+ */
+function subir_imagen_publicidad(array $archivo): ?string
+{
+    if (($archivo['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) return null;
+    if (($archivo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        throw new RuntimeException('Error al subir la imagen publicitaria.');
+    }
+    if (($archivo['size'] ?? 0) > 5 * 1024 * 1024) {
+        throw new RuntimeException('La imagen supera el tamaño máximo permitido (5 MB).');
+    }
+
+    $info = @getimagesize((string) $archivo['tmp_name']);
+    $tiposPermitidos = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+    if ($info === false || !isset($tiposPermitidos[$info['mime']])) {
+        throw new RuntimeException('La imagen debe ser JPG, PNG o WEBP.');
+    }
+    $pixeles = (int) $info[0] * (int) $info[1];
+    if ($pixeles <= 0 || $pixeles > 40_000_000) {
+        throw new RuntimeException('La imagen tiene dimensiones demasiado grandes.');
+    }
+
+    $directorio = dirname(__DIR__, 2) . '/uploads/publicidad';
+    if (!is_dir($directorio) && !mkdir($directorio, 0775, true) && !is_dir($directorio)) {
+        throw new RuntimeException('No se pudo crear el directorio de publicidad.');
+    }
+    $nombre = 'anuncio_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $tiposPermitidos[$info['mime']];
+    $rutaCompleta = $directorio . '/' . $nombre;
+    if (!move_uploaded_file((string) $archivo['tmp_name'], $rutaCompleta)) {
+        throw new RuntimeException('No se pudo guardar la imagen publicitaria.');
+    }
+    @chmod($rutaCompleta, 0644);
+    return 'uploads/publicidad/' . $nombre;
+}
+
+function ruta_imagen_publicidad_valida(string $ruta): bool
+{
+    return (bool) preg_match('#^uploads/publicidad/anuncio_[A-Za-z0-9_-]+\.(?:jpe?g|png|webp)$#i', $ruta);
+}
+
+function eliminar_imagen_publicidad(?string $rutaRelativa): void
+{
+    if (!$rutaRelativa || !ruta_imagen_publicidad_valida($rutaRelativa)) return;
+    $directorio = realpath(dirname(__DIR__, 2) . '/uploads/publicidad');
+    $rutaCompleta = realpath(dirname(__DIR__, 2) . '/' . $rutaRelativa);
+    if ($directorio !== false && $rutaCompleta !== false
+        && str_starts_with($rutaCompleta, $directorio . DIRECTORY_SEPARATOR)
+        && is_file($rutaCompleta)) {
+        @unlink($rutaCompleta);
+    }
+}
+
+/**
  * Sube un audio y devuelve la ruta relativa pública.
  * Admite MP3, M4A, OGG y WAV, hasta 25 MB.
  *

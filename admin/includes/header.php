@@ -22,6 +22,7 @@ $adminCssVersion = (string) (filemtime(__DIR__ . '/../assets/admin.css') ?: '1')
 $puedeConfigurarPanel = tiene_permiso('configuracion.gestionar');
 $puedeGestionarUsuarios = tiene_permiso('usuarios.gestionar');
 $puedeGestionarRoles = tiene_permiso('roles.gestionar');
+$puedeGestionarPublicidad = tiene_permiso('publicidad.gestionar');
 $grupoUsuariosVisible = $puedeGestionarUsuarios || $puedeGestionarRoles;
 $grupoNoticiasActivo = in_array($activo, ['noticias', 'categorias'], true);
 $grupoUsuariosActivo = in_array($activo, ['usuarios', 'roles'], true);
@@ -104,6 +105,7 @@ header('Cache-Control: no-store, private');
       </div>
 <?php endif; ?>
 
+<?php if ($puedeGestionarPublicidad): ?>
       <div class="nav-group<?= $grupoPublicidadActivo ? ' has-active' : '' ?>">
         <button type="button" class="nav-link nav-group-toggle" data-nav-group-toggle aria-expanded="<?= $grupoPublicidadActivo ? 'true' : 'false' ?>" aria-controls="advertisingNavSubmenu">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11v2a2 2 0 0 0 2 2h2l4 5V4L7 9H5a2 2 0 0 0-2 2Z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12"></path></svg>
@@ -115,6 +117,7 @@ header('Cache-Control: no-store, private');
           <a href="<?= $BASE ?>popups.php" class="nav-sub-link <?= $activo === 'publicidad-popups' ? 'active' : '' ?>">Popups</a>
         </div>
       </div>
+<?php endif; ?>
 
       <div class="nav-group<?= $grupoAnalisisActivo ? ' has-active' : '' ?>">
         <button type="button" class="nav-link nav-group-toggle" data-nav-group-toggle aria-expanded="<?= $grupoAnalisisActivo ? 'true' : 'false' ?>" aria-controls="analyticsNavSubmenu">

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/includes/funciones.php';
+exigir_permiso('publicidad.gestionar');
 
 $titulo = 'Popups';
 $active = 'publicidad-popups';
