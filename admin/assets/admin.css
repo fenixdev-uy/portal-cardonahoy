@@ -252,6 +252,7 @@
 .ad-status-switch input:focus-visible + .ad-status-switch-track,
 .ad-form-switch input:focus-visible + .ad-form-switch-track { box-shadow: 0 0 0 3px rgba(14, 165, 233, .3); }
 .ad-status-switch input:disabled + .ad-status-switch-track { opacity: .6; cursor: wait; }
+.ad-status-switch:has(input:disabled) { cursor: not-allowed; }
 .ad-status-switch-text { min-width: 48px; color: var(--text); font-size: .78rem; font-weight: 700; }
 .ad-status-note { color: #dc2626; font-size: .68rem; font-weight: 700; }
 .ad-status-feedback { min-height: 12px; color: var(--text-muted); font-size: .66rem; }
@@ -313,6 +314,8 @@
 .ad-form-switch > span:last-child { display: grid; gap: 2px; }
 .ad-form-switch strong { color: var(--text); font-size: .86rem; }
 .ad-form-switch small { color: var(--text-muted); font-size: .74rem; line-height: 1.35; }
+.ad-form-switch:has(input:disabled) { background: #fff7ed; border-color: #fed7aa; cursor: not-allowed; }
+.ad-form-switch input:disabled + .ad-form-switch-track { opacity: .7; }
 .ad-image-field { display: grid; gap: 10px; margin-bottom: 24px; }
 .ad-field-label { color: var(--text); font-size: .85rem; font-weight: 600; }
 .ad-image-preview {

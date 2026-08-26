@@ -34,6 +34,11 @@ function fecha_anuncio_valida(string $fecha): bool
     return $objeto !== false && $objeto->format('Y-m-d') === $fecha;
 }
 
+function anuncio_esta_vencido(?string $fecha): bool
+{
+    return $fecha !== null && $fecha !== '' && $fecha <= date('Y-m-d');
+}
+
 function icono_destino_anuncio(string $tipo): string
 {
     return match ($tipo) {
@@ -44,6 +49,17 @@ function icono_destino_anuncio(string $tipo): string
     };
 }
 
+// El estado persistido nunca puede quedar activo después del vencimiento.
+$hoySistema = date('Y-m-d');
+$stmtVencidos = $pdo->prepare(
+    'UPDATE anuncios
+        SET activo = 0
+      WHERE activo = 1
+        AND fecha_vencimiento IS NOT NULL
+        AND fecha_vencimiento <= ?'
+);
+$stmtVencidos->execute([$hoySistema]);
+
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     verificar_csrf($solicitudAjax);
     $accion = (string) ($_POST['accion'] ?? 'guardar');
@@ -51,23 +67,26 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
     if ($accion === 'estado') {
         $activoEstado = (string) ($_POST['activo'] ?? '0') === '1' ? 1 : 0;
+        $stmt = $pdo->prepare('SELECT fecha_vencimiento FROM anuncios WHERE id = ?');
+        $stmt->execute([$id]);
+        $fechaEstado = $stmt->fetchColumn();
+        if ($fechaEstado === false) {
+            if ($solicitudAjax) {
+                http_response_code(404);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['ok' => false, 'error' => 'El anuncio ya no existe.'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+            flash('danger', 'El anuncio ya no existe.');
+            redirigir('anuncios.php');
+        }
+        $bloqueadoPorVencimiento = $activoEstado === 1 && anuncio_esta_vencido($fechaEstado !== null ? (string) $fechaEstado : null);
+        if ($bloqueadoPorVencimiento) $activoEstado = 0;
         $stmt = $pdo->prepare('UPDATE anuncios SET activo = ? WHERE id = ?');
         $stmt->execute([$activoEstado, $id]);
-        if ($stmt->rowCount() === 0) {
-            $existe = $pdo->prepare('SELECT COUNT(*) FROM anuncios WHERE id = ?');
-            $existe->execute([$id]);
-            if ((int) $existe->fetchColumn() === 0) {
-                if ($solicitudAjax) {
-                    http_response_code(404);
-                    header('Content-Type: application/json; charset=utf-8');
-                    echo json_encode(['ok' => false, 'error' => 'El anuncio ya no existe.'], JSON_UNESCAPED_UNICODE);
-                    exit;
-                }
-                flash('danger', 'El anuncio ya no existe.');
-                redirigir('anuncios.php');
-            }
-        }
-        $mensajeEstado = $activoEstado === 1 ? 'Anuncio activado correctamente.' : 'Anuncio desactivado correctamente.';
+        $mensajeEstado = $bloqueadoPorVencimiento
+            ? 'El anuncio permanece inactivo porque está vencido.'
+            : ($activoEstado === 1 ? 'Anuncio activado correctamente.' : 'Anuncio desactivado correctamente.');
         $stmt = $pdo->prepare('SELECT updated_at FROM anuncios WHERE id = ?');
         $stmt->execute([$id]);
         $actualizadoEstado = (string) $stmt->fetchColumn();
@@ -78,6 +97,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 'activo' => $activoEstado,
                 'label' => $activoEstado === 1 ? 'Activo' : 'Inactivo',
                 'updated' => $actualizadoEstado !== '' ? date('d/m/Y H:i', strtotime($actualizadoEstado)) : '',
+                'notice' => $bloqueadoPorVencimiento ? 'Vencido: cambiá o quitá la fecha para activarlo.' : '',
             ], JSON_UNESCAPED_UNICODE);
             exit;
         }
@@ -116,6 +136,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     if ($nombre === '') agregar_error_anuncio($errores, $erroresCampos, 'nombre', 'El nombre del anuncio es obligatorio.');
     if (mb_strlen($nombre, 'UTF-8') > 120) agregar_error_anuncio($errores, $erroresCampos, 'nombre', 'El nombre no puede superar 120 caracteres.');
     if (!fecha_anuncio_valida($fechaVencimiento)) agregar_error_anuncio($errores, $erroresCampos, 'fecha_vencimiento', 'La fecha de vencimiento no es válida.');
+    $desactivadoPorVencimiento = !$errores && $activo === 1 && anuncio_esta_vencido($fechaVencimiento);
+    if ($desactivadoPorVencimiento) $activo = 0;
 
     $imagenActual = (string) ($existente['imagen'] ?? '');
     $hayNuevaImagen = (int) ($_FILES['imagen']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
@@ -164,6 +186,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $stmt->execute([$nombre, $imagenGuardar, $facebook, $instagram, $whatsapp, $sitioWeb, $fechaVencimiento ?: null, $activo]);
                 $mensajeExito = 'Anuncio creado correctamente.';
             }
+            if ($desactivadoPorVencimiento) $mensajeExito .= ' Quedó inactivo porque su fecha ya venció.';
             flash('success', $mensajeExito);
             if ($solicitudAjax) {
                 header('Content-Type: application/json; charset=utf-8');
@@ -195,7 +218,7 @@ if ($anuncioEditar === null && isset($_GET['editar'])) {
 }
 
 $anuncios = $pdo->query('SELECT * FROM anuncios ORDER BY created_at DESC, id DESC')->fetchAll();
-$hoy = date('Y-m-d');
+$hoy = $hoySistema;
 $titulo = 'Anuncios';
 $active = 'publicidad-anuncios';
 require __DIR__ . '/includes/header.php';
@@ -255,7 +278,7 @@ require __DIR__ . '/includes/header.php';
             <form method="post" action="anuncios.php" class="ad-status-form js-ad-status-form">
               <?= csrf_input() ?><input type="hidden" name="accion" value="estado"><input type="hidden" name="id" value="<?= (int) $anuncio['id'] ?>">
               <label class="ad-status-switch">
-                <input type="checkbox" name="activo" value="1" role="switch" class="js-ad-status-input" <?= $activoManual ? 'checked' : '' ?> aria-label="<?= $activoManual ? 'Desactivar' : 'Activar' ?> <?= e($anuncio['nombre']) ?>">
+                <input type="checkbox" name="activo" value="1" role="switch" class="js-ad-status-input" <?= $activoManual ? 'checked' : '' ?> <?= $vencido ? 'disabled' : '' ?> aria-label="<?= $vencido ? 'Anuncio vencido' : ($activoManual ? 'Desactivar' : 'Activar') . ' ' . e($anuncio['nombre']) ?>">
                 <span class="ad-status-switch-track" aria-hidden="true"><span></span></span>
                 <span class="ad-status-switch-text"><?= $activoManual ? 'Activo' : 'Inactivo' ?></span>
               </label>
@@ -342,7 +365,7 @@ require __DIR__ . '/includes/header.php';
         <label class="ad-form-switch" for="adActive">
           <input type="checkbox" id="adActive" name="activo" value="1" role="switch" <?= (int) ($anuncioEditar['activo'] ?? 1) === 1 ? 'checked' : '' ?>>
           <span class="ad-form-switch-track" aria-hidden="true"><span></span></span>
-          <span><strong id="adActiveLabel"><?= (int) ($anuncioEditar['activo'] ?? 1) === 1 ? 'Activo' : 'Inactivo' ?></strong><small>Podés suspenderlo manualmente aunque no tenga vencimiento.</small></span>
+          <span><strong id="adActiveLabel"><?= (int) ($anuncioEditar['activo'] ?? 1) === 1 ? 'Activo' : 'Inactivo' ?></strong><small id="adActiveHelp">Podés suspenderlo manualmente aunque no tenga vencimiento.</small></span>
         </label>
       </div>
 
@@ -375,6 +398,9 @@ require __DIR__ . '/includes/header.php';
   const submit = document.getElementById('adSubmit');
   const activeInput = document.getElementById('adActive');
   const activeLabel = document.getElementById('adActiveLabel');
+  const activeHelp = document.getElementById('adActiveHelp');
+  const expiresInput = document.getElementById('adExpires');
+  const today = <?= json_encode(date('Y-m-d')) ?>;
   const formErrors = document.getElementById('adFormErrors');
   const formErrorList = document.getElementById('adFormErrorList');
   const fieldsByName = {
@@ -394,6 +420,18 @@ require __DIR__ . '/includes/header.php';
 
   function updateActiveLabel() {
     activeLabel.textContent = activeInput.checked ? 'Activo' : 'Inactivo';
+  }
+  function syncActiveWithExpiry() {
+    const expired = expiresInput.value !== '' && expiresInput.value <= today;
+    if (expired) {
+      activeInput.checked = false;
+      activeInput.disabled = true;
+      activeHelp.textContent = 'Está vencido. Cambiá o quitá la fecha para poder activarlo.';
+    } else {
+      activeInput.disabled = false;
+      activeHelp.textContent = 'Podés suspenderlo manualmente aunque no tenga vencimiento.';
+    }
+    updateActiveLabel();
   }
 
   function clearFormErrors() {
@@ -497,7 +535,7 @@ require __DIR__ . '/includes/header.php';
     clearFormErrors();
     document.getElementById('adId').value = '0';
     activeInput.checked = true;
-    updateActiveLabel();
+    syncActiveWithExpiry();
     imageInput.required = true;
     clearPreview();
     imageHelp.textContent = defaultImageHelp;
@@ -520,7 +558,7 @@ require __DIR__ . '/includes/header.php';
     document.getElementById('adWeb').value = button.dataset.web || '';
     document.getElementById('adExpires').value = button.dataset.expires || '';
     activeInput.checked = button.dataset.active !== '0';
-    updateActiveLabel();
+    syncActiveWithExpiry();
     imageInput.required = false;
     setPreview(button.dataset.image || '');
     imageHelp.textContent = defaultImageHelp;
@@ -617,6 +655,8 @@ require __DIR__ . '/includes/header.php';
     reader.readAsDataURL(file);
   });
   activeInput.addEventListener('change', updateActiveLabel);
+  expiresInput.addEventListener('change', syncActiveWithExpiry);
+  syncActiveWithExpiry();
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     window.clearTimeout(drawerFocusTimer);
@@ -679,7 +719,7 @@ require __DIR__ . '/includes/header.php';
         input.checked = result.activo === 1;
         text.textContent = result.label;
         input.setAttribute('aria-label', (result.activo === 1 ? 'Desactivar ' : 'Activar ') + text.closest('tr').querySelector('td:nth-child(2) strong').textContent);
-        feedback.textContent = result.activo === 1 ? 'Activado' : 'Desactivado';
+        feedback.textContent = result.notice || (result.activo === 1 ? 'Activado' : 'Desactivado');
         const id = statusForm.querySelector('input[name="id"]').value;
         const rowEditButton = document.querySelector('.js-edit-ad[data-id="' + id + '"]');
         if (rowEditButton) {
