@@ -38,7 +38,8 @@ landing/
 ├── db                          ← credenciales (texto plano, solo referencia)
 ├── assets/
 │   ├── css/
-│   │   └── portal.css          ← estilos compartidos de la portada PC/móvil
+│   │   ├── portal.css          ← estilos compartidos de la portada PC/móvil
+│   │   └── noticia.css         ← estilos de la página pública individual
 │   └── js/
 │       └── portal.js           ← interacciones compartidas de la portada
 ├── imagenes/
@@ -321,7 +322,7 @@ En el cloud cPanel/WHM actual todas las cuentas usan el servicio FTPS global med
 ### Render del front
 - `index.php` es PHP (antes era `index.html`). Incluye `admin/includes/funciones.php`, consulta las noticias (`ORDER BY created_at DESC, id DESC`) más las galerías en una segunda consulta, y delega el dibujo de los feeds en `partials/pc-feed.php` y `partials/mobile-feed.php`. Ambos partials consumen las mismas variables, así que agregar el feed móvil no sumó consultas.
 - El único bloque que sigue siendo HTML estático es el slider del home (`hero`).
-- Los estilos y las interacciones de la portada viven en `assets/css/portal.css` y `assets/js/portal.js`, cargados con versión automática por `filemtime()`. `index.php` entrega al script solamente la URL dinámica de votos mediante `data-vote-url`; los partials solo aportan marcado.
+- Los estilos y las interacciones de la portada viven en `assets/css/portal.css` y `assets/js/portal.js`, cargados con versión automática por `filemtime()`. `index.php` entrega al script solamente la URL dinámica de votos mediante `data-vote-url`; los partials solo aportan marcado. La página individual carga sus estilos desde `assets/css/noticia.css` con el mismo versionado.
 - Los estilos del HTML de la descripción están en la clase global `.rich-text`, fuera de media queries, y se aplican al contenido PC y a la hoja móvil. El resumen del feed es texto plano. Al permitir una etiqueta nueva en `sanitizar_html()`, darle estilo en `.rich-text`.
 
 ### Galería y subida de fotos

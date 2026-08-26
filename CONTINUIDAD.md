@@ -481,6 +481,7 @@ Después de esta etapa el front quedó repartido así. Conviene conocerlo antes 
 | `index.php` | Consultas a la base, estructura del hero, `include` de los partials y configuración mínima de la URL de votos. |
 | `assets/css/portal.css` | Todo el CSS compartido de la portada para PC y móvil, extraído sin modificar reglas y cargado con versión `filemtime()`. |
 | `assets/js/portal.js` | Todas las interacciones compartidas de la portada: hero, menú, galerías, hoja completa, visor, votos y ayudas de scroll. |
+| `assets/css/noticia.css` | Estilos de la página pública individual, incluida su adaptación PC/móvil y el visor propio. |
 | `partials/mobile-feed.php` | Marcado del feed móvil. |
 | `partials/pc-feed.php` | Marcado del feed PC. |
 | `partials/publicidad.php` | Piezas de publicidad y su orden. Fuente única. |
