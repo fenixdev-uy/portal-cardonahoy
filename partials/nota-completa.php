@@ -71,7 +71,19 @@ require_once __DIR__ . '/publicidad.php';
           </figure>
         </div>
 
-        <?= $n['descripcion'] /* HTML ya saneado en el servidor */ ?>
+        <div class="story-reading-tools" role="group" aria-label="Tamaño del texto">
+          <button class="story-reading-button" type="button" data-reading-adjust="-0.1" aria-label="Achicar texto" title="Achicar texto">
+            <span>A</span><span class="story-reading-symbol" aria-hidden="true">−</span>
+          </button>
+          <button class="story-reading-button" type="button" data-reading-adjust="0.1" aria-label="Agrandar texto" title="Agrandar texto">
+            <span>A</span><span class="story-reading-symbol" aria-hidden="true">+</span>
+          </button>
+          <span class="story-reading-status" aria-live="polite">Tamaño de texto 100%</span>
+        </div>
+
+        <div class="story-sheet-body" data-reading-scale="1">
+          <?= $n['descripcion'] /* HTML ya saneado en el servidor */ ?>
+        </div>
 
 <?php include __DIR__ . '/medios-noticia.php'; ?>
 

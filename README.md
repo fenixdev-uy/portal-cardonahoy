@@ -244,6 +244,7 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 - [x] Portada editorial con todas las noticias en tarjetas: tres columnas desde `1100px` y dos columnas entre `769px` y `1099px`.
 - [x] Tarjetas rectangulares, sin bordes redondeados: portada `3:2`, categoría, fecha compacta, título y resumen; toda la tarjeta abre el permalink público.
 - [x] El clic normal sobre una tarjeta abre la noticia completa en un drawer derecho recto al `40%` del viewport. Reutiliza el mismo contenido funcional de móvil: galería con autoplay, fullscreen y zoom, texto, publicidad, audios/videos, votos definitivos y compartir en Facebook/WhatsApp. `Ctrl`/`Cmd`/`Shift` + clic conserva la apertura normal del permalink.
+- [x] Herramienta accesible de lectura `A−` / `A+` debajo del primer anuncio: escala únicamente párrafos, listas y subtítulos editoriales entre 90% y 140%, anuncia el porcentaje a lectores de pantalla y vuelve a 100% al reabrir.
 - [x] Orden: la última noticia creada sale primera.
 - [x] El antiguo feed de una noticia por pantalla, sus anuncios intercalados, mini-slider, lupa y `scroll-snap` fueron retirados de la portada PC. El contenido completo y las galerías permanecen en el permalink individual.
 

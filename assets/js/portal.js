@@ -328,6 +328,31 @@
       }
     });
 
+    // Accesibilidad de lectura: escala solo el cuerpo editorial de la nota.
+    document.addEventListener('click', (event) => {
+      const button = event.target.closest('.story-reading-button[data-reading-adjust]');
+      if (!button || button.disabled) return;
+
+      const tools = button.closest('.story-reading-tools');
+      const article = button.closest('.story-sheet-article');
+      const content = article?.querySelector('.story-sheet-body');
+      if (!tools || !content) return;
+
+      const current = Number(content.dataset.readingScale || 1);
+      const adjustment = Number(button.dataset.readingAdjust || 0);
+      const next = Math.min(1.4, Math.max(0.9, Math.round((current + adjustment) * 10) / 10));
+      content.dataset.readingScale = String(next);
+      content.style.setProperty('--reading-scale', String(next));
+
+      tools.querySelectorAll('.story-reading-button').forEach((control) => {
+        const delta = Number(control.dataset.readingAdjust || 0);
+        control.disabled = (delta < 0 && next <= 0.9) || (delta > 0 && next >= 1.4);
+      });
+
+      const status = tools.querySelector('.story-reading-status');
+      if (status) status.textContent = `Tamaño de texto ${Math.round(next * 100)}%`;
+    });
+
     // Votos: un solo listener delegado cubre los dos feeds, así que no hace
     // falta cablear nada por noticia. El voto es definitivo: al confirmarse, los
     // dos botones de esa noticia quedan bloqueados.

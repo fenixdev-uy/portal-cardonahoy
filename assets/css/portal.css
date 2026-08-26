@@ -1074,6 +1074,92 @@
       box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
     }
 
+    .story-reading-tools {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      margin: -6px 0 26px;
+    }
+
+    .story-reading-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1px;
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      color: #111;
+      border: 1px solid #cbd5e1;
+      border-radius: 50%;
+      background: #fff;
+      font: inherit;
+      font-size: 1.08rem;
+      font-weight: 800;
+      line-height: 1;
+      cursor: pointer;
+      transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .story-reading-button:hover,
+    .story-reading-button:focus-visible {
+      color: #fff;
+      border-color: #111;
+      background: #111;
+      outline: none;
+      transform: translateY(-1px);
+    }
+
+    .story-reading-button:disabled {
+      color: #94a3b8;
+      border-color: #e2e8f0;
+      background: #f8fafc;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .story-reading-symbol {
+      font-size: 0.78em;
+      font-weight: 900;
+    }
+
+    .story-reading-status {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .story-sheet-body {
+      --reading-scale: 1;
+      font-size: calc(1rem * var(--reading-scale));
+    }
+
+    .story-sheet-article .story-sheet-body p {
+      font-size: calc(1.05rem * var(--reading-scale));
+    }
+
+    .story-sheet-article .story-sheet-body li {
+      font-size: calc(1rem * var(--reading-scale));
+    }
+
+    .story-sheet-article .story-sheet-body h1 {
+      font-size: calc(1.35rem * var(--reading-scale));
+    }
+
+    .story-sheet-article .story-sheet-body h2 {
+      font-size: calc(1.2rem * var(--reading-scale));
+    }
+
+    .story-sheet-article .story-sheet-body h3 {
+      font-size: calc(1.05rem * var(--reading-scale));
+    }
+
     .story-sheet-photo {
       flex: 0 0 100%;
       max-height: 320px;
@@ -1345,7 +1431,8 @@
     @media (prefers-reduced-motion: reduce) {
       .story-sheet,
       .story-sheet-backdrop,
-      .story-sheet-panel {
+      .story-sheet-panel,
+      .story-reading-button {
         transition-duration: 0.01ms;
       }
     }
