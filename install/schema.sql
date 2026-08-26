@@ -142,7 +142,10 @@ CREATE TABLE IF NOT EXISTS anuncios (
   whatsapp_url VARCHAR(500) NULL,
   sitio_web_url VARCHAR(500) NULL,
   fecha_vencimiento DATE NULL,
+  activo TINYINT(1) NOT NULL DEFAULT 1,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (id), KEY idx_anuncios_vencimiento (fecha_vencimiento)
+  PRIMARY KEY (id),
+  KEY idx_anuncios_vencimiento (fecha_vencimiento),
+  KEY idx_anuncios_publicacion (activo, fecha_vencimiento)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

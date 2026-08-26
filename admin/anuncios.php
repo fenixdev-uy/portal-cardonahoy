@@ -49,6 +49,42 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $accion = (string) ($_POST['accion'] ?? 'guardar');
     $id = (int) ($_POST['id'] ?? 0);
 
+    if ($accion === 'estado') {
+        $activoEstado = (string) ($_POST['activo'] ?? '0') === '1' ? 1 : 0;
+        $stmt = $pdo->prepare('UPDATE anuncios SET activo = ? WHERE id = ?');
+        $stmt->execute([$activoEstado, $id]);
+        if ($stmt->rowCount() === 0) {
+            $existe = $pdo->prepare('SELECT COUNT(*) FROM anuncios WHERE id = ?');
+            $existe->execute([$id]);
+            if ((int) $existe->fetchColumn() === 0) {
+                if ($solicitudAjax) {
+                    http_response_code(404);
+                    header('Content-Type: application/json; charset=utf-8');
+                    echo json_encode(['ok' => false, 'error' => 'El anuncio ya no existe.'], JSON_UNESCAPED_UNICODE);
+                    exit;
+                }
+                flash('danger', 'El anuncio ya no existe.');
+                redirigir('anuncios.php');
+            }
+        }
+        $mensajeEstado = $activoEstado === 1 ? 'Anuncio activado correctamente.' : 'Anuncio desactivado correctamente.';
+        $stmt = $pdo->prepare('SELECT updated_at FROM anuncios WHERE id = ?');
+        $stmt->execute([$id]);
+        $actualizadoEstado = (string) $stmt->fetchColumn();
+        if ($solicitudAjax) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'ok' => true,
+                'activo' => $activoEstado,
+                'label' => $activoEstado === 1 ? 'Activo' : 'Inactivo',
+                'updated' => $actualizadoEstado !== '' ? date('d/m/Y H:i', strtotime($actualizadoEstado)) : '',
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+        flash('success', $mensajeEstado);
+        redirigir('anuncios.php');
+    }
+
     if ($accion === 'eliminar') {
         $stmt = $pdo->prepare('SELECT imagen FROM anuncios WHERE id = ?');
         $stmt->execute([$id]);
@@ -75,6 +111,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $whatsapp = normalizar_url_anuncio((string) ($_POST['whatsapp_url'] ?? ''), 'WhatsApp', 'whatsapp_url', $errores, $erroresCampos);
     $sitioWeb = normalizar_url_anuncio((string) ($_POST['sitio_web_url'] ?? ''), 'Web', 'sitio_web_url', $errores, $erroresCampos);
     $fechaVencimiento = trim((string) ($_POST['fecha_vencimiento'] ?? ''));
+    $activo = isset($_POST['activo']) && (string) $_POST['activo'] === '1' ? 1 : 0;
 
     if ($nombre === '') agregar_error_anuncio($errores, $erroresCampos, 'nombre', 'El nombre del anuncio es obligatorio.');
     if (mb_strlen($nombre, 'UTF-8') > 120) agregar_error_anuncio($errores, $erroresCampos, 'nombre', 'El nombre no puede superar 120 caracteres.');
@@ -93,6 +130,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         'whatsapp_url' => trim((string) ($_POST['whatsapp_url'] ?? '')),
         'sitio_web_url' => trim((string) ($_POST['sitio_web_url'] ?? '')),
         'fecha_vencimiento' => $fechaVencimiento,
+        'activo' => $activo,
     ];
 
     $nuevaImagen = null;
@@ -111,19 +149,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $stmt = $pdo->prepare(
                     'UPDATE anuncios
                         SET nombre = ?, imagen = ?, facebook_url = ?, instagram_url = ?, whatsapp_url = ?,
-                            sitio_web_url = ?, fecha_vencimiento = ?
+                            sitio_web_url = ?, fecha_vencimiento = ?, activo = ?
                       WHERE id = ?'
                 );
-                $stmt->execute([$nombre, $imagenGuardar, $facebook, $instagram, $whatsapp, $sitioWeb, $fechaVencimiento ?: null, $id]);
+                $stmt->execute([$nombre, $imagenGuardar, $facebook, $instagram, $whatsapp, $sitioWeb, $fechaVencimiento ?: null, $activo, $id]);
                 if ($nuevaImagen && $imagenActual !== '') eliminar_imagen_publicidad($imagenActual);
                 $mensajeExito = 'Anuncio actualizado correctamente.';
             } else {
                 $stmt = $pdo->prepare(
                     'INSERT INTO anuncios
-                        (nombre, imagen, facebook_url, instagram_url, whatsapp_url, sitio_web_url, fecha_vencimiento)
-                     VALUES (?, ?, ?, ?, ?, ?, ?)'
+                        (nombre, imagen, facebook_url, instagram_url, whatsapp_url, sitio_web_url, fecha_vencimiento, activo)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
                 );
-                $stmt->execute([$nombre, $imagenGuardar, $facebook, $instagram, $whatsapp, $sitioWeb, $fechaVencimiento ?: null]);
+                $stmt->execute([$nombre, $imagenGuardar, $facebook, $instagram, $whatsapp, $sitioWeb, $fechaVencimiento ?: null, $activo]);
                 $mensajeExito = 'Anuncio creado correctamente.';
             }
             flash('success', $mensajeExito);
@@ -195,6 +233,7 @@ require __DIR__ . '/includes/header.php';
       <?php foreach ($anuncios as $anuncio):
           $vence = (string) ($anuncio['fecha_vencimiento'] ?? '');
           $vencido = $vence !== '' && $vence <= $hoy;
+          $activoManual = (int) ($anuncio['activo'] ?? 1) === 1;
           $enlaces = [
               'facebook' => ['Facebook', $anuncio['facebook_url']],
               'instagram' => ['Instagram', $anuncio['instagram_url']],
@@ -212,7 +251,18 @@ require __DIR__ . '/includes/header.php';
           </div></td>
           <td data-label="Vencimiento"><?= $vence !== '' ? e(date('d/m/Y', strtotime($vence))) : 'Sin vencimiento' ?></td>
           <td data-label="Creado"><?= e(date('d/m/Y H:i', strtotime((string) $anuncio['created_at']))) ?></td>
-          <td data-label="Estado"><span class="ad-status <?= $vencido ? 'is-expired' : 'is-current' ?>"><span aria-hidden="true"></span><?= $vencido ? 'Vencido' : 'Vigente' ?></span></td>
+          <td data-label="Estado">
+            <form method="post" action="anuncios.php" class="ad-status-form js-ad-status-form">
+              <?= csrf_input() ?><input type="hidden" name="accion" value="estado"><input type="hidden" name="id" value="<?= (int) $anuncio['id'] ?>">
+              <label class="ad-status-switch">
+                <input type="checkbox" name="activo" value="1" role="switch" class="js-ad-status-input" <?= $activoManual ? 'checked' : '' ?> aria-label="<?= $activoManual ? 'Desactivar' : 'Activar' ?> <?= e($anuncio['nombre']) ?>">
+                <span class="ad-status-switch-track" aria-hidden="true"><span></span></span>
+                <span class="ad-status-switch-text"><?= $activoManual ? 'Activo' : 'Inactivo' ?></span>
+              </label>
+              <?php if ($vencido): ?><small class="ad-status-note">Vencido</small><?php endif; ?>
+              <small class="ad-status-feedback" aria-live="polite"></small>
+            </form>
+          </td>
           <td data-label="Acciones"><div class="cell-actions user-icon-actions">
             <a class="action-icon action-icon-edit js-edit-ad" href="anuncios.php?editar=<?= (int) $anuncio['id'] ?>"
                data-id="<?= (int) $anuncio['id'] ?>" data-name="<?= e($anuncio['nombre']) ?>" data-image="<?= e(url_imagen($anuncio['imagen'])) ?>"
@@ -221,7 +271,8 @@ require __DIR__ . '/includes/header.php';
                data-expires="<?= e($vence) ?>" data-expires-label="<?= $vence !== '' ? e(date('d/m/Y', strtotime($vence))) : 'Sin vencimiento' ?>"
                data-created="<?= e(date('d/m/Y H:i', strtotime((string) $anuncio['created_at']))) ?>"
                data-updated="<?= e(date('d/m/Y H:i', strtotime((string) $anuncio['updated_at']))) ?>"
-               data-status="<?= $vencido ? 'Vencido' : 'Vigente' ?>" data-status-class="<?= $vencido ? 'is-expired' : 'is-current' ?>"
+               data-active="<?= $activoManual ? '1' : '0' ?>"
+               data-status="<?= $activoManual ? 'Activo' : 'Inactivo' ?>" data-status-class="<?= $activoManual ? 'is-current' : 'is-inactive' ?>"
                aria-label="Editar <?= e($anuncio['nombre']) ?>" title="Editar anuncio">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
             </a>
@@ -286,6 +337,14 @@ require __DIR__ . '/includes/header.php';
       <div class="form-group"><label for="adWhatsapp">WhatsApp</label><input class="form-control" type="url" id="adWhatsapp" name="whatsapp_url" maxlength="500" value="<?= e($anuncioEditar['whatsapp_url'] ?? '') ?>" placeholder="https://wa.me/598..."></div>
       <div class="form-group"><label for="adWeb">Web</label><input class="form-control" type="url" id="adWeb" name="sitio_web_url" maxlength="500" value="<?= e($anuncioEditar['sitio_web_url'] ?? '') ?>" placeholder="https://ejemplo.com/"></div>
       <div class="form-group"><label for="adExpires">Fecha de vencimiento</label><input class="form-control" type="date" id="adExpires" name="fecha_vencimiento" value="<?= e($anuncioEditar['fecha_vencimiento'] ?? '') ?>"><div class="form-hint">Al comenzar esta fecha el anuncio deja de estar vigente. Vacío significa sin vencimiento.</div></div>
+      <div class="form-group ad-active-field">
+        <span class="ad-field-label">Estado</span>
+        <label class="ad-form-switch" for="adActive">
+          <input type="checkbox" id="adActive" name="activo" value="1" role="switch" <?= (int) ($anuncioEditar['activo'] ?? 1) === 1 ? 'checked' : '' ?>>
+          <span class="ad-form-switch-track" aria-hidden="true"><span></span></span>
+          <span><strong id="adActiveLabel"><?= (int) ($anuncioEditar['activo'] ?? 1) === 1 ? 'Activo' : 'Inactivo' ?></strong><small>Podés suspenderlo manualmente aunque no tenga vencimiento.</small></span>
+        </label>
+      </div>
 
       <div class="ad-form-errors" id="adFormErrors" role="alert" tabindex="-1"<?= $errores ? '' : ' hidden' ?>>
         <strong>Revisá los datos del anuncio</strong>
@@ -314,6 +373,8 @@ require __DIR__ . '/includes/header.php';
   const label = document.getElementById('adDrawerLabel');
   const title = document.getElementById('adDrawerTitle');
   const submit = document.getElementById('adSubmit');
+  const activeInput = document.getElementById('adActive');
+  const activeLabel = document.getElementById('adActiveLabel');
   const formErrors = document.getElementById('adFormErrors');
   const formErrorList = document.getElementById('adFormErrorList');
   const fieldsByName = {
@@ -330,6 +391,10 @@ require __DIR__ . '/includes/header.php';
   let returnFocus = null;
   let drawerFocusTimer = null;
   let currentEditButton = null;
+
+  function updateActiveLabel() {
+    activeLabel.textContent = activeInput.checked ? 'Activo' : 'Inactivo';
+  }
 
   function clearFormErrors() {
     formErrors.hidden = true;
@@ -431,6 +496,8 @@ require __DIR__ . '/includes/header.php';
     currentEditButton = null;
     clearFormErrors();
     document.getElementById('adId').value = '0';
+    activeInput.checked = true;
+    updateActiveLabel();
     imageInput.required = true;
     clearPreview();
     imageHelp.textContent = defaultImageHelp;
@@ -452,6 +519,8 @@ require __DIR__ . '/includes/header.php';
     document.getElementById('adWhatsapp').value = button.dataset.whatsapp || '';
     document.getElementById('adWeb').value = button.dataset.web || '';
     document.getElementById('adExpires').value = button.dataset.expires || '';
+    activeInput.checked = button.dataset.active !== '0';
+    updateActiveLabel();
     imageInput.required = false;
     setPreview(button.dataset.image || '');
     imageHelp.textContent = defaultImageHelp;
@@ -498,7 +567,7 @@ require __DIR__ . '/includes/header.php';
     document.getElementById('adDetailCreated').textContent = editButton.dataset.created || '—';
     document.getElementById('adDetailUpdated').textContent = editButton.dataset.updated || '—';
     const status = document.getElementById('adDetailStatus');
-    status.classList.remove('is-current', 'is-expired');
+    status.classList.remove('is-current', 'is-expired', 'is-inactive');
     status.classList.add(editButton.dataset.statusClass || 'is-current');
     status.querySelector('b').textContent = editButton.dataset.status || 'Vigente';
     setDetailLink(document.getElementById('adDetailFacebook'), editButton.dataset.facebook || '');
@@ -547,6 +616,7 @@ require __DIR__ . '/includes/header.php';
     };
     reader.readAsDataURL(file);
   });
+  activeInput.addEventListener('change', updateActiveLabel);
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     window.clearTimeout(drawerFocusTimer);
@@ -586,6 +656,55 @@ require __DIR__ . '/includes/header.php';
   document.querySelectorAll('.js-view-ad').forEach((button) => button.addEventListener('click', prepareView));
   document.querySelectorAll('.js-edit-ad').forEach((button) => button.addEventListener('click', prepareEdit));
   editDrawerButton.addEventListener('click', () => { if (currentEditButton) loadEditForm(currentEditButton, returnFocus); });
+  document.querySelectorAll('.js-ad-status-form').forEach((statusForm) => {
+    const input = statusForm.querySelector('.js-ad-status-input');
+    const text = statusForm.querySelector('.ad-status-switch-text');
+    const feedback = statusForm.querySelector('.ad-status-feedback');
+    statusForm.addEventListener('submit', (event) => event.preventDefault());
+    input.addEventListener('change', async () => {
+      const requestedState = input.checked;
+      input.disabled = true;
+      feedback.textContent = 'Guardando…';
+      const payload = new FormData(statusForm);
+      payload.set('activo', requestedState ? '1' : '0');
+      try {
+        const response = await fetch(statusForm.action, {
+          method: 'POST',
+          body: payload,
+          headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+          credentials: 'same-origin'
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || 'No se pudo actualizar el estado.');
+        input.checked = result.activo === 1;
+        text.textContent = result.label;
+        input.setAttribute('aria-label', (result.activo === 1 ? 'Desactivar ' : 'Activar ') + text.closest('tr').querySelector('td:nth-child(2) strong').textContent);
+        feedback.textContent = result.activo === 1 ? 'Activado' : 'Desactivado';
+        const id = statusForm.querySelector('input[name="id"]').value;
+        const rowEditButton = document.querySelector('.js-edit-ad[data-id="' + id + '"]');
+        if (rowEditButton) {
+          rowEditButton.dataset.active = result.activo === 1 ? '1' : '0';
+          rowEditButton.dataset.status = result.label;
+          rowEditButton.dataset.statusClass = result.activo === 1 ? 'is-current' : 'is-inactive';
+          if (result.updated) rowEditButton.dataset.updated = result.updated;
+        }
+        if (!detail.hidden && currentEditButton === rowEditButton) {
+          const detailStatus = document.getElementById('adDetailStatus');
+          detailStatus.classList.remove('is-current', 'is-inactive');
+          detailStatus.classList.add(result.activo === 1 ? 'is-current' : 'is-inactive');
+          detailStatus.querySelector('b').textContent = result.label;
+          if (result.updated) document.getElementById('adDetailUpdated').textContent = result.updated;
+        }
+      } catch (error) {
+        input.checked = !requestedState;
+        text.textContent = input.checked ? 'Activo' : 'Inactivo';
+        feedback.textContent = 'No se pudo guardar';
+      } finally {
+        input.disabled = false;
+        window.setTimeout(() => { feedback.textContent = ''; }, 2200);
+      }
+    });
+  });
   closeButton.addEventListener('click', closeDrawer);
   cancelButton.addEventListener('click', closeDrawer);
   backdrop.addEventListener('click', closeDrawer);
