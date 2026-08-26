@@ -7,6 +7,7 @@ Este archivo contiene únicamente el trabajo pendiente elegido para próximas et
 ## Prioridad activa
 
 1. **Rediseñar la experiencia de la página individual de la noticia en PC.**
+   - Estado: **lista para iniciar cuando regrese el usuario**. La preparación técnica previa quedó terminada, validada y respaldada en GitHub; todavía no fue desplegada en PROD.
    - Revisar primero la composición actual del permalink en escritorio y acordar la nueva propuesta visual.
    - Modificar únicamente la presentación de escritorio.
    - Preservar íntegramente la experiencia móvil aprobada y desplegada.
