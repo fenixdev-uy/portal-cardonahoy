@@ -1,19 +1,27 @@
 <?php
 require_once __DIR__ . '/includes/funciones.php';
-exigir_permiso('publicidad.gestionar');
+$solicitudAjax = strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
+exigir_permiso('publicidad.gestionar', $solicitudAjax);
 
 $pdo = db();
 $errores = [];
+$erroresCampos = [];
 $anuncioEditar = null;
 
-function normalizar_url_anuncio(string $valor, string $campo, array &$errores): ?string
+function agregar_error_anuncio(array &$errores, array &$erroresCampos, string $campo, string $mensaje): void
+{
+    $errores[] = $mensaje;
+    if ($campo !== '' && !isset($erroresCampos[$campo])) $erroresCampos[$campo] = $mensaje;
+}
+
+function normalizar_url_anuncio(string $valor, string $etiqueta, string $campo, array &$errores, array &$erroresCampos): ?string
 {
     $valor = trim($valor);
     if ($valor === '') return null;
     $esValida = strlen($valor) <= 500 && filter_var($valor, FILTER_VALIDATE_URL) !== false;
     $protocolo = strtolower((string) parse_url($valor, PHP_URL_SCHEME));
     if (!$esValida || !in_array($protocolo, ['http', 'https'], true)) {
-        $errores[] = $campo . ' debe ser una URL completa que comience con http:// o https://.';
+        agregar_error_anuncio($errores, $erroresCampos, $campo, $etiqueta . ' debe ser una URL completa que comience con http:// o https://.');
         return null;
     }
     return $valor;
@@ -37,7 +45,7 @@ function icono_destino_anuncio(string $tipo): string
 }
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
-    verificar_csrf();
+    verificar_csrf($solicitudAjax);
     $accion = (string) ($_POST['accion'] ?? 'guardar');
     $id = (int) ($_POST['id'] ?? 0);
 
@@ -58,23 +66,23 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $stmt = $pdo->prepare('SELECT * FROM anuncios WHERE id = ?');
         $stmt->execute([$id]);
         $existente = $stmt->fetch() ?: null;
-        if ($existente === null) $errores[] = 'El anuncio que intentas editar ya no existe.';
+        if ($existente === null) agregar_error_anuncio($errores, $erroresCampos, '', 'El anuncio que intentas editar ya no existe.');
     }
 
     $nombre = trim((string) ($_POST['nombre'] ?? ''));
-    $facebook = normalizar_url_anuncio((string) ($_POST['facebook_url'] ?? ''), 'Facebook', $errores);
-    $instagram = normalizar_url_anuncio((string) ($_POST['instagram_url'] ?? ''), 'Instagram', $errores);
-    $whatsapp = normalizar_url_anuncio((string) ($_POST['whatsapp_url'] ?? ''), 'WhatsApp', $errores);
-    $sitioWeb = normalizar_url_anuncio((string) ($_POST['sitio_web_url'] ?? ''), 'Web', $errores);
+    $facebook = normalizar_url_anuncio((string) ($_POST['facebook_url'] ?? ''), 'Facebook', 'facebook_url', $errores, $erroresCampos);
+    $instagram = normalizar_url_anuncio((string) ($_POST['instagram_url'] ?? ''), 'Instagram', 'instagram_url', $errores, $erroresCampos);
+    $whatsapp = normalizar_url_anuncio((string) ($_POST['whatsapp_url'] ?? ''), 'WhatsApp', 'whatsapp_url', $errores, $erroresCampos);
+    $sitioWeb = normalizar_url_anuncio((string) ($_POST['sitio_web_url'] ?? ''), 'Web', 'sitio_web_url', $errores, $erroresCampos);
     $fechaVencimiento = trim((string) ($_POST['fecha_vencimiento'] ?? ''));
 
-    if ($nombre === '') $errores[] = 'El nombre del anuncio es obligatorio.';
-    if (mb_strlen($nombre, 'UTF-8') > 120) $errores[] = 'El nombre no puede superar 120 caracteres.';
-    if (!fecha_anuncio_valida($fechaVencimiento)) $errores[] = 'La fecha de vencimiento no es válida.';
+    if ($nombre === '') agregar_error_anuncio($errores, $erroresCampos, 'nombre', 'El nombre del anuncio es obligatorio.');
+    if (mb_strlen($nombre, 'UTF-8') > 120) agregar_error_anuncio($errores, $erroresCampos, 'nombre', 'El nombre no puede superar 120 caracteres.');
+    if (!fecha_anuncio_valida($fechaVencimiento)) agregar_error_anuncio($errores, $erroresCampos, 'fecha_vencimiento', 'La fecha de vencimiento no es válida.');
 
     $imagenActual = (string) ($existente['imagen'] ?? '');
     $hayNuevaImagen = (int) ($_FILES['imagen']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
-    if ($id === 0 && !$hayNuevaImagen) $errores[] = 'La imagen del anuncio es obligatoria.';
+    if ($id === 0 && !$hayNuevaImagen) agregar_error_anuncio($errores, $erroresCampos, 'imagen', 'La imagen del anuncio es obligatoria.');
 
     $anuncioEditar = [
         'id' => $id,
@@ -92,7 +100,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         try {
             $nuevaImagen = subir_imagen_publicidad($_FILES['imagen']);
         } catch (RuntimeException $e) {
-            $errores[] = $e->getMessage();
+            agregar_error_anuncio($errores, $erroresCampos, 'imagen', $e->getMessage());
         }
     }
 
@@ -108,7 +116,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 );
                 $stmt->execute([$nombre, $imagenGuardar, $facebook, $instagram, $whatsapp, $sitioWeb, $fechaVencimiento ?: null, $id]);
                 if ($nuevaImagen && $imagenActual !== '') eliminar_imagen_publicidad($imagenActual);
-                flash('success', 'Anuncio actualizado correctamente.');
+                $mensajeExito = 'Anuncio actualizado correctamente.';
             } else {
                 $stmt = $pdo->prepare(
                     'INSERT INTO anuncios
@@ -116,13 +124,25 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                      VALUES (?, ?, ?, ?, ?, ?, ?)'
                 );
                 $stmt->execute([$nombre, $imagenGuardar, $facebook, $instagram, $whatsapp, $sitioWeb, $fechaVencimiento ?: null]);
-                flash('success', 'Anuncio creado correctamente.');
+                $mensajeExito = 'Anuncio creado correctamente.';
+            }
+            flash('success', $mensajeExito);
+            if ($solicitudAjax) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['ok' => true, 'message' => $mensajeExito, 'redirect' => 'anuncios.php'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                exit;
             }
             redirigir('anuncios.php');
         } catch (Throwable $e) {
             if ($nuevaImagen) eliminar_imagen_publicidad($nuevaImagen);
-            $errores[] = 'No se pudo guardar el anuncio. Intenta nuevamente.';
+            agregar_error_anuncio($errores, $erroresCampos, '', 'No se pudo guardar el anuncio. Intenta nuevamente.');
         }
+    }
+
+    if ($solicitudAjax && $errores) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['ok' => false, 'errors' => $errores, 'fields' => $erroresCampos], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
     }
 }
 
@@ -147,8 +167,6 @@ require __DIR__ . '/includes/header.php';
   <h1>Anuncios</h1>
   <p>Administrá las piezas publicitarias, sus destinos sociales y el período durante el que pueden mostrarse en el portal.</p>
 </div>
-
-<?php if ($errores): ?><div class="flash"><?php foreach ($errores as $error): ?><div class="alert danger"><?= e($error) ?></div><?php endforeach; ?></div><?php endif; ?>
 
 <section class="users-panel ads-panel">
   <div class="ads-table-toolbar">
@@ -224,7 +242,7 @@ require __DIR__ . '/includes/header.php';
     <button type="button" class="drawer-close" id="adDrawerClose" aria-label="Cerrar panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
   </header>
   <div class="drawer-body ad-drawer-body">
-    <form method="post" action="anuncios.php" enctype="multipart/form-data" id="adForm">
+    <form method="post" action="anuncios.php" enctype="multipart/form-data" id="adForm" novalidate>
       <?= csrf_input() ?><input type="hidden" name="accion" value="guardar"><input type="hidden" name="id" id="adId" value="<?= (int) ($anuncioEditar['id'] ?? 0) ?>">
 
       <div class="ad-image-field">
@@ -248,6 +266,10 @@ require __DIR__ . '/includes/header.php';
       <div class="form-group"><label for="adWeb">Web</label><input class="form-control" type="url" id="adWeb" name="sitio_web_url" maxlength="500" value="<?= e($anuncioEditar['sitio_web_url'] ?? '') ?>" placeholder="https://ejemplo.com/"></div>
       <div class="form-group"><label for="adExpires">Fecha de vencimiento</label><input class="form-control" type="date" id="adExpires" name="fecha_vencimiento" value="<?= e($anuncioEditar['fecha_vencimiento'] ?? '') ?>"><div class="form-hint">Al comenzar esta fecha el anuncio deja de estar vigente. Vacío significa sin vencimiento.</div></div>
 
+      <div class="ad-form-errors" id="adFormErrors" role="alert" tabindex="-1"<?= $errores ? '' : ' hidden' ?>>
+        <strong>Revisá los datos del anuncio</strong>
+        <ul id="adFormErrorList"><?php foreach ($errores as $error): ?><li><?= e($error) ?></li><?php endforeach; ?></ul>
+      </div>
       <div class="form-actions ad-form-actions"><button type="submit" class="btn btn-primary" id="adSubmit">Crear anuncio</button><button type="button" class="btn btn-outline" id="adDrawerCancel">Cancelar</button></div>
     </form>
   </div>
@@ -269,9 +291,59 @@ require __DIR__ . '/includes/header.php';
   const label = document.getElementById('adDrawerLabel');
   const title = document.getElementById('adDrawerTitle');
   const submit = document.getElementById('adSubmit');
+  const formErrors = document.getElementById('adFormErrors');
+  const formErrorList = document.getElementById('adFormErrorList');
+  const fieldsByName = {
+    imagen: imageInput,
+    nombre: document.getElementById('adName'),
+    facebook_url: document.getElementById('adFacebook'),
+    instagram_url: document.getElementById('adInstagram'),
+    whatsapp_url: document.getElementById('adWhatsapp'),
+    sitio_web_url: document.getElementById('adWeb'),
+    fecha_vencimiento: document.getElementById('adExpires')
+  };
   const defaultImageHelp = imageHelp.textContent;
   let previewSequence = 0;
   let returnFocus = null;
+  let drawerFocusTimer = null;
+
+  function clearFormErrors() {
+    formErrors.hidden = true;
+    formErrorList.replaceChildren();
+    Object.values(fieldsByName).forEach((field) => {
+      field.classList.remove('is-invalid');
+      field.removeAttribute('aria-invalid');
+    });
+    preview.classList.remove('is-field-invalid');
+  }
+  function showFormErrors(messages, fieldErrors = {}) {
+    clearFormErrors();
+    const normalizedMessages = Array.isArray(messages) && messages.length
+      ? messages
+      : ['Revisá los datos ingresados e intentá nuevamente.'];
+    normalizedMessages.forEach((message) => {
+      const item = document.createElement('li');
+      item.textContent = message;
+      formErrorList.appendChild(item);
+    });
+    formErrors.hidden = false;
+
+    Object.keys(fieldErrors).forEach((name) => {
+      const field = fieldsByName[name];
+      if (!field) return;
+      field.classList.add('is-invalid');
+      field.setAttribute('aria-invalid', 'true');
+      if (name === 'imagen') preview.classList.add('is-field-invalid');
+    });
+
+    const firstFieldName = Object.keys(fieldErrors).find((name) => fieldsByName[name]);
+    const firstField = firstFieldName ? fieldsByName[firstFieldName] : null;
+    const scrollTarget = firstFieldName === 'imagen' ? preview : (firstField || formErrors);
+    window.setTimeout(() => {
+      (firstField || formErrors).focus({ preventScroll: true });
+      scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 40);
+  }
 
   function clearPreview(message = 'La vista previa aparecerá aquí') {
     previewSequence += 1;
@@ -313,9 +385,11 @@ require __DIR__ . '/includes/header.php';
     backdrop.classList.add('show');
     drawer.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
-    window.setTimeout(() => imageInput.focus(), 250);
+    window.clearTimeout(drawerFocusTimer);
+    drawerFocusTimer = window.setTimeout(() => imageInput.focus(), 250);
   }
   function closeDrawer() {
+    window.clearTimeout(drawerFocusTimer);
     drawer.classList.remove('open');
     backdrop.classList.remove('show');
     drawer.setAttribute('aria-hidden', 'true');
@@ -327,6 +401,7 @@ require __DIR__ . '/includes/header.php';
   function prepareNew(event) {
     if (event) event.preventDefault();
     form.reset();
+    clearFormErrors();
     document.getElementById('adId').value = '0';
     imageInput.required = true;
     clearPreview();
@@ -340,6 +415,7 @@ require __DIR__ . '/includes/header.php';
     event.preventDefault();
     const button = event.currentTarget;
     form.reset();
+    clearFormErrors();
     document.getElementById('adId').value = button.dataset.id || '0';
     document.getElementById('adName').value = button.dataset.name || '';
     document.getElementById('adFacebook').value = button.dataset.facebook || '';
@@ -370,6 +446,7 @@ require __DIR__ . '/includes/header.php';
       clearPreview('El archivo no es una imagen compatible.');
       preview.classList.add('has-error');
       imageHelp.textContent = 'Usá una imagen JPG, PNG o WEBP.';
+      showFormErrors(['La imagen debe ser un archivo JPG, PNG o WEBP.'], { imagen: 'Formato no admitido.' });
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
@@ -377,8 +454,10 @@ require __DIR__ . '/includes/header.php';
       clearPreview('La imagen supera el límite de 5 MB.');
       preview.classList.add('has-error');
       imageHelp.textContent = 'Elegí una imagen de hasta 5 MB.';
+      showFormErrors(['La imagen no puede superar los 5 MB.'], { imagen: 'Archivo demasiado grande.' });
       return;
     }
+    clearFormErrors();
     previewSequence += 1;
     preview.classList.remove('has-image', 'has-error');
     preview.classList.add('is-loading');
@@ -392,6 +471,41 @@ require __DIR__ . '/includes/header.php';
       imageHelp.textContent = 'Elegí otra imagen e intentá nuevamente.';
     };
     reader.readAsDataURL(file);
+  });
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    window.clearTimeout(drawerFocusTimer);
+    clearFormErrors();
+    const submitText = submit.textContent;
+    submit.disabled = true;
+    submit.textContent = 'Guardando…';
+    form.setAttribute('aria-busy', 'true');
+
+    try {
+      const response = await fetch(form.action, {
+        method: 'POST',
+        body: new FormData(form),
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+        credentials: 'same-origin'
+      });
+      let result = null;
+      try {
+        result = await response.json();
+      } catch (error) {
+        throw new Error('La respuesta del servidor no fue válida.');
+      }
+      if (!response.ok || !result.ok) {
+        showFormErrors(result.errors || [result.error || 'No se pudo validar el anuncio.'], result.fields || {});
+        return;
+      }
+      window.location.href = result.redirect || 'anuncios.php';
+    } catch (error) {
+      showFormErrors(['No pudimos guardar el anuncio. Verificá la conexión e intentá nuevamente.']);
+    } finally {
+      submit.disabled = false;
+      submit.textContent = submitText;
+      form.removeAttribute('aria-busy');
+    }
   });
   newButton.addEventListener('click', prepareNew);
   document.querySelectorAll('.js-edit-ad').forEach((button) => button.addEventListener('click', prepareEdit));
@@ -412,6 +526,12 @@ require __DIR__ . '/includes/header.php';
   <?php endif; ?>
   openDrawer();
   <?php endif; ?>
+  <?php endif; ?>
+  <?php if ($errores): ?>
+  showFormErrors(
+    <?= json_encode(array_values($errores), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
+    <?= json_encode($erroresCampos, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>
+  );
   <?php endif; ?>
 })();
 </script>
