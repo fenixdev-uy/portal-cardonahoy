@@ -20,6 +20,11 @@ $inicialUsuarioPanel = mb_strtoupper(mb_substr($nombreUsuarioPanel !== '' ? $nom
 $BASE = '';
 $adminCssVersion = (string) (filemtime(__DIR__ . '/../assets/admin.css') ?: '1');
 $puedeConfigurarPanel = tiene_permiso('configuracion.gestionar');
+$puedeGestionarUsuarios = tiene_permiso('usuarios.gestionar');
+$puedeGestionarRoles = tiene_permiso('roles.gestionar');
+$grupoUsuariosVisible = $puedeGestionarUsuarios || $puedeGestionarRoles;
+$grupoUsuariosActivo = in_array($activo, ['usuarios', 'roles'], true);
+$grupoPublicidadActivo = in_array($activo, ['publicidad-anuncios', 'publicidad-popups'], true);
 $marcaAguaPanel = null;
 $fotoDemoMarcaAgua = '../imagenes/Publicidad-intendencia.jpg';
 if ($puedeConfigurarPanel) {
@@ -78,16 +83,37 @@ header('Cache-Control: no-store, private');
         Votaciones
       </a>
 
-      <?php if (tiene_permiso('usuarios.gestionar')): ?><span class="nav-label">Administración</span>
-      <a href="<?= $BASE ?>usuarios.php" class="nav-link <?= $activo === 'usuarios' ? 'active' : '' ?>">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-        Usuarios
-      </a><?php endif; ?>
+      <span class="nav-label">Administración</span>
 
-      <?php if (tiene_permiso('roles.gestionar')): ?><a href="<?= $BASE ?>roles.php" class="nav-link <?= $activo === 'roles' ? 'active' : '' ?>">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9 12l2 2 4-4"></path></svg>
-        Roles y permisos
-      </a><?php endif; ?>
+<?php if ($grupoUsuariosVisible): ?>
+      <div class="nav-group<?= $grupoUsuariosActivo ? ' has-active' : '' ?>">
+        <button type="button" class="nav-link nav-group-toggle" data-nav-group-toggle aria-expanded="<?= $grupoUsuariosActivo ? 'true' : 'false' ?>" aria-controls="usersNavSubmenu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          <span>Usuarios</span>
+          <svg class="nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+        </button>
+        <div class="nav-submenu" id="usersNavSubmenu"<?= $grupoUsuariosActivo ? '' : ' hidden' ?>>
+<?php if ($puedeGestionarUsuarios): ?>
+          <a href="<?= $BASE ?>usuarios.php" class="nav-sub-link <?= $activo === 'usuarios' ? 'active' : '' ?>">Usuarios</a>
+<?php endif; ?>
+<?php if ($puedeGestionarRoles): ?>
+          <a href="<?= $BASE ?>roles.php" class="nav-sub-link <?= $activo === 'roles' ? 'active' : '' ?>">Roles</a>
+<?php endif; ?>
+        </div>
+      </div>
+<?php endif; ?>
+
+      <div class="nav-group<?= $grupoPublicidadActivo ? ' has-active' : '' ?>">
+        <button type="button" class="nav-link nav-group-toggle" data-nav-group-toggle aria-expanded="<?= $grupoPublicidadActivo ? 'true' : 'false' ?>" aria-controls="advertisingNavSubmenu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11v2a2 2 0 0 0 2 2h2l4 5V4L7 9H5a2 2 0 0 0-2 2Z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12"></path></svg>
+          <span>Publicidad</span>
+          <svg class="nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+        </button>
+        <div class="nav-submenu" id="advertisingNavSubmenu"<?= $grupoPublicidadActivo ? '' : ' hidden' ?>>
+          <a href="<?= $BASE ?>anuncios.php" class="nav-sub-link <?= $activo === 'publicidad-anuncios' ? 'active' : '' ?>">Anuncios</a>
+          <a href="<?= $BASE ?>popups.php" class="nav-sub-link <?= $activo === 'publicidad-popups' ? 'active' : '' ?>">Popups</a>
+        </div>
+      </div>
 
       <a href="<?= $BASE ?>../index.php" class="nav-link" target="_blank">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><path d="M15 3h6v6"></path><path d="M10 14L21 3"></path></svg>

@@ -92,6 +92,8 @@ landing/
     ├── categorias.php          ← CRUD de categorías
     ├── usuarios.php            ← alta y gestión de usuarios por administrador
     ├── roles.php               ← perfiles de roles y permisos
+    ├── anuncios.php            ← entrada inicial de Publicidad → Anuncios
+    ├── popups.php              ← entrada inicial de Publicidad → Popups
     ├── votaciones.php          ← ranking de noticias más votadas (gráfico)
     ├── assets/
     │   ├── admin.css           ← estilos del panel, editor, drawer, galería y responsive
@@ -178,7 +180,7 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 
 ## 5. Panel de administración (funcionalidades)
 
-- **Menú lateral** (izquierda) + contenido a la derecha. Responsive (hamburguesa en móvil).
+- **Menú lateral** (izquierda) + contenido a la derecha. Responsive (hamburguesa en móvil). Las áreas **Usuarios** y **Publicidad** funcionan como grupos desplegables y solo mantienen un grupo abierto a la vez.
 - **Noticias** (`index.php`):
   - Listado (foto de portada, título, descripción, categoría, autor, fecha y acciones), con buscador instantáneo y orden por fecha en ambos sentidos.
   - Columna **Peso** calculada desde los archivos locales reales: galería, imágenes insertadas en el editor y audios subidos. Ordena en ambos sentidos y muestra el desglose Fotos/Audios; YouTube y URLs externas no se cuentan porque no consumen disco local.
@@ -196,6 +198,9 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
   - Vista principal sin formulario: título y tabla con acciones por iconos.
   - Alta y edición dentro de un panel lateral derecho; la edición incluye acceso a **Editar roles**.
 - **Roles** (`roles.php`): perfiles Administrador, Editor y Autor con permisos configurables.
+- **Publicidad**:
+  - **Anuncios** (`anuncios.php`) y **Popups** (`popups.php`) ya cuentan con entradas y pantallas iniciales dentro del menú.
+  - Son placeholders de navegación: la gestión, los permisos específicos y la persistencia se incorporarán en una etapa posterior.
 - **Seguridad**:
   - Login, sesiones seguras con vencimiento, control de intentos y respuestas genéricas.
   - Autorización por rol y permiso en páginas y endpoints.
@@ -293,7 +298,7 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 - [ ] Limpiar archivos huérfanos: si se suben fotos y se abandona el formulario sin guardar, quedan en `uploads/noticias/` sin asociar.
 - [ ] Mejoras futuras: subir videos al servidor (hoy es URL de YouTube), más de un video por noticia, arrastrar archivos desde el escritorio a la galería, previsualizar fotos antes de subir.
 - [x] Sección **Configuración** del panel, ubicada encima del usuario conectado, con gestión visual de la marca de agua.
-- [ ] Evaluar el formato provisorio de anuncios antes de convertirlo en una gestión dinámica desde el panel.
+- [ ] Implementar la gestión dinámica de **Publicidad → Anuncios** y **Publicidad → Popups**. La jerarquía del menú y las pantallas iniciales ya existen; faltan permisos, modelo de datos, formularios y reglas de publicación.
 - [ ] Probar los gestos ya aprobados en un teléfono real, especialmente Safari iOS, para evaluar sensibilidad, inercia y rendimiento fuera de Chrome headless.
 - [ ] Evaluar unificar `pc-feed.php` y `mobile-feed.php` en un único partial responsive. Hoy cada dispositivo descarga el marcado del otro oculto por CSS, con el contenido duplicado que eso implica para lectores de pantalla y para SEO.
 
@@ -306,6 +311,8 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 - **Categorías:** `/landing/admin/categorias.php`
 - **Usuarios:** `/landing/admin/usuarios.php`
 - **Roles:** `/landing/admin/roles.php`
+- **Anuncios:** `/landing/admin/anuncios.php`
+- **Popups:** `/landing/admin/popups.php`
 - **Front (feeds PC y móvil desde la BD):** `/landing/index.php`
 - **Noticia pública:** `/landing/noticia/{slug}`
 - **Sitemap:** `/landing/sitemap.xml`

@@ -27,6 +27,23 @@
     if (backdrop) {
       backdrop.addEventListener('click', closeSidebar);
     }
+
+    const groupToggles = Array.from(document.querySelectorAll('[data-nav-group-toggle]'));
+    groupToggles.forEach((button) => {
+      button.addEventListener('click', () => {
+        const submenu = document.getElementById(button.getAttribute('aria-controls'));
+        if (!submenu) return;
+        const willOpen = button.getAttribute('aria-expanded') !== 'true';
+        groupToggles.forEach((otherButton) => {
+          if (otherButton === button) return;
+          const otherSubmenu = document.getElementById(otherButton.getAttribute('aria-controls'));
+          otherButton.setAttribute('aria-expanded', 'false');
+          if (otherSubmenu) otherSubmenu.hidden = true;
+        });
+        button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        submenu.hidden = !willOpen;
+      });
+    });
   })();
 </script>
 

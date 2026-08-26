@@ -19,11 +19,11 @@ Este archivo contiene únicamente el trabajo pendiente elegido para próximas et
 
 ## Pendientes posteriores
 
-1. Rediseñar la experiencia de la página individual de la noticia en PC después de cerrar la portada; la versión móvil sigue siendo el baseline aprobado.
-2. Confirmar visualmente en el editor autenticado de PROD las cards **SEO** y **Vista Previa**; luego validar una URL real con Rich Results Test, los depuradores de Facebook/WhatsApp y Google Search Console.
-3. Alimentar el slider del hero desde la base de datos; hoy conserva tres noticias estáticas de ejemplo.
-4. Resolver la limpieza segura de fotos huérfanas cuando se abandona el formulario sin guardar la noticia.
-5. Evaluar el formato publicitario provisorio antes de diseñar una gestión dinámica desde el panel.
+1. Diseñar la gestión real de **Publicidad → Anuncios** y **Publicidad → Popups**: permisos, datos, destinos, altas/ediciones y reglas de publicación. El menú y sus pantallas iniciales ya están preparados, pero todavía no guardan información.
+2. Rediseñar la experiencia de la página individual de la noticia en PC después de cerrar la portada; la versión móvil sigue siendo el baseline aprobado.
+3. Confirmar visualmente en el editor autenticado de PROD las cards **SEO** y **Vista Previa**; luego validar una URL real con Rich Results Test, los depuradores de Facebook/WhatsApp y Google Search Console.
+4. Alimentar el slider del hero desde la base de datos; hoy conserva tres noticias estáticas de ejemplo.
+5. Resolver la limpieza segura de fotos huérfanas cuando se abandona el formulario sin guardar la noticia.
 6. Probar los gestos, la inercia y el rendimiento en un teléfono real, especialmente Safari iOS.
 7. Incorporar un favicon para eliminar la petición 404 conocida.
 
