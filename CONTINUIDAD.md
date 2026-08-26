@@ -376,6 +376,15 @@ El punto que antes figuraba como «implementar la ampliación y el zoom táctil 
 
 ## Validaciones realizadas en este punto
 
+### Del ordenamiento estructural del front (26 de agosto de 2026)
+
+- `index.php` pasó de 2.790 a 142 líneas al mover sin reescritura sus 1.915 líneas de CSS a `assets/css/portal.css` y sus 736 líneas de interacción a `assets/js/portal.js`.
+- `noticia.php` pasó de 262 a 137 líneas: sus estilos viven en `assets/css/noticia.css` y sus interacciones en `assets/js/noticia.js`. Los condicionales PHP del script fueron reemplazados por inicialización defensiva desde el DOM, conservando el estado 404 sin galería ni votos.
+- Los cuatro assets se cargan con versión automática por `filemtime()`. La URL del endpoint de votos permanece resuelta por PHP y viaja al JavaScript mediante `data-vote-url`; no se expusieron configuraciones privadas.
+- Validación estática: `php -l` correcto, `node --check` correcto y `git diff --check` correcto. Los bloques CSS extraídos coincidieron en SHA-256 con sus fuentes; el JavaScript de la portada también coincidió después de sustituir únicamente la URL dinámica.
+- Chromium/Puppeteer local con datos DEV: portada a `1440×900` y `390×844`, siete noticias, cero overflow, visor PC y hoja completa móvil operativos. Página individual válida y 404 en ambos tamaños, sin errores JavaScript; visor de tres fotos verificó teclado `1 / 3` → `2 / 3` y cierre con `Escape`.
+- El único error de consola ajeno al refactor continúa siendo la petición conocida de `favicon.ico` inexistente. Browser plugin y Playwright no estaban disponibles; se reutilizó el entorno Puppeteer existente. No se emitieron votos ni se modificaron datos.
+
 ### De Configuración y marca de agua editable (25 de agosto de 2026)
 
 - La migración `install/configuracion-v1.php` se ejecutó y verificó en la base de producción: tabla, permiso, asignación al administrador y valores iniciales correctos.
@@ -482,6 +491,7 @@ Después de esta etapa el front quedó repartido así. Conviene conocerlo antes 
 | `assets/css/portal.css` | Todo el CSS compartido de la portada para PC y móvil, extraído sin modificar reglas y cargado con versión `filemtime()`. |
 | `assets/js/portal.js` | Todas las interacciones compartidas de la portada: hero, menú, galerías, hoja completa, visor, votos y ayudas de scroll. |
 | `assets/css/noticia.css` | Estilos de la página pública individual, incluida su adaptación PC/móvil y el visor propio. |
+| `assets/js/noticia.js` | Menú, carrusel, visor con zoom/gestos/teclado y votos de la página pública individual; se inicializa según los elementos presentes. |
 | `partials/mobile-feed.php` | Marcado del feed móvil. |
 | `partials/pc-feed.php` | Marcado del feed PC. |
 | `partials/publicidad.php` | Piezas de publicidad y su orden. Fuente única. |
