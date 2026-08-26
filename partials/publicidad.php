@@ -19,7 +19,7 @@ $paresPublicidad = [
 // Lista plana en el mismo orden, para el feed móvil (un anuncio por bloque).
 $avisosPublicidad = array_merge(...$paresPublicidad);
 
-// Fila que se intercala después de cada tres noticias en la grilla PC.
+// Banco provisorio para las filas híbridas de noticia + publicidad en PC.
 $filaPublicidadPc = [
     ['imagen' => 'imagenes/Publicidad-intendencia.jpg', 'alt' => 'Publicidad de la Intendencia de Soriano'],
     ['imagen' => 'imagenes/Publicidad-Fenix.jpg', 'alt' => 'Publicidad de Fenix'],

@@ -5,56 +5,51 @@
  * por index.php. La experiencia móvil continúa en mobile-feed.php.
  */
 require_once __DIR__ . '/publicidad.php';
+$noticiasPc = array_values($noticias);
+$totalNoticiasPc = count($noticiasPc);
+$indiceNoticiaPc = 0;
+$indiceFilaMixta = 0;
 ?>
   <section class="pc-feed" aria-label="Noticias">
     <div class="pc-news-grid">
-<?php foreach ($noticias as $indiceNoticia => $n): ?>
+<?php while ($indiceNoticiaPc < $totalNoticiasPc): ?>
+<?php for ($cantidadNoticias = 0; $cantidadNoticias < 3 && $indiceNoticiaPc < $totalNoticiasPc; $cantidadNoticias++, $indiceNoticiaPc++): ?>
+<?php $n = $noticiasPc[$indiceNoticiaPc]; ?>
+<?php require __DIR__ . '/pc-news-card.php'; ?>
+<?php endfor; ?>
+<?php if ($cantidadNoticias === 3 && $indiceNoticiaPc < $totalNoticiasPc): ?>
 <?php
-    $fotos = $fotosPorNoticia[(int) $n['id']] ?? [];
-    $portada = $fotos[0] ?? null;
-    $categoria = trim((string) ($n['categoria_nombre'] ?? ''));
-    $resumen = html_a_texto($n['descripcion'] ?? '', 220);
-    $timestamp = strtotime((string) ($n['created_at'] ?? ''));
-    $fecha = $timestamp !== false ? date('j/n/Y', $timestamp) : '';
-    $url = url_noticia((string) $n['slug']);
+    $n = $noticiasPc[$indiceNoticiaPc++];
+    $semillaFila = (int) sprintf('%u', crc32((string) $n['id'] . '|' . (string) $n['slug'] . '|' . $indiceFilaMixta));
+    $posicionNoticia = $semillaFila % 3;
+    $totalPublicidades = count($filaPublicidadPc);
+    $inicioPublicidad = ($indiceFilaMixta * 2) % $totalPublicidades;
+    $publicidadesFila = [
+        $filaPublicidadPc[$inicioPublicidad],
+        $filaPublicidadPc[($inicioPublicidad + 1) % $totalPublicidades],
+    ];
+    if ($semillaFila % 2 === 1) {
+        $publicidadesFila = array_reverse($publicidadesFila);
+    }
+    $indicePublicidad = 0;
 ?>
-      <article class="pc-news-card">
-        <a class="pc-news-card-link" href="<?= e($url) ?>" data-story-id="<?= (int) $n['id'] ?>" aria-label="Abrir noticia: <?= e($n['titulo']) ?>">
-<?php if ($portada): ?>
-          <figure class="pc-news-card-media">
-            <img src="<?= e(url_imagen_front($portada['ruta'])) ?>" alt="<?= e($n['titulo']) ?>" loading="lazy" decoding="async">
-          </figure>
+      <div class="pc-news-mixed-row" aria-label="Noticias y publicidad">
+<?php for ($posicion = 0; $posicion < 3; $posicion++): ?>
+<?php if ($posicion === $posicionNoticia): ?>
+<?php require __DIR__ . '/pc-news-card.php'; ?>
 <?php else: ?>
-          <div class="pc-news-card-media pc-news-card-media-empty" aria-hidden="true"></div>
-<?php endif; ?>
-
-          <div class="pc-news-card-body">
-<?php if ($categoria !== '' || $fecha !== ''): ?>
-            <p class="pc-news-card-meta">
-              <?php if ($categoria !== ''): ?><span><?= e($categoria) ?></span><?php endif; ?>
-              <?php if ($categoria !== '' && $fecha !== ''): ?><span aria-hidden="true">·</span><?php endif; ?>
-              <?php if ($fecha !== ''): ?><time datetime="<?= e(date('Y-m-d', $timestamp)) ?>"><?= e($fecha) ?></time><?php endif; ?>
-            </p>
-<?php endif; ?>
-            <h2 class="pc-news-card-title"><?= e($n['titulo']) ?></h2>
-<?php if ($resumen !== ''): ?>
-            <p class="pc-news-card-summary"><?= e($resumen) ?></p>
-<?php endif; ?>
-          </div>
-        </a>
-      </article>
-<?php if (($indiceNoticia + 1) % 3 === 0): ?>
-      <div class="pc-news-ad-row" aria-label="Publicidad">
-<?php foreach ($filaPublicidadPc as $publicidad): ?>
+<?php $publicidad = $publicidadesFila[$indicePublicidad++]; ?>
         <aside class="pc-news-ad-card">
           <figure class="pc-news-ad-media">
             <img src="<?= e($publicidad['imagen']) ?>" alt="<?= e($publicidad['alt']) ?>" loading="lazy" decoding="async">
           </figure>
           <span class="pc-news-ad-label">Publicidad</span>
         </aside>
-<?php endforeach; ?>
-      </div>
 <?php endif; ?>
-<?php endforeach; ?>
+<?php endfor; ?>
+      </div>
+<?php $indiceFilaMixta++; ?>
+<?php endif; ?>
+<?php endwhile; ?>
     </div>
   </section>

@@ -9,7 +9,7 @@ Este archivo contiene únicamente el trabajo pendiente elegido para próximas et
 1. **Continuar dando forma a la nueva portada de noticias en PC.**
    - Estado: **primera versión implementada y validada en DEV; pendiente de revisión visual del usuario**.
    - Se conserva sin cambios el header con slider y, debajo, todas las noticias aparecen como tarjetas editoriales: tres columnas desde `1100px` y dos entre `769px` y `1099px`.
-   - Después de cada grupo completo de tres noticias se intercala una fila publicitaria con Intendencia, Fenix y Facha. En escritorio ancho ocupa las mismas tres columnas y cada aviso iguala las dimensiones de una tarjeta; entre `769px` y `1099px` responde en dos columnas.
+   - Después de cada grupo completo de tres noticias se intercala una fila híbrida con dos anuncios y la noticia siguiente. La posición de esa noticia y el orden de los anunciantes varían de forma controlada; en escritorio ancho ocupa las mismas tres columnas y entre `769px` y `1099px` responde en dos.
    - El clic normal abre la noticia completa en un drawer recto desde la derecha al `40%`: galería con autoplay/fullscreen, contenido, medios, anuncios, votos y compartir. Los clics modificados conservan el permalink para abrirlo en otra pestaña.
    - Debajo del primer anuncio, `A−` y `A+` permiten ajustar el cuerpo editorial entre 90% y 140% tanto en PC como en móvil.
    - Ajustar solamente la grilla y la anatomía de sus tarjetas según la próxima devolución del usuario.
