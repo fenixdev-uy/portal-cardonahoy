@@ -203,7 +203,7 @@ require __DIR__ . '/includes/header.php';
           ];
       ?>
         <tr>
-          <td data-label="Imagen"><img class="ad-table-image" src="<?= e(url_imagen($anuncio['imagen'])) ?>" alt="Vista previa de <?= e($anuncio['nombre']) ?>"></td>
+          <td data-label="Imagen"><button type="button" class="ad-table-image-button js-view-ad" data-ad-id="<?= (int) $anuncio['id'] ?>" aria-label="Ver datos de <?= e($anuncio['nombre']) ?>" title="Ver anuncio"><img class="ad-table-image" src="<?= e(url_imagen($anuncio['imagen'])) ?>" alt="Vista previa de <?= e($anuncio['nombre']) ?>"></button></td>
           <td data-label="Nombre"><strong><?= e($anuncio['nombre']) ?></strong><div class="cell-desc">#<?= (int) $anuncio['id'] ?></div></td>
           <td data-label="Destinos"><div class="ad-destinations">
             <?php foreach ($enlaces as $tipo => [$etiqueta, $url]): ?>
@@ -218,7 +218,11 @@ require __DIR__ . '/includes/header.php';
                data-id="<?= (int) $anuncio['id'] ?>" data-name="<?= e($anuncio['nombre']) ?>" data-image="<?= e(url_imagen($anuncio['imagen'])) ?>"
                data-facebook="<?= e($anuncio['facebook_url'] ?? '') ?>" data-instagram="<?= e($anuncio['instagram_url'] ?? '') ?>"
                data-whatsapp="<?= e($anuncio['whatsapp_url'] ?? '') ?>" data-web="<?= e($anuncio['sitio_web_url'] ?? '') ?>"
-               data-expires="<?= e($vence) ?>" aria-label="Editar <?= e($anuncio['nombre']) ?>" title="Editar anuncio">
+               data-expires="<?= e($vence) ?>" data-expires-label="<?= $vence !== '' ? e(date('d/m/Y', strtotime($vence))) : 'Sin vencimiento' ?>"
+               data-created="<?= e(date('d/m/Y H:i', strtotime((string) $anuncio['created_at']))) ?>"
+               data-updated="<?= e(date('d/m/Y H:i', strtotime((string) $anuncio['updated_at']))) ?>"
+               data-status="<?= $vencido ? 'Vencido' : 'Vigente' ?>" data-status-class="<?= $vencido ? 'is-expired' : 'is-current' ?>"
+               aria-label="Editar <?= e($anuncio['nombre']) ?>" title="Editar anuncio">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
             </a>
             <form method="post" action="anuncios.php" onsubmit="return confirm('¿Eliminar este anuncio? Esta acción no se puede deshacer.');">
@@ -239,9 +243,26 @@ require __DIR__ . '/includes/header.php';
 <aside class="drawer ad-drawer" id="adDrawer" aria-hidden="true" aria-labelledby="adDrawerTitle">
   <header class="drawer-header ad-drawer-header">
     <div><span class="drawer-title-label" id="adDrawerLabel">Nuevo anuncio</span><h2 id="adDrawerTitle">Agregar anuncio</h2></div>
-    <button type="button" class="drawer-close" id="adDrawerClose" aria-label="Cerrar panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+    <div class="ad-drawer-header-actions">
+      <button type="button" class="btn ad-drawer-edit" id="adDrawerEdit" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>Editar</button>
+      <button type="button" class="drawer-close" id="adDrawerClose" aria-label="Cerrar panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+    </div>
   </header>
   <div class="drawer-body ad-drawer-body">
+    <section class="ad-detail" id="adDetail" aria-label="Datos del anuncio" hidden>
+      <div class="ad-detail-image"><img id="adDetailImage" src="" alt=""></div>
+      <div class="ad-detail-summary"><span class="ad-status" id="adDetailStatus"><span aria-hidden="true"></span><b></b></span><span id="adDetailId"></span></div>
+      <dl class="ad-detail-list">
+        <div><dt>Nombre</dt><dd id="adDetailName"></dd></div>
+        <div><dt>Facebook</dt><dd id="adDetailFacebook"></dd></div>
+        <div><dt>Instagram</dt><dd id="adDetailInstagram"></dd></div>
+        <div><dt>WhatsApp</dt><dd id="adDetailWhatsapp"></dd></div>
+        <div><dt>Sitio web</dt><dd id="adDetailWeb"></dd></div>
+        <div><dt>Fecha de vencimiento</dt><dd id="adDetailExpires"></dd></div>
+        <div><dt>Fecha de creación</dt><dd id="adDetailCreated"></dd></div>
+        <div><dt>Última actualización</dt><dd id="adDetailUpdated"></dd></div>
+      </dl>
+    </section>
     <form method="post" action="anuncios.php" enctype="multipart/form-data" id="adForm" novalidate>
       <?= csrf_input() ?><input type="hidden" name="accion" value="guardar"><input type="hidden" name="id" id="adId" value="<?= (int) ($anuncioEditar['id'] ?? 0) ?>">
 
@@ -280,9 +301,11 @@ require __DIR__ . '/includes/header.php';
   const drawer = document.getElementById('adDrawer');
   const backdrop = document.getElementById('adDrawerBackdrop');
   const closeButton = document.getElementById('adDrawerClose');
+  const editDrawerButton = document.getElementById('adDrawerEdit');
   const cancelButton = document.getElementById('adDrawerCancel');
   const newButton = document.querySelector('.js-new-ad');
   const form = document.getElementById('adForm');
+  const detail = document.getElementById('adDetail');
   const imageInput = document.getElementById('adImageInput');
   const preview = document.getElementById('adImagePreview');
   const previewImage = document.getElementById('adImagePreviewImg');
@@ -306,6 +329,7 @@ require __DIR__ . '/includes/header.php';
   let previewSequence = 0;
   let returnFocus = null;
   let drawerFocusTimer = null;
+  let currentEditButton = null;
 
   function clearFormErrors() {
     formErrors.hidden = true;
@@ -379,14 +403,14 @@ require __DIR__ . '/includes/header.php';
     };
     probe.src = src;
   }
-  function openDrawer(trigger) {
+  function openDrawer(trigger, focusTarget = imageInput) {
     returnFocus = trigger || document.activeElement;
     drawer.classList.add('open');
     backdrop.classList.add('show');
     drawer.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
     window.clearTimeout(drawerFocusTimer);
-    drawerFocusTimer = window.setTimeout(() => imageInput.focus(), 250);
+    drawerFocusTimer = window.setTimeout(() => focusTarget.focus(), 250);
   }
   function closeDrawer() {
     window.clearTimeout(drawerFocusTimer);
@@ -401,6 +425,10 @@ require __DIR__ . '/includes/header.php';
   function prepareNew(event) {
     if (event) event.preventDefault();
     form.reset();
+    form.hidden = false;
+    detail.hidden = true;
+    editDrawerButton.hidden = true;
+    currentEditButton = null;
     clearFormErrors();
     document.getElementById('adId').value = '0';
     imageInput.required = true;
@@ -411,9 +439,10 @@ require __DIR__ . '/includes/header.php';
     submit.textContent = 'Crear anuncio';
     openDrawer(event && event.currentTarget);
   }
-  function prepareEdit(event) {
-    event.preventDefault();
-    const button = event.currentTarget;
+  function loadEditForm(button, trigger = button) {
+    form.hidden = false;
+    detail.hidden = true;
+    editDrawerButton.hidden = true;
     form.reset();
     clearFormErrors();
     document.getElementById('adId').value = button.dataset.id || '0';
@@ -430,7 +459,53 @@ require __DIR__ . '/includes/header.php';
     title.textContent = 'Actualizar anuncio';
     submit.textContent = 'Guardar cambios';
     window.history.replaceState({}, '', button.href);
-    openDrawer(button);
+    openDrawer(trigger);
+  }
+  function prepareEdit(event) {
+    event.preventDefault();
+    loadEditForm(event.currentTarget);
+  }
+  function setDetailLink(element, value) {
+    element.replaceChildren();
+    if (!value) {
+      element.textContent = 'Sin configurar';
+      element.classList.add('is-empty');
+      return;
+    }
+    element.classList.remove('is-empty');
+    const link = document.createElement('a');
+    link.href = value;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = value;
+    element.appendChild(link);
+  }
+  function prepareView(event) {
+    const trigger = event.currentTarget;
+    const editButton = document.querySelector('.js-edit-ad[data-id="' + trigger.dataset.adId + '"]');
+    if (!editButton) return;
+    currentEditButton = editButton;
+    form.hidden = true;
+    detail.hidden = false;
+    editDrawerButton.hidden = false;
+    label.textContent = 'Detalle del anuncio';
+    title.textContent = editButton.dataset.name || 'Anuncio';
+    document.getElementById('adDetailImage').src = editButton.dataset.image || '';
+    document.getElementById('adDetailImage').alt = 'Imagen de ' + (editButton.dataset.name || 'anuncio');
+    document.getElementById('adDetailName').textContent = editButton.dataset.name || '—';
+    document.getElementById('adDetailId').textContent = '#' + (editButton.dataset.id || '');
+    document.getElementById('adDetailExpires').textContent = editButton.dataset.expiresLabel || 'Sin vencimiento';
+    document.getElementById('adDetailCreated').textContent = editButton.dataset.created || '—';
+    document.getElementById('adDetailUpdated').textContent = editButton.dataset.updated || '—';
+    const status = document.getElementById('adDetailStatus');
+    status.classList.remove('is-current', 'is-expired');
+    status.classList.add(editButton.dataset.statusClass || 'is-current');
+    status.querySelector('b').textContent = editButton.dataset.status || 'Vigente';
+    setDetailLink(document.getElementById('adDetailFacebook'), editButton.dataset.facebook || '');
+    setDetailLink(document.getElementById('adDetailInstagram'), editButton.dataset.instagram || '');
+    setDetailLink(document.getElementById('adDetailWhatsapp'), editButton.dataset.whatsapp || '');
+    setDetailLink(document.getElementById('adDetailWeb'), editButton.dataset.web || '');
+    openDrawer(trigger, editDrawerButton);
   }
 
   imageInput.addEventListener('change', () => {
@@ -508,7 +583,9 @@ require __DIR__ . '/includes/header.php';
     }
   });
   newButton.addEventListener('click', prepareNew);
+  document.querySelectorAll('.js-view-ad').forEach((button) => button.addEventListener('click', prepareView));
   document.querySelectorAll('.js-edit-ad').forEach((button) => button.addEventListener('click', prepareEdit));
+  editDrawerButton.addEventListener('click', () => { if (currentEditButton) loadEditForm(currentEditButton, returnFocus); });
   closeButton.addEventListener('click', closeDrawer);
   cancelButton.addEventListener('click', closeDrawer);
   backdrop.addEventListener('click', closeDrawer);
