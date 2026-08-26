@@ -243,10 +243,11 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 - [x] Header y slider principal conservados a pantalla completa.
 - [x] Portada editorial con todas las noticias en tarjetas: tres columnas desde `1100px` y dos columnas entre `769px` y `1099px`.
 - [x] Tarjetas rectangulares, sin bordes redondeados: portada `3:2`, categoría, fecha compacta, título y resumen; toda la tarjeta abre el permalink público.
+- [x] Después de cada grupo completo de tres noticias se intercala una fila con `Publicidad-intendencia.jpg`, `Publicidad-Fenix.jpg` y `Publicidad-facha.jpg`. En escritorio ancho son tres avisos con el mismo ancho y alto que las tarjetas; en el rango compacto se reorganizan en dos columnas sin mezclarse con la fila de noticias.
 - [x] El clic normal sobre una tarjeta abre la noticia completa en un drawer derecho recto al `40%` del viewport. Reutiliza el mismo contenido funcional de móvil: galería con autoplay, fullscreen y zoom, texto, publicidad, audios/videos, votos definitivos y compartir en Facebook/WhatsApp. `Ctrl`/`Cmd`/`Shift` + clic conserva la apertura normal del permalink.
 - [x] Herramienta accesible de lectura `A−` / `A+` debajo del primer anuncio: escala únicamente párrafos, listas y subtítulos editoriales entre 90% y 140%, anuncia el porcentaje a lectores de pantalla y vuelve a 100% al reabrir.
 - [x] Orden: la última noticia creada sale primera.
-- [x] El antiguo feed de una noticia por pantalla, sus anuncios intercalados, mini-slider, lupa y `scroll-snap` fueron retirados de la portada PC. El contenido completo y las galerías permanecen en el permalink individual.
+- [x] El antiguo feed de una noticia por pantalla, sus pantallas publicitarias, mini-slider, lupa y `scroll-snap` fueron retirados de la portada PC. El contenido completo y las galerías permanecen en el drawer y en el permalink individual.
 
 ### Hecho — front móvil
 - [x] Feed móvil conectado al backend (`index.php` + `partials/mobile-feed.php`), sin consultas adicionales: reutiliza los datos del feed PC.
@@ -340,7 +341,7 @@ En el cloud cPanel/WHM actual todas las cuentas usan el servicio FTPS global med
 - Las piezas y su orden viven en `partials/publicidad.php`, del que se alimentan los dos feeds. No duplicar rutas de anuncios en otro lugar.
 - Pareja 1: `Publicidad-facha.jpg` + `Publicidad-intendencia.jpg`.
 - Pareja 2: `Publicidad-Fenix.jpg` + `Publicidad-Digitales.jpg`.
-- **PC:** después de cada noticia se inserta una pantalla completa con la pareja correspondiente; las parejas se alternan por noticia y vuelven a comenzar al terminar la secuencia. Presentación aprobada: fondo blanco, piezas cuadradas sin bordes redondeados, margen exterior de `64px`, separación de `40px` y sombra inferior con relieve.
+- **PC:** después de cada grupo completo de tres noticias se inserta una fila independiente con Intendencia, Fenix y Facha, en ese orden. Desde `1100px` ocupa tres columnas y cada aviso iguala el ancho y alto de una tarjeta; entre `769px` y `1099px` la fila responde en dos columnas. Las imágenes cuadradas se muestran completas, sin recorte ni bordes redondeados, y cada pieza lleva la identificación «Publicidad».
 - **Móvil:** después de cada noticia se inserta **un solo** anuncio a ancho completo, cuadrado, para que se lea como una tarjeta más del feed y no encadene dos pantallas de publicidad seguidas. La secuencia recorre las cuatro piezas de a una. Dentro de la nota completa se conserva el encabezado blanco y primero aparece la portada o galería; el primer anuncio de la pareja asignada queda después de categoría, título, fecha y autor, antes del cuerpo, y el segundo permanece al final.
 - **Flujo móvil aprobado:** «Ver nota completa» abre una hoja al `85%`. Conserva el encabezado blanco y comienza con la portada o galería; después de categoría, título, fecha y autor aparece la primera pieza cuadrada, seguida por el cuerpo, los medios y votos, y al final la segunda pieza. Los anuncios siguen siendo provisorios y este flujo no constituye una gestión dinámica.
 - La hoja conserva un encabezado fijo «RADIO SUR - NOTICIAS» y puede cerrarse arrastrándolo hacia abajo. Un gesto corto rebota a su posición; al superar el umbral termina de bajar. Detalle técnico y validaciones en `CONTINUIDAD.md`.

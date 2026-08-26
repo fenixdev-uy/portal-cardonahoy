@@ -4,10 +4,11 @@
  * Grilla editorial resumida que reutiliza las noticias y portadas ya cargadas
  * por index.php. La experiencia móvil continúa en mobile-feed.php.
  */
+require_once __DIR__ . '/publicidad.php';
 ?>
   <section class="pc-feed" aria-label="Noticias">
     <div class="pc-news-grid">
-<?php foreach ($noticias as $n): ?>
+<?php foreach ($noticias as $indiceNoticia => $n): ?>
 <?php
     $fotos = $fotosPorNoticia[(int) $n['id']] ?? [];
     $portada = $fotos[0] ?? null;
@@ -42,6 +43,18 @@
           </div>
         </a>
       </article>
+<?php if (($indiceNoticia + 1) % 3 === 0): ?>
+      <div class="pc-news-ad-row" aria-label="Publicidad">
+<?php foreach ($filaPublicidadPc as $publicidad): ?>
+        <aside class="pc-news-ad-card">
+          <figure class="pc-news-ad-media">
+            <img src="<?= e($publicidad['imagen']) ?>" alt="<?= e($publicidad['alt']) ?>" loading="lazy" decoding="async">
+          </figure>
+          <span class="pc-news-ad-label">Publicidad</span>
+        </aside>
+<?php endforeach; ?>
+      </div>
+<?php endif; ?>
 <?php endforeach; ?>
     </div>
   </section>
