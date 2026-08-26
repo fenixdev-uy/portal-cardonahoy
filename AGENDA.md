@@ -6,16 +6,14 @@ Este archivo contiene únicamente el trabajo pendiente elegido para próximas et
 
 ## Prioridad activa
 
-1. **Continuar dando forma a la nueva portada de noticias en PC.**
-   - Estado: **primera versión implementada y validada en DEV; pendiente de revisión visual del usuario**.
-   - Se conserva sin cambios el header con slider y, debajo, todas las noticias aparecen como tarjetas editoriales: tres columnas desde `1100px` y dos entre `769px` y `1099px`.
-   - Cada pareja completa de noticias forma una fila híbrida con un anuncio. Tanto el anunciante como su ubicación —izquierda, centro o derecha— varían de forma controlada entre filas; si el total es impar, la última noticia queda sola.
-   - El pie de cada anuncio muestra «Publicidad» y cuatro accesos negros: Facebook, Instagram, WhatsApp y sitio web. Las URLs actuales son de demostración y ya están modeladas por anunciante para conectarlas posteriormente a la base.
-   - El clic normal abre la noticia completa en un drawer recto desde la derecha al `40%`: galería con autoplay/fullscreen, contenido, medios, anuncios, votos y compartir. Los clics modificados conservan el permalink para abrirlo en otra pestaña.
-   - Debajo del primer anuncio, `A−` y `A+` permiten ajustar el cuerpo editorial entre 90% y 140% tanto en PC como en móvil.
-   - Ajustar solamente la grilla y la anatomía de sus tarjetas según la próxima devolución del usuario.
-   - Preservar íntegramente la experiencia móvil aprobada hasta `768px`.
-   - No desplegar esta propuesta nueva hasta que el usuario la apruebe expresamente.
+1. **Agregar una barra de búsqueda y filtros a la portada PC.**
+   - Estado: **acordado y pendiente de implementación**.
+   - Ubicarla entre el header con slider y la grilla de cards.
+   - Mantener en una misma línea: buscador de texto, selector de categoría, fecha desde, fecha hasta y botón **Filtrar**.
+   - Permitir buscar noticias por palabras y filtrar por categoría, rango de fechas o cualquier combinación de esos criterios.
+   - Diseñar y validar primero la experiencia de PC; no modificar la versión móvil en esta etapa.
+   - Preservar la portada, el drawer de noticia, **Últimas Noticias** y la publicidad dinámica ya aprobados.
+   - No implementar ni desplegar hasta que el usuario retome esta tarea.
 
 ## Pendientes posteriores
 

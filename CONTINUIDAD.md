@@ -672,3 +672,9 @@ El bloque se define una sola vez en un `<template>` inerte de once candidatas y 
 Cada card recomendada incorpora además un CTA visible **Ver nota completa**, rectangular, transparente y de borde negro, inspirado en el botón móvil. El CTA vive dentro del enlace integral de la card: se puede entrar por imagen, título, resumen o botón y todos conducen al mismo cambio de noticia dentro del drawer. Esta ayuda visual se limita a `story-latest`; las cards de la portada PC y el feed móvil no fueron alterados.
 
 Los iconos activos de las publicidades intercaladas en **Últimas Noticias** se fuerzan a negro para neutralizar el color celeste heredado de los enlaces del texto enriquecido; los destinos deshabilitados permanecen grises.
+
+### Próximo paso acordado: búsqueda y filtros en la portada PC
+
+El usuario cerró la jornada del **26 de agosto de 2026** dejando agendada, sin implementación todavía, una barra de búsqueda para la portada de escritorio. Se ubicará entre el header con slider y las cards y reunirá en una sola línea: búsqueda libre por texto, selector de categoría, fecha desde, fecha hasta y botón **Filtrar**.
+
+El filtrado deberá admitir cada criterio por separado o combinaciones para localizar noticias por palabras, categoría específica y rango de publicación. La primera etapa corresponde únicamente a PC; no debe alterar la experiencia móvil ni el estado aprobado de la grilla, el drawer, **Últimas Noticias** o las cards publicitarias. Retomar desde este punto solamente cuando el usuario lo indique.
