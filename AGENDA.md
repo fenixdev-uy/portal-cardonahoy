@@ -10,6 +10,7 @@ Este archivo contiene únicamente el trabajo pendiente elegido para próximas et
    - Estado: **primera versión implementada y validada en DEV; pendiente de revisión visual del usuario**.
    - Se conserva sin cambios el header con slider y, debajo, todas las noticias aparecen como tarjetas editoriales: tres columnas desde `1100px` y dos entre `769px` y `1099px`.
    - Cada pareja completa de noticias forma una fila híbrida con un anuncio. Tanto el anunciante como su ubicación —izquierda, centro o derecha— varían de forma controlada entre filas; si el total es impar, la última noticia queda sola.
+   - El pie de cada anuncio muestra «Publicidad» y cuatro accesos negros: Facebook, Instagram, WhatsApp y sitio web. Las URLs actuales son de demostración y ya están modeladas por anunciante para conectarlas posteriormente a la base.
    - El clic normal abre la noticia completa en un drawer recto desde la derecha al `40%`: galería con autoplay/fullscreen, contenido, medios, anuncios, votos y compartir. Los clics modificados conservan el permalink para abrirlo en otra pestaña.
    - Debajo del primer anuncio, `A−` y `A+` permiten ajustar el cuerpo editorial entre 90% y 140% tanto en PC como en móvil.
    - Ajustar solamente la grilla y la anatomía de sus tarjetas según la próxima devolución del usuario.
