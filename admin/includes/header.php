@@ -23,8 +23,10 @@ $puedeConfigurarPanel = tiene_permiso('configuracion.gestionar');
 $puedeGestionarUsuarios = tiene_permiso('usuarios.gestionar');
 $puedeGestionarRoles = tiene_permiso('roles.gestionar');
 $grupoUsuariosVisible = $puedeGestionarUsuarios || $puedeGestionarRoles;
+$grupoNoticiasActivo = in_array($activo, ['noticias', 'categorias'], true);
 $grupoUsuariosActivo = in_array($activo, ['usuarios', 'roles'], true);
 $grupoPublicidadActivo = in_array($activo, ['publicidad-anuncios', 'publicidad-popups'], true);
+$grupoAnalisisActivo = $activo === 'votaciones';
 $marcaAguaPanel = null;
 $fotoDemoMarcaAgua = '../imagenes/Publicidad-intendencia.jpg';
 if ($puedeConfigurarPanel) {
@@ -68,20 +70,19 @@ header('Cache-Control: no-store, private');
     <nav class="sidebar-nav">
       <span class="nav-label">Contenido</span>
 
-      <a href="<?= $BASE ?>index.php" class="nav-link <?= $activo === 'noticias' ? 'active' : '' ?>">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path><path d="M18 14h-8"></path><path d="M15 18h-5"></path><path d="M10 6h8v4h-8V6z"></path></svg>
-        Noticias
-      </a>
-
-      <?php if (tiene_permiso('categorias.gestionar')): ?><a href="<?= $BASE ?>categorias.php" class="nav-link <?= $activo === 'categorias' ? 'active' : '' ?>">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
-        Categorías
-      </a><?php endif; ?>
-
-      <a href="<?= $BASE ?>votaciones.php" class="nav-link <?= $activo === 'votaciones' ? 'active' : '' ?>">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"></path><rect x="7" y="12" width="3" height="6"></rect><rect x="12.5" y="8" width="3" height="10"></rect><rect x="18" y="14" width="3" height="4"></rect></svg>
-        Votaciones
-      </a>
+      <div class="nav-group<?= $grupoNoticiasActivo ? ' has-active' : '' ?>">
+        <button type="button" class="nav-link nav-group-toggle" data-nav-group-toggle aria-expanded="<?= $grupoNoticiasActivo ? 'true' : 'false' ?>" aria-controls="newsNavSubmenu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path><path d="M18 14h-8"></path><path d="M15 18h-5"></path><path d="M10 6h8v4h-8V6z"></path></svg>
+          <span>Noticias</span>
+          <svg class="nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+        </button>
+        <div class="nav-submenu" id="newsNavSubmenu"<?= $grupoNoticiasActivo ? '' : ' hidden' ?>>
+          <a href="<?= $BASE ?>index.php" class="nav-sub-link <?= $activo === 'noticias' ? 'active' : '' ?>">Noticias</a>
+<?php if (tiene_permiso('categorias.gestionar')): ?>
+          <a href="<?= $BASE ?>categorias.php" class="nav-sub-link <?= $activo === 'categorias' ? 'active' : '' ?>">Categorías</a>
+<?php endif; ?>
+        </div>
+      </div>
 
       <span class="nav-label">Administración</span>
 
@@ -112,6 +113,20 @@ header('Cache-Control: no-store, private');
         <div class="nav-submenu" id="advertisingNavSubmenu"<?= $grupoPublicidadActivo ? '' : ' hidden' ?>>
           <a href="<?= $BASE ?>anuncios.php" class="nav-sub-link <?= $activo === 'publicidad-anuncios' ? 'active' : '' ?>">Anuncios</a>
           <a href="<?= $BASE ?>popups.php" class="nav-sub-link <?= $activo === 'publicidad-popups' ? 'active' : '' ?>">Popups</a>
+        </div>
+      </div>
+
+      <div class="nav-group<?= $grupoAnalisisActivo ? ' has-active' : '' ?>">
+        <button type="button" class="nav-link nav-group-toggle" data-nav-group-toggle aria-expanded="<?= $grupoAnalisisActivo ? 'true' : 'false' ?>" aria-controls="analyticsNavSubmenu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"></path><path d="m7 16 4-5 4 3 5-7"></path></svg>
+          <span>Análisis</span>
+          <svg class="nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+        </button>
+        <div class="nav-submenu" id="analyticsNavSubmenu"<?= $grupoAnalisisActivo ? '' : ' hidden' ?>>
+          <a href="<?= $BASE ?>votaciones.php" class="nav-sub-link has-icon <?= $activo === 'votaciones' ? 'active' : '' ?>">
+            <svg class="nav-sub-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v12H3V10h4Z"></path><path d="M7 20h10.8a2 2 0 0 0 1.96-1.61l1.2-6A2 2 0 0 0 19 10h-5l1-4.57A2 2 0 0 0 13.05 3H12l-5 7v10Z"></path></svg>
+            <span>Votaciones</span>
+          </a>
         </div>
       </div>
 

@@ -400,6 +400,21 @@ body {
   background: var(--sidebar-active);
 }
 
+.nav-sub-link.has-icon::before {
+  display: none;
+}
+
+.nav-sub-link.has-icon {
+  gap: 7px;
+}
+
+.nav-sub-link-icon {
+  width: 16px;
+  height: 16px;
+  margin-left: -18px;
+  flex: 0 0 auto;
+}
+
 .sidebar-footer {
   display: flex;
   align-items: center;

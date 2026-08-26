@@ -584,3 +584,11 @@ El menú lateral del panel ahora agrupa **Usuarios** como acordeón con las opci
 `admin/anuncios.php` y `admin/popups.php` son pantallas iniciales deliberadamente mínimas para que las nuevas rutas sean válidas. Todavía no incluyen formularios, consultas, persistencia, permisos publicitarios ni reglas de publicación. Hasta definir ese módulo, el grupo Publicidad queda visible para todo usuario autenticado del panel.
 
 QA DEV con Chromium/Puppeteer: en escritorio `1440×950`, las cuatro subopciones, estados activos, apertura exclusiva y rutas de Usuarios, Roles, Anuncios y Popups funcionaron sin overflow ni errores. En móvil `390×844`, el hamburger, backdrop, acordeones y estado activo funcionaron sin recortes ni errores. PHP, CSS y diff también quedaron correctos. Browser plugin no estaba disponible, por lo que se reutilizó Puppeteer. **No desplegado en PROD.**
+
+### Noticias y Análisis dentro de la jerarquía del admin — 26 de agosto de 2026
+
+La misma navegación se extendió sin alterar las pantallas existentes: **Noticias** pasó a ser un grupo con **Noticias** y **Categorías**, manteniendo `categorias.gestionar` sobre la segunda opción. Debajo de Publicidad se creó **Análisis**, con icono de gráfica, y dentro se trasladó **Votaciones**, identificada por una mano de aprobación. La clave activa `votaciones` y toda la lógica del ranking permanecen intactas.
+
+Los cuatro grupos —Noticias, Usuarios, Publicidad y Análisis— comparten el acordeón exclusivo. Cada ruta abre desde el servidor el grupo que le corresponde; en Votaciones queda seleccionado Análisis, y en Noticias/Categorías queda seleccionado Noticias.
+
+QA DEV con Chromium/Puppeteer a `1440×950` y `390×844`: Votaciones devolvió HTTP 200, mostró el icono solicitado y el estado activo correcto; Noticias y Categorías conservaron sus títulos y rutas, abriendo su grupo correspondiente. El intercambio entre grupos cerró el anterior, no hubo overflow, overlays ni errores de consola. La sesión temporal fue de solo lectura y no modificó votos ni otros datos. Browser plugin no estaba disponible, por lo que se reutilizó Puppeteer. **No desplegado en PROD.**

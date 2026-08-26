@@ -180,7 +180,7 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 
 ## 5. Panel de administración (funcionalidades)
 
-- **Menú lateral** (izquierda) + contenido a la derecha. Responsive (hamburguesa en móvil). Las áreas **Usuarios** y **Publicidad** funcionan como grupos desplegables y solo mantienen un grupo abierto a la vez.
+- **Menú lateral** (izquierda) + contenido a la derecha. Responsive (hamburguesa en móvil). **Noticias**, **Usuarios**, **Publicidad** y **Análisis** funcionan como grupos desplegables y solo mantienen uno abierto a la vez.
 - **Noticias** (`index.php`):
   - Listado (foto de portada, título, descripción, categoría, autor, fecha y acciones), con buscador instantáneo y orden por fecha en ambos sentidos.
   - Columna **Peso** calculada desde los archivos locales reales: galería, imágenes insertadas en el editor y audios subidos. Ordena en ambos sentidos y muestra el desglose Fotos/Audios; YouTube y URLs externas no se cuentan porque no consumen disco local.
@@ -201,6 +201,8 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 - **Publicidad**:
   - **Anuncios** (`anuncios.php`) y **Popups** (`popups.php`) ya cuentan con entradas y pantallas iniciales dentro del menú.
   - Son placeholders de navegación: la gestión, los permisos específicos y la persistencia se incorporarán en una etapa posterior.
+- **Análisis**:
+  - **Votaciones** (`votaciones.php`) reúne el ranking y sus métricas dentro de este grupo, identificado con iconos de gráfica y aprobación.
 - **Seguridad**:
   - Login, sesiones seguras con vencimiento, control de intentos y respuestas genéricas.
   - Autorización por rol y permiso en páginas y endpoints.
@@ -277,7 +279,7 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 - [x] Bloque de voto y compartir unificado en `partials/acciones-noticia.php`; antes estaba duplicado en los dos feeds.
 
 ### Hecho — panel: Votaciones
-- [x] Pantalla `admin/votaciones.php`, enlazada en el menú entre Categorías y Usuarios.
+- [x] Pantalla `admin/votaciones.php`, enlazada como **Análisis → Votaciones** debajo de Publicidad.
 - [x] Ranking de noticias por total de votos, de mayor a menor. Top 8 en el gráfico; si hay más, se avisa cuántas quedan afuera y la tabla las lista todas.
 - [x] Dos lecturas del mismo dato a elección del usuario: área degradada y columnas, con un solo eje vertical.
 - [x] Colores azul/rojo del par divergente de la paleta de referencia, validados con el script del skill de dataviz contra la superficie real del panel (no la de referencia).
