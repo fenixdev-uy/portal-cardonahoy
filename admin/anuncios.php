@@ -231,7 +231,7 @@ require __DIR__ . '/includes/header.php';
         <span class="ad-field-label">Imagen</span>
         <div class="ad-image-preview<?= !empty($anuncioEditar['imagen']) ? ' has-image' : '' ?>" id="adImagePreview">
           <img id="adImagePreviewImg" src="<?= !empty($anuncioEditar['imagen']) ? e(url_imagen($anuncioEditar['imagen'])) : '' ?>" alt="Vista previa del anuncio">
-          <span id="adImagePlaceholder">La vista previa aparecerá aquí</span>
+          <span id="adImagePlaceholder" aria-live="polite">La vista previa aparecerá aquí</span>
         </div>
         <label class="btn btn-outline ad-image-upload" for="adImageInput">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
@@ -264,19 +264,48 @@ require __DIR__ . '/includes/header.php';
   const imageInput = document.getElementById('adImageInput');
   const preview = document.getElementById('adImagePreview');
   const previewImage = document.getElementById('adImagePreviewImg');
+  const previewPlaceholder = document.getElementById('adImagePlaceholder');
+  const imageHelp = document.getElementById('adImageHelp');
   const label = document.getElementById('adDrawerLabel');
   const title = document.getElementById('adDrawerTitle');
   const submit = document.getElementById('adSubmit');
-  let previewObjectUrl = '';
+  const defaultImageHelp = imageHelp.textContent;
+  let previewSequence = 0;
   let returnFocus = null;
 
-  function setPreview(src) {
-    previewImage.src = src || '';
-    preview.classList.toggle('has-image', Boolean(src));
+  function clearPreview(message = 'La vista previa aparecerá aquí') {
+    previewSequence += 1;
+    preview.classList.remove('has-image', 'is-loading', 'has-error');
+    previewImage.removeAttribute('src');
+    previewPlaceholder.textContent = message;
   }
-  function revokePreview() {
-    if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
-    previewObjectUrl = '';
+  function setPreview(src, successMessage = '') {
+    const sequence = ++previewSequence;
+    if (!src) {
+      clearPreview();
+      return;
+    }
+    preview.classList.remove('has-image', 'has-error');
+    preview.classList.add('is-loading');
+    previewImage.removeAttribute('src');
+    previewPlaceholder.textContent = 'Preparando vista previa…';
+    const probe = new Image();
+    probe.onload = () => {
+      if (sequence !== previewSequence) return;
+      previewImage.src = src;
+      preview.classList.remove('is-loading');
+      preview.classList.add('has-image');
+      previewPlaceholder.textContent = '';
+      if (successMessage) imageHelp.textContent = successMessage;
+    };
+    probe.onerror = () => {
+      if (sequence !== previewSequence) return;
+      preview.classList.remove('is-loading', 'has-image');
+      preview.classList.add('has-error');
+      previewPlaceholder.textContent = 'No pudimos mostrar esta imagen.';
+      imageHelp.textContent = 'Elegí otra imagen JPG, PNG o WEBP.';
+    };
+    probe.src = src;
   }
   function openDrawer(trigger) {
     returnFocus = trigger || document.activeElement;
@@ -291,7 +320,7 @@ require __DIR__ . '/includes/header.php';
     backdrop.classList.remove('show');
     drawer.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
-    revokePreview();
+    previewSequence += 1;
     if (window.location.search) window.history.replaceState({}, '', 'anuncios.php');
     if (returnFocus && typeof returnFocus.focus === 'function') returnFocus.focus();
   }
@@ -300,8 +329,8 @@ require __DIR__ . '/includes/header.php';
     form.reset();
     document.getElementById('adId').value = '0';
     imageInput.required = true;
-    revokePreview();
-    setPreview('');
+    clearPreview();
+    imageHelp.textContent = defaultImageHelp;
     label.textContent = 'Nuevo anuncio';
     title.textContent = 'Agregar anuncio';
     submit.textContent = 'Crear anuncio';
@@ -319,8 +348,8 @@ require __DIR__ . '/includes/header.php';
     document.getElementById('adWeb').value = button.dataset.web || '';
     document.getElementById('adExpires').value = button.dataset.expires || '';
     imageInput.required = false;
-    revokePreview();
     setPreview(button.dataset.image || '');
+    imageHelp.textContent = defaultImageHelp;
     label.textContent = 'Editar anuncio';
     title.textContent = 'Actualizar anuncio';
     submit.textContent = 'Guardar cambios';
@@ -329,11 +358,40 @@ require __DIR__ . '/includes/header.php';
   }
 
   imageInput.addEventListener('change', () => {
-    revokePreview();
     const file = imageInput.files && imageInput.files[0];
-    if (!file) return;
-    previewObjectUrl = URL.createObjectURL(file);
-    setPreview(previewObjectUrl);
+    if (!file) {
+      clearPreview();
+      imageHelp.textContent = defaultImageHelp;
+      return;
+    }
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      imageInput.value = '';
+      clearPreview('El archivo no es una imagen compatible.');
+      preview.classList.add('has-error');
+      imageHelp.textContent = 'Usá una imagen JPG, PNG o WEBP.';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      imageInput.value = '';
+      clearPreview('La imagen supera el límite de 5 MB.');
+      preview.classList.add('has-error');
+      imageHelp.textContent = 'Elegí una imagen de hasta 5 MB.';
+      return;
+    }
+    previewSequence += 1;
+    preview.classList.remove('has-image', 'has-error');
+    preview.classList.add('is-loading');
+    previewPlaceholder.textContent = 'Leyendo imagen…';
+    imageHelp.textContent = 'Preparando la vista previa…';
+    const reader = new FileReader();
+    reader.onload = () => setPreview(typeof reader.result === 'string' ? reader.result : '', file.name + ' · vista previa lista');
+    reader.onerror = () => {
+      clearPreview('No pudimos leer esta imagen.');
+      preview.classList.add('has-error');
+      imageHelp.textContent = 'Elegí otra imagen e intentá nuevamente.';
+    };
+    reader.readAsDataURL(file);
   });
   newButton.addEventListener('click', prepareNew);
   document.querySelectorAll('.js-edit-ad').forEach((button) => button.addEventListener('click', prepareEdit));
