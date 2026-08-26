@@ -251,13 +251,9 @@
 .ad-detail[hidden] { display: none; }
 .ad-detail-image {
   width: 100%;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  background: #f8fafc;
-  border: 1px solid #dbe3ec;
-  border-radius: 12px;
+  overflow: visible;
 }
-.ad-detail-image img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.ad-detail-image img { display: block; width: 100%; height: auto; border: 1px solid #dbe3ec; border-radius: 12px; }
 .ad-detail-summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; color: var(--text-muted); font-size: .8rem; }
 .ad-detail-list { display: grid; gap: 0; margin: 0; border-top: 1px solid #e2e8f0; }
 .ad-detail-list > div { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 18px; padding: 14px 0; border-bottom: 1px solid #e2e8f0; }
