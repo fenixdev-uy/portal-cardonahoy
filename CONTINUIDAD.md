@@ -715,4 +715,6 @@ QA local con Chromium/Puppeteer a `1440×900` y `390×844`: tres noticias activa
 
 El portal público carga desde Google Fonts **Oswald** en todos los encabezados `h1`–`h6` y **Roboto** en el resto de los textos. La regla se aplica a portada PC, feed móvil, drawer/hoja de noticia completa y página individual; el cuerpo editorial de `noticia.php`, que antes usaba Georgia, pasa también a Roboto. El panel administrativo no fue modificado. Si Google Fonts no responde, quedan fallbacks locales `Arial Narrow` para títulos y Arial para textos.
 
+Los títulos quedaron configurados con `font-weight: 800`, como en la referencia elegida. Google Fonts ofrece actualmente Oswald hasta peso 700; el navegador usa ese archivo y sintetiza el grosor adicional para representar 800.
+
 Antes de la prueba se creó y publicó la etiqueta Git `pre-fuentes-google-2026-08-26` sobre el commit `6bd4a6e`, que permite restaurar exactamente el diseño anterior. Chromium/Puppeteer confirmó la carga real de Oswald 700 y Roboto 400, familias calculadas correctas, cambio de slide, portada y cards a `1440×900`/`390×844`, y noticia individual móvil sin overflow ni errores. El plugin Browser no estaba disponible. **No desplegado en PROD.**

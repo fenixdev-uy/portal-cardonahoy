@@ -2,7 +2,7 @@
     *{box-sizing:border-box}
     html{min-height:100%;overflow-x:hidden;scroll-behavior:smooth}
     body{min-height:100%;margin:0;color:var(--ink);background:#fff;font-family:var(--font-text)}
-    h1,h2,h3,h4,h5,h6{font-family:var(--font-title)}
+    h1,h2,h3,h4,h5,h6{font-family:var(--font-title);font-weight:800}
     body.overlay-open{overflow:hidden}
     a{color:inherit}
 
@@ -39,7 +39,7 @@
     .story-hero-copy{position:absolute;right:0;bottom:0;left:0;z-index:2;padding:0 20px 76px;color:#fff;pointer-events:none}
     .story-hero.no-gallery-controls .story-hero-copy{padding-bottom:34px}
     .story-category{display:block;margin-bottom:11px;color:var(--accent);font-size:.78rem;font-weight:800;letter-spacing:.2em;text-transform:uppercase}
-    .story-title{max-width:900px;margin:0;font-size:clamp(1.85rem,8.3vw,4.8rem);font-weight:850;line-height:1.08;letter-spacing:-.035em;text-shadow:0 3px 18px rgba(0,0,0,.5)}
+    .story-title{max-width:900px;margin:0;font-size:clamp(1.85rem,8.3vw,4.8rem);font-weight:800;line-height:1.08;letter-spacing:-.035em;text-shadow:0 3px 18px rgba(0,0,0,.5)}
     .story-gallery-dots{position:absolute;bottom:24px;left:20px;z-index:3;display:flex;align-items:center;gap:7px}
     .story-gallery-dot{width:7px;height:7px;padding:0;border:0;border-radius:999px;background:rgba(255,255,255,.5);transition:width .25s ease,background-color .25s ease;cursor:pointer}
     .story-gallery-dot.active{width:24px;background:#fff}
@@ -53,7 +53,7 @@
     .article-body{color:#202735;font-family:var(--font-text);font-size:1.08rem;line-height:1.75}
     .article-body>:first-child{margin-top:0}.article-body>:last-child{margin-bottom:0}
     .article-body p{margin:0 0 16px}
-    .article-body h1,.article-body h2,.article-body h3{margin:1.2em 0 .5em;color:#111;font-family:var(--font-title);font-weight:700;line-height:1.25}
+    .article-body h1,.article-body h2,.article-body h3{margin:1.2em 0 .5em;color:#111;font-family:var(--font-title);font-weight:800;line-height:1.25}
     .article-body h1{font-size:1.55rem}.article-body h2{font-size:1.35rem}.article-body h3{font-size:1.15rem}
     .article-body strong,.article-body b{font-weight:700}.article-body em,.article-body i{font-style:italic}.article-body u{text-decoration:underline}.article-body s{text-decoration:line-through}
     .article-body ul,.article-body ol{margin:0 0 16px;padding-left:1.6rem}.article-body ul{list-style:disc}.article-body ol{list-style:decimal}.article-body li{margin-bottom:6px}
