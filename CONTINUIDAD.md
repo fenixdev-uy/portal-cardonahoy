@@ -368,7 +368,7 @@ El asistente se integra directamente en la barra de TipTap mediante el botón co
 
 ## Otros próximos pasos acordados
 
-1. Alimentar el slider del hero desde la base de datos. **Sigue estático** con las tres noticias de ejemplo de Unsplash, en PC y en móvil (`index.php`, bloque `.slider`). Es lo único del front que todavía no sale de la base.
+1. **Completado el 26 de agosto:** el slider del hero sale de la base y se administra con `noticias.portada`; ver «Slider administrable desde Noticias» al final de este documento.
 2. Los botones de **compartir** ya están desplegados con Facebook y WhatsApp usando el permalink canónico; queda revisar la caché de cada plataforma con sus depuradores.
 3. Evaluar más adelante la gestión dinámica de anuncios. El formato actual continúa provisorio aunque el flujo visual de la nota haya sido aprobado.
 4. El sitio no tiene `favicon.ico` y el navegador lo pide en cada carga, devolviendo 404. Hay un `isotipo.png` en el directorio padre que podría servir.
@@ -700,3 +700,13 @@ Chromium/Puppeteer confirmó siete CTA para siete noticias a `1440×900`, estilo
 ### Pie de página compartido en PC y móvil — 26 de agosto de 2026
 
 Después de la grilla completa se agregó un footer compartido por las vistas de escritorio y móvil. La corrección visual definitiva elimina todo aspecto de barra, trazo sólido o relieve sobresaliente: la zona superior proyecta una sombra descendente de `18px` que se desvanece dentro del footer, creando la sensación de un escalón hacia un plano inferior. Sus extremos también se desvanecen y conserva márgenes laterales de `64px` a `1440px` —`40px` en PC compacto y `24px` en móvil—. Debajo aparece centrado el texto **«© rsmedios.com dev en Fenix»**; únicamente **Fenix** enlaza a `https://fenixlab.uno` y abre de forma segura en una pestaña nueva. Chromium/Puppeteer verificó a `1440px` y `390px` el degradado de profundidad, fondo transparente, ausencia de borde duro, destino, `noopener noreferrer`, ubicación al final del documento, cero overflow y consola limpia. **No desplegado en PROD.**
+
+### Slider administrable desde Noticias — 26 de agosto de 2026
+
+La tabla `noticias` incorpora `portada TINYINT(1) NOT NULL DEFAULT 0` y el índice compuesto `idx_noticias_portada_fecha (portada, created_at, id)`. La columna **Portada** del listado administrativo ofrece un switch con guardado inmediato protegido por permiso `noticias.editar` y CSRF; la edición de cada noticia incluye el mismo estado. Una noticia sin fotos no puede activarse, porque el slider necesita su primera imagen.
+
+El hero dejó de contener los tres ejemplos de Unsplash. Ahora renderiza, en orden descendente de publicación, todas las noticias con `portada = 1` y al menos una foto; toma de la base la categoría, el título, un resumen de hasta 220 caracteres y la primera imagen de la galería. Los puntos y el autoplay se ajustan a la cantidad real, el JavaScript admite cero o una noticia sin errores y los feeds PC/móvil continúan recibiendo la colección completa.
+
+La migración idempotente `install/portada-v1.php` se ejecutó **solo en DEV** (`fenixdev_noticias`) después del respaldo `.deploy/respaldos-db/2026-08-26/dev-before-portada-v1.sql`, de 31.082 bytes y SHA-256 `eb8756fcfc530dc579a9676f02f5d8e1b28e350eaa1daea41fc34b20d55206c1`. En su primera ejecución marcó las tres noticias más recientes con foto para sustituir inmediatamente los tres slides estáticos. PROD no fue migrado ni recibió archivos.
+
+QA local con Chromium/Puppeteer a `1440×900` y `390×844`: tres noticias activas produjeron tres slides y tres indicadores con imágenes locales; al desactivar temporalmente una noticia aparecieron dos y, al restaurarla, volvieron a ser tres. El cambio de indicador, alto completo, ausencia de overflow y consola pasaron correctamente; DEV terminó restaurado con tres noticias de portada. El plugin Browser no estaba disponible. La interacción autenticada del switch no se automatizó porque el entorno impidió fabricar una sesión administrativa; requiere una comprobación manual desde el panel. **No desplegado en PROD.**

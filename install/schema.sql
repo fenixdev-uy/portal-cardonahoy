@@ -73,9 +73,10 @@ CREATE TABLE IF NOT EXISTS noticias (
   audio_3 VARCHAR(500) NULL,
   me_gusta INT UNSIGNED NOT NULL DEFAULT 0,
   no_me_gusta INT UNSIGNED NOT NULL DEFAULT 0,
+  portada TINYINT(1) NOT NULL DEFAULT 0,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (id), UNIQUE KEY uq_noticias_slug (slug), KEY idx_noticias_categoria (categoria_id), KEY idx_noticias_usuario (usuario_id),
+  PRIMARY KEY (id), UNIQUE KEY uq_noticias_slug (slug), KEY idx_noticias_categoria (categoria_id), KEY idx_noticias_usuario (usuario_id), KEY idx_noticias_portada_fecha (portada, created_at, id),
   CONSTRAINT fk_noticias_categoria FOREIGN KEY (categoria_id) REFERENCES categorias(id) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT fk_noticias_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

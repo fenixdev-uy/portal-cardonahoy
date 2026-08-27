@@ -5,8 +5,10 @@
 
     (function () {
       const slider = document.getElementById('slider');
-      const slides = Array.from(slider.querySelectorAll('.slide'));
       const dotsContainer = document.getElementById('dots');
+      if (!slider || !dotsContainer) return;
+      const slides = Array.from(slider.querySelectorAll('.slide'));
+      if (slides.length === 0) return;
 
       const INTERVAL = 5000; // ms entre imágenes
       let current = 0;
@@ -56,7 +58,7 @@
         });
       });
 
-      start();
+      if (slides.length > 1) start();
     })();
 
     // ===== Menú desplegable =====

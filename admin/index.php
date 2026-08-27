@@ -4,9 +4,47 @@
  */
 
 require_once __DIR__ . '/includes/funciones.php';
-exigir_permiso('noticias.ver');
+$solicitudPortada = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST'
+    && ($_POST['accion'] ?? '') === 'portada';
+exigir_permiso('noticias.ver', $solicitudPortada);
 
 $pdo = db();
+
+if ($solicitudPortada) {
+    exigir_permiso('noticias.editar', true);
+    verificar_csrf(true);
+
+    $idPortada = (int) ($_POST['id'] ?? 0);
+    $estadoPortada = (string) ($_POST['portada'] ?? '0') === '1' ? 1 : 0;
+    $stmtPortada = $pdo->prepare(
+        'SELECT COUNT(*)
+           FROM noticias n
+          WHERE n.id = ?
+            AND (? = 0 OR EXISTS (SELECT 1 FROM noticias_fotos f WHERE f.noticia_id = n.id))'
+    );
+    $stmtPortada->execute([$idPortada, $estadoPortada]);
+    if (!(int) $stmtPortada->fetchColumn()) {
+        http_response_code(422);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'ok' => false,
+            'error' => $estadoPortada === 1
+                ? 'La noticia necesita al menos una foto para mostrarse en el slider.'
+                : 'La noticia ya no existe.',
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $stmtPortada = $pdo->prepare('UPDATE noticias SET portada = ?, updated_at = updated_at WHERE id = ?');
+    $stmtPortada->execute([$estadoPortada, $idPortada]);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'ok' => true,
+        'portada' => $estadoPortada,
+        'label' => $estadoPortada === 1 ? 'En portada' : 'Fuera de portada',
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
 
 // Publicaciones por día del mes corriente para el resumen gráfico.
 $inicioMes = new DateTimeImmutable('first day of this month 00:00:00');
@@ -48,7 +86,7 @@ $nombreMes = $meses[(int) $inicioMes->format('n')] . ' ' . $inicioMes->format('Y
 
 // Últimas noticias para el listado
 $noticias = $pdo->query(
-    'SELECT n.id, n.titulo, n.descripcion, n.created_at,
+    'SELECT n.id, n.titulo, n.descripcion, n.created_at, n.portada AS portada_estado,
             n.audio_1, n.audio_2, n.audio_3,
             n.me_gusta, n.no_me_gusta,
             c.nombre AS categoria_nombre,
@@ -162,6 +200,7 @@ require __DIR__ . '/includes/header.php';
             </button>
           </th>
           <th style="width: 110px;">Votos</th>
+          <th style="width: 125px;">Portada</th>
           <th style="width: 130px;">Acciones</th>
         </tr>
       </thead>
@@ -204,6 +243,23 @@ require __DIR__ . '/includes/header.php';
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"></path></svg>
                 <?= (int) ($n['no_me_gusta'] ?? 0) ?>
               </span>
+            </td>
+            <td class="td-news-cover">
+              <?php if (tiene_permiso('noticias.editar')): ?>
+                <form method="post" action="index.php" class="news-cover-status-form js-news-cover-form">
+                  <?= csrf_input() ?>
+                  <input type="hidden" name="accion" value="portada">
+                  <input type="hidden" name="id" value="<?= (int) $n['id'] ?>">
+                  <label class="news-cover-switch">
+                    <input type="checkbox" name="portada" value="1" role="switch" <?= (int) ($n['portada_estado'] ?? 0) === 1 ? 'checked' : '' ?> aria-label="<?= (int) ($n['portada_estado'] ?? 0) === 1 ? 'Quitar de portada' : 'Mostrar en portada' ?>: <?= e($n['titulo']) ?>">
+                    <span class="news-cover-switch-track" aria-hidden="true"><span></span></span>
+                    <span class="news-cover-switch-text"><?= (int) ($n['portada_estado'] ?? 0) === 1 ? 'Sí' : 'No' ?></span>
+                  </label>
+                  <span class="news-cover-feedback" aria-live="polite"></span>
+                </form>
+              <?php else: ?>
+                <span class="news-cover-readonly <?= (int) ($n['portada_estado'] ?? 0) === 1 ? 'is-active' : '' ?>"><?= (int) ($n['portada_estado'] ?? 0) === 1 ? 'Sí' : 'No' ?></span>
+              <?php endif; ?>
             </td>
             <td class="td-actions">
               <div class="cell-actions">
@@ -304,6 +360,52 @@ require __DIR__ . '/includes/header.php';
       sortRows('date', sortKey === 'date' && direction === 'desc' ? 'asc' : 'desc');
     });
     search.addEventListener('input', filterRows);
+  })();
+</script>
+
+<script>
+  (function () {
+    document.querySelectorAll('.js-news-cover-form').forEach((form) => {
+      const input = form.querySelector('input[name="portada"]');
+      const text = form.querySelector('.news-cover-switch-text');
+      const feedback = form.querySelector('.news-cover-feedback');
+      if (!input || !text || !feedback) return;
+
+      input.addEventListener('change', async () => {
+        const requestedState = input.checked;
+        input.disabled = true;
+        feedback.textContent = 'Guardando…';
+
+        const payload = new FormData(form);
+        payload.set('portada', requestedState ? '1' : '0');
+
+        try {
+          const response = await fetch('index.php', {
+            method: 'POST',
+            body: payload,
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          });
+          const result = await response.json();
+          if (!response.ok || !result.ok) throw new Error(result.error || 'No se pudo actualizar la portada.');
+
+          input.checked = result.portada === 1;
+          text.textContent = input.checked ? 'Sí' : 'No';
+          input.setAttribute('aria-label', (input.checked ? 'Quitar de portada: ' : 'Mostrar en portada: ')
+            + (form.closest('tr')?.querySelector('.cell-title')?.textContent || 'noticia'));
+          feedback.textContent = 'Guardado';
+          window.setTimeout(() => {
+            if (feedback.textContent === 'Guardado') feedback.textContent = '';
+          }, 1800);
+        } catch (error) {
+          input.checked = !requestedState;
+          text.textContent = input.checked ? 'Sí' : 'No';
+          feedback.textContent = error.message || 'No se pudo guardar.';
+        } finally {
+          input.disabled = false;
+        }
+      });
+    });
   })();
 </script>
 

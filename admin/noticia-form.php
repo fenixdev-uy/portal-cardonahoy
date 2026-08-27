@@ -30,6 +30,7 @@ $noticia = [
     'audio_1' => '',
     'audio_2' => '',
     'audio_3' => '',
+    'portada' => 0,
 ];
 
 $fotos = [];
@@ -118,6 +119,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $audios[$campo] = $valor === '' ? '' : $normalizada;
     }
 
+    $portada = $editando && isset($_POST['portada']) ? 1 : 0;
+
     $noticia = [
         'id' => $id,
         'categoria_id' => $categoriaId ?: '',
@@ -134,6 +137,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         'audio_1' => $audios['audio_1'],
         'audio_2' => $audios['audio_2'],
         'audio_3' => $audios['audio_3'],
+        'portada' => $portada,
     ];
 
     if ($titulo === '') {
@@ -159,6 +163,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     if (!is_array($fotosJson)) {
         $fotosJson = [];
     }
+    if ($portada === 1 && $fotosJson === []) {
+        $errores[] = 'La noticia necesita al menos una foto para mostrarse en el slider de portada.';
+    }
 
     if (empty($errores)) {
       $archivosAEliminar = [];
@@ -169,7 +176,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 'UPDATE noticias
                     SET categoria_id=?, usuario_id=?, titulo=?, slug=?, descripcion=?,
                         seo_titulo=?, seo_descripcion=?, seo_imagen=?,
-                        youtube=?, youtube_2=?, youtube_3=?, audio_1=?, audio_2=?, audio_3=?
+                        youtube=?, youtube_2=?, youtube_3=?, audio_1=?, audio_2=?, audio_3=?, portada=?
                   WHERE id=?'
             );
             if ($slugOriginal !== '' && $slugOriginal !== $slug) {
@@ -180,7 +187,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $categoriaId, $usuarioId, $titulo, $slug, $descripcion,
                 $seoTitulo, $seoDescripcion, $seoImagen !== '' ? $seoImagen : null,
                 $videos['youtube'], $videos['youtube_2'], $videos['youtube_3'],
-                $audios['audio_1'], $audios['audio_2'], $audios['audio_3'], $id,
+                $audios['audio_1'], $audios['audio_2'], $audios['audio_3'], $portada, $id,
             ]);
             if ($stmt->rowCount() === 0) {
                 $comprobar = $pdo->prepare('SELECT COUNT(*) FROM noticias WHERE id=?');
@@ -191,14 +198,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $stmt = $pdo->prepare(
                 'INSERT INTO noticias
                     (categoria_id, usuario_id, titulo, slug, descripcion, seo_titulo, seo_descripcion, seo_imagen,
-                     youtube, youtube_2, youtube_3, audio_1, audio_2, audio_3)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                     youtube, youtube_2, youtube_3, audio_1, audio_2, audio_3, portada)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
             );
             $stmt->execute([
                 $categoriaId, $usuarioId, $titulo, $slug, $descripcion,
                 $seoTitulo, $seoDescripcion, $seoImagen !== '' ? $seoImagen : null,
                 $videos['youtube'], $videos['youtube_2'], $videos['youtube_3'],
-                $audios['audio_1'], $audios['audio_2'], $audios['audio_3'],
+                $audios['audio_1'], $audios['audio_2'], $audios['audio_3'], 0,
             ]);
             $id = (int) $pdo->lastInsertId();
         }
@@ -358,6 +365,20 @@ require __DIR__ . '/includes/header.php';
       <label for="titulo">Título</label>
       <input class="form-control" type="text" id="titulo" name="titulo" value="<?= e($noticia['titulo']) ?>" maxlength="255" required />
     </div>
+
+    <?php if ($editando): ?>
+      <div class="form-group news-cover-form-field">
+        <span class="news-cover-field-label">Portada</span>
+        <label class="news-cover-form-switch">
+          <input type="checkbox" name="portada" value="1" role="switch" <?= (int) ($noticia['portada'] ?? 0) === 1 ? 'checked' : '' ?>>
+          <span class="news-cover-switch-track" aria-hidden="true"><span></span></span>
+          <span>
+            <strong>Mostrar en el slider</strong>
+            <small>Al activarla, esta noticia aparecerá en el encabezado de la portada.</small>
+          </span>
+        </label>
+      </div>
+    <?php endif; ?>
 
     <div class="form-group">
       <label for="editorHtml">Descripción</label>

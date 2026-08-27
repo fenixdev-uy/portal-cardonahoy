@@ -8,7 +8,7 @@ Documentación del estado actual del proyecto. La prioridad activa y los pasos p
 
 Backend de noticias para la landing page. Las noticias se administran desde un panel (CRUD) y el feed de la **versión PC** se renderiza desde la base de datos en `landing/index.php`.
 
-**Estado actual:** panel protegido con login, usuarios, roles/permisos, noticias, categorías y galería. Los dos feeds del front, PC y móvil, están conectados al backend. Lo único que sigue siendo contenido estático de ejemplo es el slider del home.
+**Estado actual:** panel protegido con login, usuarios, roles/permisos, noticias, categorías y galería. El slider y los dos feeds del front, PC y móvil, están conectados al backend.
 
 ---
 
@@ -55,6 +55,7 @@ landing/
 │   ├── security-v1.php         ← migración CLI de autores a usuarios/roles
 │   ├── configuracion-v1.php    ← migración CLI de configuración y su permiso
 │   ├── publicidad-v1.php       ← tabla de anuncios + permiso de publicidad
+│   ├── portada-v1.php          ← campo e índice para administrar el slider
 │   ├── seo-v1.php              ← migración idempotente de slugs y overrides SEO
 │   └── migrate.php             ← migración histórica v2, solo CLI
 │
@@ -149,6 +150,7 @@ landing/
 | audio_1        | VARCHAR(500)  | URL opcional de audio 1                |
 | audio_2        | VARCHAR(500)  | URL opcional de audio 2                |
 | audio_3        | VARCHAR(500)  | URL opcional de audio 3                |
+| portada        | TINYINT(1)    | `1` = mostrar la noticia en el slider  |
 | created_at     | TIMESTAMP     |                                        |
 | updated_at     | TIMESTAMP     | on update                              |
 
@@ -201,7 +203,8 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 
 - **Menú lateral** (izquierda) + contenido a la derecha. Responsive (hamburguesa en móvil). **Noticias**, **Usuarios**, **Publicidad** y **Análisis** funcionan como grupos desplegables y solo mantienen uno abierto a la vez.
 - **Noticias** (`index.php`):
-  - Listado (foto de portada, título, descripción, categoría, autor, fecha y acciones), con buscador instantáneo y orden por fecha en ambos sentidos.
+  - Listado (foto, título, categoría, fecha, peso, votos, estado de portada y acciones), con buscador instantáneo y orden por fecha en ambos sentidos.
+  - La columna **Portada** incorpora un switch con guardado inmediato. Solo permite activarlo cuando la noticia tiene al menos una foto.
   - Columna **Peso** calculada desde los archivos locales reales: galería, imágenes insertadas en el editor y audios subidos. Ordena en ambos sentidos y muestra el desglose Fotos/Audios; YouTube y URLs externas no se cuentan porque no consumen disco local.
   - Vista previa en drawer lateral (40% del ancho) al hacer clic en la foto: foto de portada, miniaturas de la galería, categoría, título, fecha larga, autor, descripción formateada y reproductor de YouTube embebido si tiene URL.
   - Acciones de editar / eliminar. El borrado limpia galería, imágenes internas y audios locales únicamente cuando ningún otro contenido conserva la misma referencia.
@@ -209,6 +212,7 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
   - Campos: categoría, autor, título, descripción (editor TipTap), hasta 3 audios, hasta 3 videos de YouTube y **galería de fotos**.
   - Medios: dos cards en columnas; los audios aceptan URL HTTPS o subida inmediata MP3/M4A/OGG/WAV (máx. 25 MB) y la base guarda únicamente la URL.
   - Galería: subida **inmediata** por AJAX al elegir cada foto (muestra la miniatura al instante, sin esperar el guardado), **arrastrar y soltar** para reordenar (SortableJS), eliminar con × y la primera foto es la portada.
+  - La edición incluye el switch **Portada** para mostrar u ocultar la noticia en el slider del encabezado.
 - **Categorías** (`categorias.php`):
   - CRUD completo con buscador, contador y alta/edición en panel lateral; cada categoría muestra cuántas noticias la utilizan.
 - **Usuarios** (`usuarios.php`):
@@ -267,7 +271,7 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 
 ### Hecho — front PC
 - [x] Front conectado al backend (`index.php` + `partials/pc-feed.php`).
-- [x] Header y slider principal conservados a pantalla completa.
+- [x] Header y slider principal a pantalla completa, alimentado por las noticias de base con `portada = 1` y al menos una foto.
 - [x] Portada editorial con todas las noticias en tarjetas: tres columnas desde `1100px` y dos columnas entre `769px` y `1099px`.
 - [x] Tarjetas rectangulares, sin bordes redondeados: portada `3:2`, categoría, fecha compacta, título y resumen; toda la tarjeta abre el permalink público.
 - [x] Cada pareja completa de noticias forma una fila híbrida con un anuncio. Una semilla estable distribuye tanto el anunciante como su posición —izquierda, centro o derecha— y garantiza que las tres ubicaciones roten; si el total es impar, la última noticia queda sola. Los tres elementos igualan dimensiones en escritorio ancho y en el rango compacto se reorganizan en dos columnas.
@@ -314,7 +318,7 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 - [x] **Página individual móvil desplegada y aprobada:** encabezado del portal, hero/galería con lupa incluso para una foto, visor con zoom de 100% a 400%, fecha, autor, HTML enriquecido, medios, votos, redes alineadas y regreso a la portada. La rotación automática mueve solamente el carrusel horizontal y no altera el scroll vertical.
 - [ ] **Etapa activa:** terminar de dar forma a la nueva grilla de la portada PC después de la revisión visual del usuario. Luego se retomará el rediseño de la página individual en PC. La versión móvil es el baseline aprobado y debe permanecer intacta.
 - [x] **Asistente editorial desplegado:** el botón **«Crear con IA»** abre un drawer lateral donde el periodista puede pegar información cruda o fragmentos de otras fuentes y agregar indicaciones. Siempre que TipTap tenga contenido —especialmente al editar una noticia— su texto actual reemplaza la información base al abrir el asistente; si está vacío no la sobrescribe. DeepSeek construye una propuesta, permite crear otra versión y solo la agrega a TipTap al confirmar. Para garantizar exactitud no admite URLs: el periodista debe copiar el contenido relevante del enlace. La clave nunca llega al navegador. Código, runtime privado y bloqueo HTTP quedaron publicados y verificados en producción el 25 de agosto de 2026.
-- [ ] Conectar el slider del home (`hero`) al backend; es lo último del front que sigue estático.
+- [x] Slider del home conectado al backend y administrable mediante switches desde la tabla y la edición de noticias.
 - [x] Autenticación y protección completa del panel.
 - [x] Botones de **compartir** funcionales para Facebook y WhatsApp mediante el permalink canónico.
 - [ ] Limpiar archivos huérfanos: si se suben fotos y se abandona el formulario sin guardar, quedan en `uploads/noticias/` sin asociar.
@@ -354,7 +358,7 @@ En el cloud cPanel/WHM actual todas las cuentas usan el servicio FTPS global med
 
 ### Render del front
 - `index.php` es PHP (antes era `index.html`). Incluye `admin/includes/funciones.php`, consulta las noticias (`ORDER BY created_at DESC, id DESC`) más las galerías en una segunda consulta, y delega el dibujo de los feeds en `partials/pc-feed.php` y `partials/mobile-feed.php`. Ambos partials consumen las mismas variables, así que agregar el feed móvil no sumó consultas.
-- El único bloque que sigue siendo HTML estático es el slider del home (`hero`).
+- El slider del home (`hero`) toma categoría, título, resumen y primera foto de cada noticia marcada como portada.
 - Los estilos y las interacciones de la portada viven en `assets/css/portal.css` y `assets/js/portal.js`, cargados con versión automática por `filemtime()`. La página individual usa `assets/css/noticia.css` y `assets/js/noticia.js` con el mismo criterio. Cada PHP entrega al script solamente la URL dinámica de votos mediante `data-vote-url`; los partials solo aportan marcado.
 - `partials/nota-completa.php` aporta un único template funcional por noticia. En móvil se clona dentro de la hoja inferior aprobada y en PC dentro del drawer derecho, evitando mantener dos versiones distintas del contenido completo.
 - Los estilos del HTML de la descripción están en la clase global `.rich-text`, fuera de media queries, y se aplican al contenido PC y a la hoja móvil. El resumen del feed es texto plano. Al permitir una etiqueta nueva en `sanitizar_html()`, darle estilo en `.rich-text`.
