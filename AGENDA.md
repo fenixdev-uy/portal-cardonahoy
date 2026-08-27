@@ -6,14 +6,7 @@ Este archivo contiene únicamente el trabajo pendiente elegido para próximas et
 
 ## Prioridad activa
 
-1. **Agregar una barra de búsqueda y filtros a la portada PC.**
-   - Estado: **acordado y pendiente de implementación**.
-   - Ubicarla entre el header con slider y la grilla de cards.
-   - Mantener en una misma línea: buscador de texto, selector de categoría, fecha desde, fecha hasta y botón **Filtrar**.
-   - Permitir buscar noticias por palabras y filtrar por categoría, rango de fechas o cualquier combinación de esos criterios.
-   - Diseñar y validar primero la experiencia de PC; no modificar la versión móvil en esta etapa.
-   - Preservar la portada, el drawer de noticia, **Últimas Noticias** y la publicidad dinámica ya aprobados.
-   - No implementar ni desplegar hasta que el usuario retome esta tarea.
+No hay una prioridad activa. Esperar la próxima indicación del usuario.
 
 ## Pendientes posteriores
 

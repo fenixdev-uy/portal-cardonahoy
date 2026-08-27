@@ -5,7 +5,7 @@
  * por index.php. La experiencia móvil continúa en mobile-feed.php.
  */
 require_once __DIR__ . '/publicidad.php';
-$noticiasPc = array_values($noticias);
+$noticiasPc = isset($noticiasPc) ? array_values($noticiasPc) : array_values($noticias);
 $totalNoticiasPc = count($noticiasPc);
 $indiceNoticiaPc = 0;
 $indiceFilaMixta = 0;
@@ -20,6 +20,43 @@ $desplazamientoPublicidad = $totalPublicidadesPc > 0 ? $semillaPortadaPc % $tota
 $sentidoPublicidad = $totalPublicidadesPc > 0 && intdiv($semillaPortadaPc, $totalPublicidadesPc) % 2 !== 0 ? -1 : 1;
 ?>
   <section class="pc-feed" aria-label="Noticias">
+    <form class="pc-news-filters" method="get" action="" role="search" aria-label="Buscar y filtrar noticias">
+      <label class="pc-news-filter pc-news-filter-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle>
+          <path d="m20 20-4-4"></path>
+        </svg>
+        <input type="search" name="buscar" value="<?= e($buscarPc ?? '') ?>" placeholder="Buscar noticias..." maxlength="150" aria-label="Buscar por palabras">
+      </label>
+
+      <label class="pc-news-filter pc-news-filter-category">
+        <select name="categoria" aria-label="Seleccionar categoría">
+          <option value="">Todas las categorías</option>
+<?php foreach (($categoriasFiltroPc ?? []) as $categoriaFiltro): ?>
+          <option value="<?= (int) $categoriaFiltro['id'] ?>"<?= ($categoriaPc ?? null) === (int) $categoriaFiltro['id'] ? ' selected' : '' ?>><?= e($categoriaFiltro['nombre']) ?></option>
+<?php endforeach; ?>
+        </select>
+      </label>
+
+      <label class="pc-news-filter pc-news-filter-date">
+        <span>Desde</span>
+        <input type="date" name="desde" value="<?= e($desdePc ?? '') ?>"<?= $hastaPc !== '' ? ' max="' . e($hastaPc) . '"' : '' ?>>
+      </label>
+
+      <label class="pc-news-filter pc-news-filter-date">
+        <span>Hasta</span>
+        <input type="date" name="hasta" value="<?= e($hastaPc ?? '') ?>"<?= $desdePc !== '' ? ' min="' . e($desdePc) . '"' : '' ?>>
+      </label>
+
+      <button class="pc-news-filter-submit" type="submit">Filtrar</button>
+    </form>
+
+<?php if ($totalNoticiasPc === 0): ?>
+    <div class="pc-news-filter-empty" role="status">
+      <strong>No encontramos noticias</strong>
+      <span>Probá con otras palabras, categoría o fechas.</span>
+    </div>
+<?php else: ?>
     <div class="pc-news-grid">
 <?php while ($indiceNoticiaPc < $totalNoticiasPc): ?>
 <?php $noticiasFila = array_slice($noticiasPc, $indiceNoticiaPc, 2); ?>
@@ -62,4 +99,5 @@ $sentidoPublicidad = $totalPublicidadesPc > 0 && intdiv($semillaPortadaPc, $tota
 <?php endif; ?>
 <?php endwhile; ?>
     </div>
+<?php endif; ?>
   </section>

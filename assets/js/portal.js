@@ -92,6 +92,21 @@
       link.addEventListener('click', closeMenu);
     });
 
+    // Mantiene coherente el rango de fechas de la búsqueda PC antes de enviar.
+    const pcNewsFilters = document.querySelector('.pc-news-filters');
+    const pcNewsDateFrom = pcNewsFilters?.querySelector('[name="desde"]');
+    const pcNewsDateTo = pcNewsFilters?.querySelector('[name="hasta"]');
+
+    function syncPcNewsDateRange() {
+      if (!pcNewsDateFrom || !pcNewsDateTo) return;
+      pcNewsDateFrom.max = pcNewsDateTo.value;
+      pcNewsDateTo.min = pcNewsDateFrom.value;
+    }
+
+    pcNewsDateFrom?.addEventListener('change', syncPcNewsDateRange);
+    pcNewsDateTo?.addEventListener('change', syncPcNewsDateRange);
+    syncPcNewsDateRange();
+
     // Cierra el menú con la tecla Escape
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && menuOverlay.classList.contains('open')) {

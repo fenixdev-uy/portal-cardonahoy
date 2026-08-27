@@ -14,7 +14,7 @@ $pdo = db();
 // Los contadores de votos viajan en la misma consulta: son columnas de
 // noticias, así que mostrarlos no cuesta ninguna consulta extra.
 $noticias = $pdo->query(
-    'SELECT n.id, n.titulo, n.slug, n.descripcion,
+    'SELECT n.id, n.categoria_id, n.titulo, n.slug, n.descripcion,
             n.youtube, n.youtube_2, n.youtube_3,
             n.audio_1, n.audio_2, n.audio_3, n.created_at,
             n.me_gusta, n.no_me_gusta,
@@ -25,6 +25,82 @@ $noticias = $pdo->query(
        LEFT JOIN usuarios u ON u.id = n.usuario_id
       ORDER BY n.created_at DESC, n.id DESC'
 )->fetchAll();
+
+// La barra de filtros pertenece únicamente a la portada PC. El feed móvil y
+// los templates de nota completa siguen recibiendo el conjunto entero.
+$categoriasFiltroPc = $pdo->query(
+    'SELECT id, nombre FROM categorias ORDER BY nombre ASC'
+)->fetchAll();
+
+$buscarEntradaPc = $_GET['buscar'] ?? '';
+$buscarPc = is_string($buscarEntradaPc) ? trim($buscarEntradaPc) : '';
+if (mb_strlen($buscarPc, 'UTF-8') > 150) {
+    $buscarPc = mb_substr($buscarPc, 0, 150, 'UTF-8');
+}
+
+$categoriaPc = filter_input(INPUT_GET, 'categoria', FILTER_VALIDATE_INT, [
+    'options' => ['min_range' => 1],
+]);
+$categoriaPc = $categoriaPc !== false && $categoriaPc !== null ? (int) $categoriaPc : null;
+
+$validarFechaPc = static function (mixed $valor): string {
+    if (!is_string($valor)) {
+        return '';
+    }
+
+    $fecha = trim($valor);
+    if ($fecha === '') {
+        return '';
+    }
+
+    $objeto = DateTimeImmutable::createFromFormat('!Y-m-d', $fecha);
+    return $objeto && $objeto->format('Y-m-d') === $fecha ? $fecha : '';
+};
+
+$desdePc = $validarFechaPc($_GET['desde'] ?? '');
+$hastaPc = $validarFechaPc($_GET['hasta'] ?? '');
+
+$normalizarBusquedaPc = static function (string $valor): string {
+    $texto = html_entity_decode(strip_tags($valor), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $texto = function_exists('mb_strtolower') ? mb_strtolower($texto, 'UTF-8') : strtolower($texto);
+    $ascii = function_exists('iconv') ? iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $texto) : false;
+    $texto = $ascii !== false ? $ascii : $texto;
+    return trim((string) preg_replace('/\s+/', ' ', $texto));
+};
+
+$terminosBusquedaPc = preg_split('/\s+/', $normalizarBusquedaPc($buscarPc), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+$noticiasPc = array_values(array_filter($noticias, static function (array $noticia) use (
+    $categoriaPc,
+    $desdePc,
+    $hastaPc,
+    $terminosBusquedaPc,
+    $normalizarBusquedaPc
+): bool {
+    if ($categoriaPc !== null && (int) ($noticia['categoria_id'] ?? 0) !== $categoriaPc) {
+        return false;
+    }
+
+    $fechaNoticia = substr((string) ($noticia['created_at'] ?? ''), 0, 10);
+    if ($desdePc !== '' && $fechaNoticia < $desdePc) {
+        return false;
+    }
+    if ($hastaPc !== '' && $fechaNoticia > $hastaPc) {
+        return false;
+    }
+
+    if ($terminosBusquedaPc) {
+        $contenido = $normalizarBusquedaPc(
+            (string) ($noticia['titulo'] ?? '') . ' ' . (string) ($noticia['descripcion'] ?? '')
+        );
+        foreach ($terminosBusquedaPc as $termino) {
+            if (!str_contains($contenido, $termino)) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}));
 
 // Todas las galerias se cargan en una sola consulta para evitar una consulta
 // adicional por cada noticia.
