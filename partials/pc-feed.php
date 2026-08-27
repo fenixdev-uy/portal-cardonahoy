@@ -105,4 +105,8 @@ $sentidoPublicidad = $totalPublicidadesPc > 0 && intdiv($semillaPortadaPc, $tota
 <?php endif; ?>
     </div>
   </section>
+
+  <footer class="pc-site-footer">
+    <p>copy rsmedios.com dev en <a href="https://fenixlab.uno" target="_blank" rel="noopener noreferrer">Fenix</a></p>
+  </footer>
 <?php $mostrarBotonNotaCompletaPc = false; ?>

@@ -1912,6 +1912,10 @@
       display: none;
     }
 
+    .pc-site-footer {
+      display: none;
+    }
+
     @media (min-width: 769px) {
       .pc-feed {
         display: block;
@@ -2264,6 +2268,41 @@
         display: block;
         width: 20px;
         height: 20px;
+      }
+
+      .pc-site-footer {
+        position: relative;
+        display: block;
+        padding: 28px 32px 34px;
+        border-top: 1px solid #dbe1e7;
+        background: #fff;
+        box-shadow: 0 -7px 16px rgba(15, 23, 42, 0.055);
+        color: #64748b;
+        text-align: center;
+      }
+
+      .pc-site-footer p {
+        margin: 0;
+        font-size: 0.78rem;
+        font-weight: 600;
+        letter-spacing: 0.035em;
+        line-height: 1.5;
+      }
+
+      .pc-site-footer a {
+        color: #111;
+        font-weight: 800;
+        text-decoration: none;
+        text-underline-offset: 3px;
+      }
+
+      .pc-site-footer a:hover {
+        text-decoration: underline;
+      }
+
+      .pc-site-footer a:focus-visible {
+        outline: 2px solid #111;
+        outline-offset: 4px;
       }
 
       @media (prefers-reduced-motion: reduce) {

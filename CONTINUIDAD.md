@@ -696,3 +696,7 @@ QA específica a `1440×900`: escribir «fuente» redujo siete cards a una sin p
 Todas las cards editoriales de la grilla principal PC muestran ahora **Ver nota completa**. Se reutilizó el mismo elemento compartido y el mismo estilo rectangular ya aprobado para las recomendaciones de **Últimas Noticias**; no se duplicó marcado ni lógica. El CTA continúa dentro del enlace integral de la tarjeta y abre el drawer derecho exactamente igual que un clic en su imagen, título o resumen.
 
 Chromium/Puppeteer confirmó siete CTA para siete noticias a `1440×900`, estilo negro de `44px` y bordes rectos, clic directo abriendo el drawer, persistencia del CTA después del filtrado instantáneo y siete CTA a `769×900`, sin overflow ni errores. A `390×844`, el feed PC permaneció oculto y los siete botones móviles independientes siguieron intactos. **No desplegado en PROD.**
+
+### Pie de página de la portada PC — 26 de agosto de 2026
+
+Después de la grilla completa se agregó un footer exclusivo de escritorio, separado mediante una línea superior de `1px` y una sombra fina. Debajo aparece centrado el texto **«copy rsmedios.com dev en Fenix»**; únicamente **Fenix** enlaza a `https://fenixlab.uno` y abre de forma segura en una pestaña nueva. Chromium/Puppeteer a `1440×900` verificó posición posterior al feed, texto, borde, sombra, destino, `noopener noreferrer` y ausencia de overflow. A `390×844` el footer permaneció oculto y móvil siguió sin overflow ni errores. **No desplegado en PROD.**
