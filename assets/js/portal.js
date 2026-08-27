@@ -94,8 +94,13 @@
 
     // Mantiene coherente el rango de fechas de la búsqueda PC antes de enviar.
     const pcNewsFilters = document.querySelector('.pc-news-filters');
+    const pcNewsSearch = pcNewsFilters?.querySelector('[name="buscar"]');
     const pcNewsDateFrom = pcNewsFilters?.querySelector('[name="desde"]');
     const pcNewsDateTo = pcNewsFilters?.querySelector('[name="hasta"]');
+    const pcNewsFilterStatus = pcNewsFilters?.querySelector('.pc-news-filter-status');
+    let pcNewsResults = document.querySelector('.pc-news-results');
+    let pcNewsSearchTimer = null;
+    let pcNewsFilterController = null;
 
     function syncPcNewsDateRange() {
       if (!pcNewsDateFrom || !pcNewsDateTo) return;
@@ -106,6 +111,75 @@
     pcNewsDateFrom?.addEventListener('change', syncPcNewsDateRange);
     pcNewsDateTo?.addEventListener('change', syncPcNewsDateRange);
     syncPcNewsDateRange();
+
+    function pcNewsFilterUrl() {
+      const url = new URL(window.location.href);
+      const params = new URLSearchParams(new FormData(pcNewsFilters));
+      Array.from(params.entries()).forEach(([key, value]) => {
+        if (value.trim() === '') params.delete(key);
+      });
+      url.search = params.toString();
+      return url;
+    }
+
+    async function updatePcNewsResults() {
+      if (!pcNewsFilters || !pcNewsResults) return;
+
+      if (pcNewsSearchTimer) {
+        window.clearTimeout(pcNewsSearchTimer);
+        pcNewsSearchTimer = null;
+      }
+      pcNewsFilterController?.abort();
+      const filterController = new AbortController();
+      pcNewsFilterController = filterController;
+
+      const url = pcNewsFilterUrl();
+      pcNewsFilters.setAttribute('aria-busy', 'true');
+      pcNewsResults.setAttribute('aria-busy', 'true');
+
+      try {
+        const response = await fetch(url, {
+          credentials: 'same-origin',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          signal: filterController.signal,
+        });
+        if (!response.ok) throw new Error(`No se pudieron filtrar las noticias (${response.status})`);
+
+        const html = await response.text();
+        const documentResult = new DOMParser().parseFromString(html, 'text/html');
+        const nextResults = documentResult.querySelector('.pc-news-results');
+        if (!nextResults) throw new Error('La respuesta no contiene la grilla de noticias');
+
+        const importedResults = document.importNode(nextResults, true);
+        pcNewsResults.replaceWith(importedResults);
+        pcNewsResults = importedResults;
+        window.history.replaceState({}, '', url);
+
+        const total = pcNewsResults.querySelectorAll('.pc-news-card').length;
+        if (pcNewsFilterStatus) {
+          pcNewsFilterStatus.textContent = total === 1
+            ? '1 noticia encontrada'
+            : `${total} noticias encontradas`;
+        }
+      } catch (error) {
+        if (error.name !== 'AbortError') console.error(error);
+      } finally {
+        if (pcNewsFilterController === filterController) {
+          pcNewsFilters.setAttribute('aria-busy', 'false');
+          pcNewsResults?.setAttribute('aria-busy', 'false');
+        }
+      }
+    }
+
+    pcNewsFilters?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      updatePcNewsResults();
+    });
+
+    pcNewsSearch?.addEventListener('input', () => {
+      if (pcNewsSearchTimer) window.clearTimeout(pcNewsSearchTimer);
+      pcNewsSearchTimer = window.setTimeout(updatePcNewsResults, 280);
+    });
 
     // Cierra el menú con la tecla Escape
     document.addEventListener('keydown', (e) => {

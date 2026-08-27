@@ -49,15 +49,17 @@ $sentidoPublicidad = $totalPublicidadesPc > 0 && intdiv($semillaPortadaPc, $tota
       </label>
 
       <button class="pc-news-filter-submit" type="submit">Filtrar</button>
+      <span class="pc-news-filter-status" aria-live="polite"></span>
     </form>
 
+    <div class="pc-news-results" aria-busy="false">
 <?php if ($totalNoticiasPc === 0): ?>
-    <div class="pc-news-filter-empty" role="status">
+      <div class="pc-news-filter-empty" role="status">
       <strong>No encontramos noticias</strong>
       <span>Probá con otras palabras, categoría o fechas.</span>
-    </div>
+      </div>
 <?php else: ?>
-    <div class="pc-news-grid">
+      <div class="pc-news-grid">
 <?php while ($indiceNoticiaPc < $totalNoticiasPc): ?>
 <?php $noticiasFila = array_slice($noticiasPc, $indiceNoticiaPc, 2); ?>
 <?php $indiceNoticiaPc += count($noticiasFila); ?>
@@ -98,6 +100,7 @@ $sentidoPublicidad = $totalPublicidadesPc > 0 && intdiv($semillaPortadaPc, $tota
 <?php $indiceFilaMixta++; ?>
 <?php endif; ?>
 <?php endwhile; ?>
-    </div>
+      </div>
 <?php endif; ?>
+    </div>
   </section>

@@ -2021,9 +2021,30 @@
         outline-offset: 3px;
       }
 
+      .pc-news-filter-status {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      .pc-news-results {
+        min-height: calc(100vh - 96px);
+        transition: opacity 0.18s ease;
+      }
+
+      .pc-news-results[aria-busy="true"] {
+        opacity: 0.5;
+        pointer-events: none;
+      }
+
       .pc-news-filter-empty {
         display: flex;
-        min-height: 260px;
+        min-height: calc(100vh - 96px);
         align-items: center;
         justify-content: center;
         flex-direction: column;
@@ -2247,7 +2268,8 @@
 
       @media (prefers-reduced-motion: reduce) {
         .pc-news-card,
-        .pc-news-card-media img {
+        .pc-news-card-media img,
+        .pc-news-results {
           transition: none;
         }
       }
