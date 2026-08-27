@@ -320,7 +320,7 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 - [x] **Asistente editorial desplegado:** el botón **«Crear con IA»** abre un drawer lateral donde el periodista puede pegar información cruda o fragmentos de otras fuentes y agregar indicaciones. Siempre que TipTap tenga contenido —especialmente al editar una noticia— su texto actual reemplaza la información base al abrir el asistente; si está vacío no la sobrescribe. DeepSeek construye una propuesta, permite crear otra versión y solo la agrega a TipTap al confirmar. Para garantizar exactitud no admite URLs: el periodista debe copiar el contenido relevante del enlace. La clave nunca llega al navegador. Código, runtime privado y bloqueo HTTP quedaron publicados y verificados en producción el 25 de agosto de 2026.
 - [x] Slider del home conectado al backend y administrable mediante switches desde la tabla y la edición de noticias.
 - [x] Autenticación y protección completa del panel.
-- [x] Botones de **compartir** funcionales para Facebook y WhatsApp mediante el permalink canónico.
+- [x] Botones de **compartir** funcionales para Facebook y WhatsApp mediante el permalink canónico. WhatsApp recibe únicamente la URL para que su tarjeta social no repita debajo el título y el enlace.
 - [ ] Limpiar archivos huérfanos: si se suben fotos y se abandona el formulario sin guardar, quedan en `uploads/noticias/` sin asociar.
 - [ ] Mejoras futuras: subir videos al servidor (hoy es URL de YouTube), más de un video por noticia, arrastrar archivos desde el escritorio a la galería, previsualizar fotos antes de subir.
 - [x] Sección **Configuración** del panel, ubicada encima del usuario conectado, con gestión visual de la marca de agua.

@@ -724,3 +724,9 @@ Antes de la prueba se creó y publicó la etiqueta Git `pre-fuentes-google-2026-
 Por decisión visual posterior, los títulos públicos pasan a **Arial Black** manteniendo `font-weight: 800`; Roboto continúa en todo el texto general. Se retiró Oswald de la solicitud a Google Fonts. El fallback de títulos es Roboto 800 cuando el sistema no dispone de Arial Black. El respaldo `pre-fuentes-google-2026-08-26` y los commits anteriores permiten volver a cualquiera de las pruebas previas. **No desplegado en PROD.**
 
 Chromium/Puppeteer verificó portada, cards y apertura de la noticia lateral en PC `1440×900`, además de portada y hoja completa móvil `390×844`: familia y peso calculados correctos, interacción funcional, cero errores y cero overflow. El entorno de QA no dispone del plugin Browser, por lo que se usó el navegador local existente.
+
+### Enlace limpio al compartir en WhatsApp — 27 de agosto de 2026
+
+El botón compartido de WhatsApp envía ahora únicamente el permalink canónico. Se retiró el título que antes se concatenaba delante de la URL porque WhatsApp ya obtiene título, descripción e imagen desde Open Graph y terminaba mostrando, además de la tarjeta SEO, una línea extensa repetida debajo. El ajuste vive una sola vez en `partials/acciones-noticia.php` y alcanza el drawer PC, la hoja móvil y la página individual sin modificar los metadatos SEO ni Facebook. **No desplegado en PROD.**
+
+Chromium/Puppeteer comprobó el parámetro `text` exacto en las tres superficies: contiene una sola URL, sin título ni texto adicional. La página individual conserva `og:title`, `og:description`, `og:image` y canonical completos; la apertura de ambas hojas funciona, sin errores ni overflow a `1440×900` y `390×844`. La composición final y la caché propia de WhatsApp requieren confirmación en la aplicación real.
