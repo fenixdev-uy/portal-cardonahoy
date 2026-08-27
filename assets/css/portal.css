@@ -2282,12 +2282,20 @@
       .pc-site-footer::before {
         content: "";
         position: absolute;
-        top: 0;
+        top: -6px;
         right: clamp(40px, 4.45vw, 64px);
         left: clamp(40px, 4.45vw, 64px);
-        height: 1px;
-        background: #dbe1e7;
-        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.09);
+        height: 12px;
+        background: linear-gradient(
+          to bottom,
+          rgba(15, 23, 42, 0) 0%,
+          rgba(15, 23, 42, 0.035) 24%,
+          rgba(15, 23, 42, 0.13) 44%,
+          rgba(255, 255, 255, 0.98) 52%,
+          rgba(15, 23, 42, 0.035) 68%,
+          rgba(15, 23, 42, 0) 100%
+        );
+        filter: blur(0.35px);
       }
 
       .pc-site-footer p {
