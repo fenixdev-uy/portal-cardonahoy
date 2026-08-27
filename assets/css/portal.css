@@ -2283,8 +2283,8 @@
         content: "";
         position: absolute;
         top: 0;
-        right: clamp(24px, 2.23vw, 32px);
-        left: clamp(24px, 2.23vw, 32px);
+        right: clamp(40px, 4.45vw, 64px);
+        left: clamp(40px, 4.45vw, 64px);
         height: 1px;
         background: #dbe1e7;
         box-shadow: 0 2px 6px rgba(15, 23, 42, 0.09);
