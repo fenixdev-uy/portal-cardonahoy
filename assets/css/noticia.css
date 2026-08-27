@@ -1,7 +1,8 @@
-    :root{--ink:#0f172a;--muted:#64748b;--accent:#5eead4;--line:#e2e8f0}
+    :root{--ink:#0f172a;--muted:#64748b;--accent:#5eead4;--line:#e2e8f0;--font-title:"Oswald","Arial Narrow",sans-serif;--font-text:"Roboto",Arial,sans-serif}
     *{box-sizing:border-box}
     html{min-height:100%;overflow-x:hidden;scroll-behavior:smooth}
-    body{min-height:100%;margin:0;color:var(--ink);background:#fff;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+    body{min-height:100%;margin:0;color:var(--ink);background:#fff;font-family:var(--font-text)}
+    h1,h2,h3,h4,h5,h6{font-family:var(--font-title)}
     body.overlay-open{overflow:hidden}
     a{color:inherit}
 
@@ -49,10 +50,10 @@
     .story-meta{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:28px;color:var(--muted);font-size:.85rem}
     .story-meta svg{width:17px;height:17px;flex:0 0 auto;color:#111}
     .story-author{font-weight:700;color:#111}
-    .article-body{color:#202735;font-family:Georgia,"Times New Roman",serif;font-size:1.08rem;line-height:1.75}
+    .article-body{color:#202735;font-family:var(--font-text);font-size:1.08rem;line-height:1.75}
     .article-body>:first-child{margin-top:0}.article-body>:last-child{margin-bottom:0}
     .article-body p{margin:0 0 16px}
-    .article-body h1,.article-body h2,.article-body h3{margin:1.2em 0 .5em;color:#111;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-weight:700;line-height:1.25}
+    .article-body h1,.article-body h2,.article-body h3{margin:1.2em 0 .5em;color:#111;font-family:var(--font-title);font-weight:700;line-height:1.25}
     .article-body h1{font-size:1.55rem}.article-body h2{font-size:1.35rem}.article-body h3{font-size:1.15rem}
     .article-body strong,.article-body b{font-weight:700}.article-body em,.article-body i{font-style:italic}.article-body u{text-decoration:underline}.article-body s{text-decoration:line-through}
     .article-body ul,.article-body ol{margin:0 0 16px;padding-left:1.6rem}.article-body ul{list-style:disc}.article-body ol{list-style:decimal}.article-body li{margin-bottom:6px}
