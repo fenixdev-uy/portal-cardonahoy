@@ -9,6 +9,7 @@ $noticiasPc = isset($noticiasPc) ? array_values($noticiasPc) : array_values($not
 $totalNoticiasPc = count($noticiasPc);
 $indiceNoticiaPc = 0;
 $indiceFilaMixta = 0;
+$mostrarBotonNotaCompletaPc = true;
 $identidadesNoticiasPc = array_map(static function (array $noticia): string {
     return (string) $noticia['id'] . ':' . (string) $noticia['slug'];
 }, $noticiasPc);
@@ -104,3 +105,4 @@ $sentidoPublicidad = $totalPublicidadesPc > 0 && intdiv($semillaPortadaPc, $tota
 <?php endif; ?>
     </div>
   </section>
+<?php $mostrarBotonNotaCompletaPc = false; ?>

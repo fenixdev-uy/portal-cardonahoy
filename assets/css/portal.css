@@ -1535,7 +1535,7 @@
         color: #94a3b8;
       }
 
-      .story-latest .pc-news-card-cta {
+      .pc-news-card-cta {
         display: inline-flex;
         min-height: 44px;
         align-self: flex-start;
@@ -1555,8 +1555,8 @@
         transition: color 0.2s ease, background-color 0.2s ease;
       }
 
-      .story-latest .pc-news-card-link:hover .pc-news-card-cta,
-      .story-latest .pc-news-card-link:focus-visible .pc-news-card-cta {
+      .pc-news-card-link:hover .pc-news-card-cta,
+      .pc-news-card-link:focus-visible .pc-news-card-cta {
         color: #fff;
         background: #111;
       }
