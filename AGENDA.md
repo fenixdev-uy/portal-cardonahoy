@@ -1,12 +1,12 @@
 # Agenda — Portal de Noticias
 
-Última actualización: **26 de agosto de 2026**.
+Última actualización: **27 de agosto de 2026**.
 
 Este archivo contiene únicamente el trabajo pendiente elegido para próximas etapas. El estado técnico, las decisiones aprobadas y las validaciones realizadas se documentan en `CONTINUIDAD.md`.
 
 ## Prioridad activa
 
-No hay una prioridad activa. Esperar la próxima indicación del usuario.
+1. Después de confirmar las pruebas de tarjetas compartidas en Facebook, retirar la autorización temporal de `facebookexternalhit` agregada al `robots.txt` raíz de `proyectos.fenixdev.uno`. El resto de los robots y todo el resto del dominio DEV continúan bloqueados.
 
 ## Pendientes posteriores
 
