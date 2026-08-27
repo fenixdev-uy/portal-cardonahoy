@@ -718,3 +718,9 @@ El portal público carga desde Google Fonts **Oswald** en todos los encabezados 
 Los títulos quedaron configurados con `font-weight: 800`, como en la referencia elegida. Google Fonts ofrece actualmente Oswald hasta peso 700; el navegador usa ese archivo y sintetiza el grosor adicional para representar 800.
 
 Antes de la prueba se creó y publicó la etiqueta Git `pre-fuentes-google-2026-08-26` sobre el commit `6bd4a6e`, que permite restaurar exactamente el diseño anterior. Chromium/Puppeteer confirmó la carga real de Oswald 700 y Roboto 400, familias calculadas correctas, cambio de slide, portada y cards a `1440×900`/`390×844`, y noticia individual móvil sin overflow ni errores. El plugin Browser no estaba disponible. **No desplegado en PROD.**
+
+### Prueba tipográfica Arial Black + Roboto — 26 de agosto de 2026
+
+Por decisión visual posterior, los títulos públicos pasan a **Arial Black** manteniendo `font-weight: 800`; Roboto continúa en todo el texto general. Se retiró Oswald de la solicitud a Google Fonts. El fallback de títulos es Roboto 800 cuando el sistema no dispone de Arial Black. El respaldo `pre-fuentes-google-2026-08-26` y los commits anteriores permiten volver a cualquiera de las pruebas previas. **No desplegado en PROD.**
+
+Chromium/Puppeteer verificó portada, cards y apertura de la noticia lateral en PC `1440×900`, además de portada y hoja completa móvil `390×844`: familia y peso calculados correctos, interacción funcional, cero errores y cero overflow. El entorno de QA no dispone del plugin Browser, por lo que se usó el navegador local existente.

@@ -1,4 +1,4 @@
-    :root{--ink:#0f172a;--muted:#64748b;--accent:#5eead4;--line:#e2e8f0;--font-title:"Oswald","Arial Narrow",sans-serif;--font-text:"Roboto",Arial,sans-serif}
+    :root{--ink:#0f172a;--muted:#64748b;--accent:#5eead4;--line:#e2e8f0;--font-title:"Arial Black","Roboto",Arial,sans-serif;--font-text:"Roboto",Arial,sans-serif}
     *{box-sizing:border-box}
     html{min-height:100%;overflow-x:hidden;scroll-behavior:smooth}
     body{min-height:100%;margin:0;color:var(--ink);background:#fff;font-family:var(--font-text)}
