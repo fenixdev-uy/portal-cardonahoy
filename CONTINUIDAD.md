@@ -2,6 +2,17 @@
 
 > **Identidad de este checkout — 29 de agosto de 2026:** esta copia es `portal-cardonahoy`, ubicada en `/home/fenixdev/public_html/proyectos.fenixdev.uno/09portal-noticias/portal-cardonahoy`. Nació del commit aprobado `5ec3e42` y todavía no tiene remoto Git ni destino PROD. Las referencias operativas a RS Medios que siguen debajo documentan el origen funcional y no autorizan usar sus destinos o credenciales en esta copia.
 
+## Modo mantenimiento y tamaños de logos — 29 de agosto de 2026
+
+- Se trasladó desde `portal-base` el bloque aprobado de **Mantenimiento**, incluido su icono de llave de reparación, switch rápido, card de configuración, pantalla pública `503`, bloqueo de endpoints y permiso independiente `mantenimiento.gestionar` administrable desde Roles.
+- Los usuarios cuyo rol posee ese permiso pueden ingresar y revisar el Portal durante el bloqueo; los demás reciben acceso denegado. La URL directa de login permanece disponible aunque se oculte su icono público.
+- Las cards **Logo del Login** y **Logo del Portal** incorporan sliders independientes de `60%` a `140%`, vista previa en vivo y guardado sin necesidad de subir otro PNG. El Portal comparte su porcentaje entre encabezado y menú fullscreen, conservando medidas responsive propias para PC, tablet y móvil.
+- Migraciones idempotentes: `install/mantenimiento-v1.php` y `install/configuracion-v1.php`. Ambas se ejecutaron dos veces únicamente en DEV (`fenixdev_noticias-cardonahoy`) después de verificar la huella documentada `93774fb37b9b` y el servidor `vps-6107919-x.dattaweb.com`.
+- Respaldo privado previo: `.deploy/respaldos-db/2026-08-29/dev-before-mantenimiento-logos.sql`, 41.281 bytes, SHA-256 `2297008498658f31b26fe1744a766ef8f3cedf3e618d9c19c8255dacdd43e950` y modo `600`.
+- La verificación dejó `mantenimiento_activo=0`, ambos tamaños de logo en `100`, seis valores efectivos de configuración, un permiso y asignación inicial únicamente al rol `admin`.
+- QA local por Puppeteer —Browser y Playwright no disponibles— pasó en `1440×900` y `390×844`: sliders y previews al `140%`, login, encabezado y menú, pantalla pública `503`, acceso autorizado, denegación `403`, logos propios cargados y cero overflow. Los únicos errores de consola correspondieron a los estados HTTP deliberados.
+- El usuario aprobó integralmente el resultado. El bloque queda cerrado en un checkpoint propio de Cardona Hoy y preparado para GitHub; no hubo migración ni despliegue PROD.
+
 ## Aislamiento de sesiones por instalación — 29 de agosto de 2026
 
 - La identidad pública versionada vive en `admin/config.instance.php` y para este checkout es `cardonahoy`.

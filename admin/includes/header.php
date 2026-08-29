@@ -22,6 +22,7 @@ $fotoUsuarioPanelValida = $fotoUsuarioPanel !== '' && imagen_usuario_disponible(
 $BASE = '';
 $adminCssVersion = (string) (filemtime(__DIR__ . '/../assets/admin.css') ?: '1');
 $puedeConfigurarPanel = tiene_permiso('configuracion.gestionar');
+$puedeGestionarMantenimiento = tiene_permiso('mantenimiento.gestionar');
 $puedeGestionarUsuarios = tiene_permiso('usuarios.gestionar');
 $puedeGestionarRoles = tiene_permiso('roles.gestionar');
 $puedeGestionarPublicidad = tiene_permiso('publicidad.gestionar');
@@ -36,6 +37,7 @@ $logoPortalPanel = null;
 $logoAdminPanel = null;
 $seoPortadaPanel = null;
 $codigoHeaderPanel = null;
+$mantenimientoPanel = null;
 $logoPortalRuta = configuracion_logo_portal();
 $archivoLogoPortal = dirname(__DIR__, 2) . '/' . $logoPortalRuta;
 $versionLogoPortal = is_file($archivoLogoPortal) ? (string) filemtime($archivoLogoPortal) : '1';
@@ -47,6 +49,13 @@ $archivoFaviconPortal = $identidadLogoAdmin['favicon_ruta'] !== null
     : dirname(__DIR__, 2) . '/imagenes/Logo2027v2.png';
 $versionFaviconPortal = is_file($archivoFaviconPortal) ? (string) filemtime($archivoFaviconPortal) : $versionLogoPortal;
 $fotoDemoMarcaAgua = '../imagenes/Publicidad-intendencia.jpg';
+$configuracionMantenimientoActual = configuracion_mantenimiento();
+if ($puedeGestionarMantenimiento) {
+    $archivoLogoMantenimiento = dirname(__DIR__, 2) . '/' . $configuracionMantenimientoActual['logo_ruta'];
+    $versionLogoMantenimiento = is_file($archivoLogoMantenimiento) ? (string) filemtime($archivoLogoMantenimiento) : '1';
+    $mantenimientoPanel = $configuracionMantenimientoActual;
+    $mantenimientoPanel['logo_url'] = url_imagen($configuracionMantenimientoActual['logo_ruta']) . '?v=' . rawurlencode($versionLogoMantenimiento);
+}
 if ($puedeConfigurarPanel) {
     $marcaAguaPanel = configuracion_marca_agua();
     $rutaMarcaCompleta = dirname(__DIR__, 2) . '/' . $marcaAguaPanel['ruta'];
@@ -64,9 +73,11 @@ if ($puedeConfigurarPanel) {
     $logoLoginPanel = [
         'ruta' => $rutaLogoLogin,
         'url' => url_imagen($rutaLogoLogin) . '?v=' . rawurlencode($versionLogoLogin),
+        'tamano' => configuracion_logo_login_tamano(),
     ];
     $logoPortalPanel = [
         'url' => url_imagen($logoPortalRuta) . '?v=' . rawurlencode($versionLogoPortal),
+        'tamano' => configuracion_logo_portal_tamano(),
     ];
     $logoAdminPanel = [
         'url' => $identidadLogoAdmin['ruta'] !== null ? url_imagen($identidadLogoAdmin['ruta']) . '?v=' . rawurlencode($versionLogoAdmin) : null,
@@ -190,12 +201,29 @@ header('Cache-Control: no-store, private');
       </a>
     </nav>
 
-<?php if ($puedeConfigurarPanel): ?>
+<?php if ($puedeGestionarMantenimiento || $puedeConfigurarPanel): ?>
     <div class="sidebar-settings">
+<?php if ($puedeGestionarMantenimiento && $mantenimientoPanel !== null): ?>
+      <form class="sidebar-maintenance-form" id="maintenanceQuickForm">
+        <?= csrf_input() ?>
+        <input type="hidden" name="accion" value="estado">
+        <span class="sidebar-maintenance-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94L14.7 6.3z"></path></svg>
+        </span>
+        <label for="maintenanceQuickToggle">Mantenimiento</label>
+        <span class="sidebar-maintenance-state" id="maintenanceQuickState" aria-live="polite"><?= $mantenimientoPanel['activo'] ? 'Activo' : 'Inactivo' ?></span>
+        <label class="sidebar-maintenance-switch" for="maintenanceQuickToggle">
+          <input type="checkbox" id="maintenanceQuickToggle" name="activo" value="1" role="switch"<?= $mantenimientoPanel['activo'] ? ' checked' : '' ?> aria-label="Activar modo mantenimiento">
+          <span aria-hidden="true"><span></span></span>
+        </label>
+      </form>
+<?php endif; ?>
+<?php if ($puedeConfigurarPanel): ?>
       <button type="button" class="nav-link sidebar-settings-button" id="settingsMenuButton">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.5 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.5a1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15.5 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.14.36.36.69.66.94.3.25.68.39 1.07.4H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51.66Z"></path></svg>
         <span>Configuración</span>
       </button>
+<?php endif; ?>
     </div>
 <?php endif; ?>
 
@@ -276,6 +304,84 @@ header('Cache-Control: no-store, private');
       </button>
     </header>
     <div class="drawer-body settings-drawer-body">
+<?php if ($puedeGestionarMantenimiento && $mantenimientoPanel !== null): ?>
+      <form class="settings-card maintenance-settings-card" id="maintenanceSettingsForm" enctype="multipart/form-data">
+        <?= csrf_input() ?>
+        <div class="settings-card-heading">
+          <span class="settings-card-icon settings-card-icon-maintenance" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94L14.7 6.3z"></path></svg>
+          </span>
+          <div class="settings-card-heading-copy">
+            <h3>Modo Mantenimiento</h3>
+            <p>Bloqueá el Portal y conservá el acceso editorial autorizado.</p>
+          </div>
+          <span class="maintenance-card-state<?= $mantenimientoPanel['activo'] ? ' is-active' : '' ?>" id="maintenanceCardState"><?= $mantenimientoPanel['activo'] ? 'Activo' : 'Inactivo' ?></span>
+          <button type="button" class="settings-card-toggle" id="maintenanceCardToggle" aria-expanded="true" aria-controls="maintenanceCardContent" aria-label="Contraer ajustes de mantenimiento">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"></path></svg>
+          </button>
+        </div>
+
+        <div class="settings-card-content maintenance-card-content" id="maintenanceCardContent">
+          <div class="maintenance-admin-preview" id="maintenanceAdminPreview" style="--maintenance-preview-logo-width: <?= (int) $mantenimientoPanel['logo_tamano'] ?>%;">
+            <span class="login-logo-preview-label">Vista pública</span>
+            <span class="maintenance-preview-user<?= $mantenimientoPanel['mostrar_login'] ? '' : ' is-hidden' ?>" id="maintenancePreviewUser" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4.5 21a7.5 7.5 0 0 1 15 0"></path></svg>
+            </span>
+            <div class="maintenance-preview-identity">
+              <img id="maintenanceLogoPreview" src="<?= e($mantenimientoPanel['logo_url']) ?>" alt="Logo de mantenimiento actual">
+              <p id="maintenanceMessagePreview"><?= e($mantenimientoPanel['mensaje']) ?></p>
+            </div>
+          </div>
+
+          <div class="maintenance-control-row">
+            <div><strong>Estado del Portal</strong><span>Al activarlo, los visitantes reciben una pantalla 503 sin contenido público.</span></div>
+            <label class="header-code-switch ad-form-switch" for="maintenanceActive">
+              <input type="checkbox" id="maintenanceActive" name="activo" value="1" role="switch"<?= $mantenimientoPanel['activo'] ? ' checked' : '' ?>>
+              <span class="ad-form-switch-track" aria-hidden="true"><span></span></span>
+              <span id="maintenanceActiveLabel"><?= $mantenimientoPanel['activo'] ? 'Activado' : 'Desactivado' ?></span>
+            </label>
+          </div>
+
+          <div class="watermark-upload-row maintenance-logo-upload-row">
+            <div><strong>Imagen central</strong><span id="maintenanceLogoFileName">JPG, PNG o WEBP. Máximo 3 MB.</span></div>
+            <label class="btn btn-outline watermark-upload-button" for="maintenanceLogoFile">Cambiar imagen</label>
+            <input type="file" id="maintenanceLogoFile" name="logo_mantenimiento" accept="image/jpeg,image/png,image/webp" hidden>
+          </div>
+
+          <div class="watermark-range-group maintenance-size-group">
+            <div class="watermark-range-heading">
+              <label for="maintenanceLogoSize">Tamaño de la imagen</label>
+              <output id="maintenanceLogoSizeValue" for="maintenanceLogoSize"><?= (int) $mantenimientoPanel['logo_tamano'] ?>%</output>
+            </div>
+            <input type="range" id="maintenanceLogoSize" name="logo_tamano" min="25" max="80" step="1" value="<?= (int) $mantenimientoPanel['logo_tamano'] ?>">
+            <div class="watermark-range-scale"><span>Más chica</span><span>Más grande</span></div>
+          </div>
+
+          <div class="form-group maintenance-message-field">
+            <div class="maintenance-field-heading"><label for="maintenanceMessage">Mensaje bajo la imagen</label><span id="maintenanceMessageCounter"><?= mb_strlen($mantenimientoPanel['mensaje']) ?>/160</span></div>
+            <input class="form-control" type="text" id="maintenanceMessage" name="mensaje" maxlength="160" value="<?= e($mantenimientoPanel['mensaje']) ?>" required>
+          </div>
+
+          <label class="maintenance-login-option ad-form-switch" for="maintenanceShowLogin">
+            <input type="checkbox" id="maintenanceShowLogin" name="mostrar_login" value="1" role="switch"<?= $mantenimientoPanel['mostrar_login'] ? ' checked' : '' ?>>
+            <span class="ad-form-switch-track" aria-hidden="true"><span></span></span>
+            <span><strong>Mostrar acceso al Admin</strong><small>Controla el icono público. La URL directa permanece disponible solo para roles autorizados.</small></span>
+          </label>
+
+          <div class="settings-card-notice maintenance-card-notice">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>
+            <span>Los usuarios con el permiso “Gestionar mantenimiento” conservan acceso al panel y pueden revisar el Portal sin desactivar el bloqueo.</span>
+          </div>
+
+          <span class="settings-save-status" id="maintenanceSaveStatus" aria-live="polite"></span>
+          <div class="settings-form-actions">
+            <button type="button" class="btn btn-outline" id="maintenanceCancel">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="maintenanceSaveButton">Guardar mantenimiento</button>
+          </div>
+        </div>
+      </form>
+<?php endif; ?>
+
       <form class="settings-card" id="watermarkSettingsForm" enctype="multipart/form-data">
         <?= csrf_input() ?>
         <div class="settings-card-heading">
@@ -371,6 +477,16 @@ header('Cache-Control: no-store, private');
             <input type="file" id="loginLogoFile" name="logo_login" accept="image/png" hidden>
           </div>
 
+          <div class="watermark-range-group logo-size-range-group">
+            <div class="watermark-range-heading">
+              <label for="loginLogoSize">Tamaño del logo</label>
+              <output id="loginLogoSizeValue" for="loginLogoSize"><?= (int) $logoLoginPanel['tamano'] ?>%</output>
+            </div>
+            <input type="range" id="loginLogoSize" name="tamano" min="60" max="140" step="1" value="<?= (int) $logoLoginPanel['tamano'] ?>">
+            <div class="watermark-range-scale"><span>Más chico</span><span>Más grande</span></div>
+            <p>Ajusta el tamaño en la pantalla de ingreso, manteniendo su proporción en PC y móvil.</p>
+          </div>
+
           <div class="settings-card-notice">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>
             <span>Usá preferentemente un PNG horizontal con fondo transparente. El cambio aparecerá en el próximo ingreso.</span>
@@ -379,7 +495,7 @@ header('Cache-Control: no-store, private');
           <span class="settings-save-status" id="loginLogoSaveStatus" aria-live="polite"></span>
           <div class="settings-form-actions">
             <button type="button" class="btn btn-outline" id="loginLogoCancel">Cancelar</button>
-            <button type="submit" class="btn btn-primary" id="loginLogoSaveButton">Guardar logo</button>
+            <button type="submit" class="btn btn-primary" id="loginLogoSaveButton">Guardar cambios</button>
           </div>
         </div>
       </form>
@@ -415,6 +531,16 @@ header('Cache-Control: no-store, private');
             <input type="file" id="portalLogoFile" name="logo_portal" accept="image/png" hidden>
           </div>
 
+          <div class="watermark-range-group logo-size-range-group">
+            <div class="watermark-range-heading">
+              <label for="portalLogoSize">Tamaño del logo</label>
+              <output id="portalLogoSizeValue" for="portalLogoSize"><?= (int) $logoPortalPanel['tamano'] ?>%</output>
+            </div>
+            <input type="range" id="portalLogoSize" name="tamano" min="60" max="140" step="1" value="<?= (int) $logoPortalPanel['tamano'] ?>">
+            <div class="watermark-range-scale"><span>Más chico</span><span>Más grande</span></div>
+            <p>Se aplica al logo centrado del encabezado y al del menú público en todos los dispositivos.</p>
+          </div>
+
           <div class="settings-card-notice">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>
             <span>Este PNG se muestra únicamente en el encabezado y en el menú público del Portal.</span>
@@ -423,7 +549,7 @@ header('Cache-Control: no-store, private');
           <span class="settings-save-status" id="portalLogoSaveStatus" aria-live="polite"></span>
           <div class="settings-form-actions">
             <button type="button" class="btn btn-outline" id="portalLogoCancel">Cancelar</button>
-            <button type="submit" class="btn btn-primary" id="portalLogoSaveButton">Guardar logo</button>
+            <button type="submit" class="btn btn-primary" id="portalLogoSaveButton">Guardar cambios</button>
           </div>
         </div>
       </form>

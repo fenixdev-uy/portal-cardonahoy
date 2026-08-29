@@ -101,6 +101,23 @@ function configuracion_logo_login(): string
     return $ruta;
 }
 
+/** Tamaño porcentual del logo de ingreso (100 mantiene el diseño original). */
+function configuracion_logo_login_tamano(): int
+{
+    $tamano = 100;
+
+    try {
+        $stmt = db()->prepare("SELECT valor FROM configuracion WHERE clave = 'logo_login_tamano' LIMIT 1");
+        $stmt->execute();
+        $valor = filter_var($stmt->fetchColumn(), FILTER_VALIDATE_INT);
+        if ($valor !== false) $tamano = max(60, min(140, (int) $valor));
+    } catch (PDOException $e) {
+        // El valor predeterminado conserva compatibilidad con instalaciones anteriores.
+    }
+
+    return $tamano;
+}
+
 /** Logo efectivo del encabezado y menú público. */
 function configuracion_logo_portal(): string
 {
@@ -124,6 +141,129 @@ function configuracion_logo_portal(): string
     }
 
     return $ruta;
+}
+
+/** Tamaño porcentual compartido por el logo del encabezado y del menú público. */
+function configuracion_logo_portal_tamano(): int
+{
+    $tamano = 100;
+
+    try {
+        $stmt = db()->prepare("SELECT valor FROM configuracion WHERE clave = 'logo_portal_tamano' LIMIT 1");
+        $stmt->execute();
+        $valor = filter_var($stmt->fetchColumn(), FILTER_VALIDATE_INT);
+        if ($valor !== false) $tamano = max(60, min(140, (int) $valor));
+    } catch (PDOException $e) {
+        // El valor predeterminado conserva compatibilidad con instalaciones anteriores.
+    }
+
+    return $tamano;
+}
+
+/**
+ * Configuración efectiva de la pantalla pública de mantenimiento.
+ * Si todavía no se aplicó la migración, el portal continúa activo normalmente.
+ *
+ * @return array{activo:bool,logo_ruta:string,logo_personalizado:bool,logo_tamano:int,mensaje:string,mostrar_login:bool}
+ */
+function configuracion_mantenimiento(): array
+{
+    $activo = false;
+    $logoRuta = configuracion_logo_portal();
+    $logoPersonalizado = false;
+    $logoTamano = 58;
+    $mensaje = 'En mantenimiento, ¡volvemos pronto!';
+    $mostrarLogin = true;
+
+    try {
+        $stmt = db()->query(
+            "SELECT clave, valor FROM configuracion WHERE clave IN (
+                'mantenimiento_activo',
+                'mantenimiento_logo_ruta',
+                'mantenimiento_logo_tamano',
+                'mantenimiento_mensaje',
+                'mantenimiento_mostrar_login'
+            )"
+        );
+        foreach ($stmt->fetchAll() as $fila) {
+            $valor = trim((string) $fila['valor']);
+            if ($fila['clave'] === 'mantenimiento_activo') {
+                $activo = $valor === '1';
+            } elseif ($fila['clave'] === 'mantenimiento_logo_ruta'
+                && preg_match('#^uploads/configuracion/mantenimiento_[A-Za-z0-9_-]+\.(?:jpg|png|webp)$#', $valor)) {
+                $logoRuta = $valor;
+                $logoPersonalizado = true;
+            } elseif ($fila['clave'] === 'mantenimiento_logo_tamano') {
+                $logoTamano = max(25, min(80, (int) $valor));
+            } elseif ($fila['clave'] === 'mantenimiento_mensaje' && $valor !== '') {
+                $mensaje = mb_substr($valor, 0, 160);
+            } elseif ($fila['clave'] === 'mantenimiento_mostrar_login') {
+                $mostrarLogin = $valor === '1';
+            }
+        }
+    } catch (PDOException $e) {
+        // La ausencia de la migración nunca debe bloquear accidentalmente el portal.
+    }
+
+    if (!is_file(dirname(__DIR__, 2) . '/' . $logoRuta)) {
+        $logoRuta = configuracion_logo_portal();
+        $logoPersonalizado = false;
+    }
+
+    return [
+        'activo' => $activo,
+        'logo_ruta' => $logoRuta,
+        'logo_personalizado' => $logoPersonalizado,
+        'logo_tamano' => $logoTamano,
+        'mensaje' => $mensaje,
+        'mostrar_login' => $mostrarLogin,
+    ];
+}
+
+/** Indica si la sesión pública actual puede atravesar el modo mantenimiento. */
+function usuario_puede_omitir_mantenimiento(): bool
+{
+    $usuario = usuario_actual_publico();
+    return $usuario !== null
+        && rol_tiene_permiso((int) ($usuario['rol_id'] ?? 0), 'mantenimiento.gestionar');
+}
+
+/**
+ * Detiene una ruta pública cuando el portal está en mantenimiento.
+ * Los endpoints usan JSON/texto; portada y noticias reciben la pantalla visual.
+ */
+function exigir_portal_disponible(string $respuesta = 'html'): void
+{
+    $configuracionMantenimiento = configuracion_mantenimiento();
+    if (!$configuracionMantenimiento['activo'] || usuario_puede_omitir_mantenimiento()) {
+        return;
+    }
+
+    http_response_code(503);
+    header('Cache-Control: no-store, max-age=0');
+    header('Retry-After: 3600');
+    header('X-Robots-Tag: noindex, nofollow', true);
+
+    if ($respuesta === 'json') {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['error' => 'El portal se encuentra temporalmente en mantenimiento.'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    if ($respuesta === 'robots') {
+        header('Content-Type: text/plain; charset=utf-8');
+        echo "User-agent: *\nDisallow: /\n";
+        exit;
+    }
+
+    if ($respuesta === 'text') {
+        header('Content-Type: text/plain; charset=utf-8');
+        echo 'Portal temporalmente en mantenimiento.';
+        exit;
+    }
+
+    require dirname(__DIR__, 2) . '/partials/mantenimiento.php';
+    exit;
 }
 
 /**

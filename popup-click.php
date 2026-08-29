@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/admin/includes/funciones.php';
+exigir_portal_disponible();
 
 $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 $destino = (string) ($_GET['destino'] ?? '');

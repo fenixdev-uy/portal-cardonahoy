@@ -2,6 +2,7 @@
 /** Registra una lectura local sin duplicarla durante el mismo dia. */
 
 require_once __DIR__ . '/admin/includes/metricas-noticias.php';
+exigir_portal_disponible('json');
 
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');

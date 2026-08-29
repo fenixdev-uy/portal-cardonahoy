@@ -2,6 +2,7 @@
 /** Cuenta el clic real sobre un boton de compartir. */
 
 require_once __DIR__ . '/admin/includes/metricas-noticias.php';
+exigir_portal_disponible('json');
 
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');

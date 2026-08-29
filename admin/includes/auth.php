@@ -95,6 +95,19 @@ function exigir_login(bool $json = false): array
 {
     $usuario = usuario_actual();
     if ($usuario) {
+        if (function_exists('configuracion_mantenimiento')
+            && configuracion_mantenimiento()['activo']
+            && !rol_tiene_permiso((int) ($usuario['rol_id'] ?? 0), 'mantenimiento.gestionar')) {
+            cerrar_sesion();
+            if ($json) {
+                http_response_code(403);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['error' => 'Tu rol no puede ingresar durante el mantenimiento.'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+            http_response_code(403);
+            exit('Tu rol no tiene permiso para ingresar mientras el portal está en mantenimiento.');
+        }
         $script = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
         if (!empty($usuario['debe_cambiar_password']) && !in_array($script, ['cambiar-password.php', 'logout.php'], true)) {
             if ($json) {
@@ -141,6 +154,28 @@ function tiene_permiso(string $clave): bool
     }
 
     return isset($cache[$usuarioId][$clave]);
+}
+
+/** Comprueba un permiso directamente sobre un rol, sin depender de una sesión. */
+function rol_tiene_permiso(int $rolId, string $clave): bool
+{
+    if ($rolId <= 0 || $clave === '') {
+        return false;
+    }
+
+    try {
+        $stmt = db()->prepare(
+            'SELECT 1
+               FROM rol_permisos rp
+               JOIN permisos p ON p.id = rp.permiso_id
+              WHERE rp.rol_id = ? AND p.clave = ?
+              LIMIT 1'
+        );
+        $stmt->execute([$rolId, $clave]);
+        return (bool) $stmt->fetchColumn();
+    } catch (PDOException $e) {
+        return false;
+    }
 }
 
 function exigir_permiso(string $clave, bool $json = false): void

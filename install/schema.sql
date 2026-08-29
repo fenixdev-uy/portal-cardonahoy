@@ -171,6 +171,16 @@ CREATE TABLE IF NOT EXISTS configuracion (
   PRIMARY KEY (clave)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+INSERT INTO configuracion (clave, valor) VALUES
+  ('logo_login_tamano', '100'),
+  ('logo_portal_tamano', '100'),
+  ('mantenimiento_activo', '0'),
+  ('mantenimiento_logo_ruta', ''),
+  ('mantenimiento_logo_tamano', '58'),
+  ('mantenimiento_mensaje', 'En mantenimiento, ¡volvemos pronto!'),
+  ('mantenimiento_mostrar_login', '1')
+ON DUPLICATE KEY UPDATE valor=valor;
+
 CREATE TABLE IF NOT EXISTS anuncios (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   nombre VARCHAR(120) NOT NULL,

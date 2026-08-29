@@ -372,6 +372,8 @@
     const fileName = document.getElementById('loginLogoFileName');
     const preview = document.getElementById('loginLogoPreview');
     const previewBox = preview?.closest('.login-logo-preview');
+    const sizeInput = document.getElementById('loginLogoSize');
+    const sizeValue = document.getElementById('loginLogoSizeValue');
     const status = document.getElementById('loginLogoSaveStatus');
     const saveButton = document.getElementById('loginLogoSaveButton');
     const cancelButton = document.getElementById('loginLogoCancel');
@@ -379,10 +381,18 @@
     const cardContent = document.getElementById('loginLogoCardContent');
     const drawerClose = document.getElementById('settingsDrawerClose');
     const drawerBackdrop = document.getElementById('settingsDrawerBackdrop');
-    if (!form || !fileInput || !fileName || !preview || !previewBox || !status || !saveButton || !cancelButton || !cardToggle || !cardContent || !drawerClose || !drawerBackdrop) return;
+    if (!form || !fileInput || !fileName || !preview || !previewBox || !sizeInput || !sizeValue || !status || !saveButton || !cancelButton || !cardToggle || !cardContent || !drawerClose || !drawerBackdrop) return;
 
     let savedLogoSrc = preview.src;
     let savedFileLabel = fileName.textContent;
+    let savedSize = sizeInput.value;
+
+    function updateSizePreview() {
+      const size = Math.max(60, Math.min(140, Number(sizeInput.value) || 100));
+      sizeValue.value = `${size}%`;
+      sizeValue.textContent = `${size}%`;
+      preview.style.transform = `scale(${size / 100})`;
+    }
 
     function setCardExpanded(expanded) {
       cardToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
@@ -395,6 +405,8 @@
       fileInput.value = '';
       fileName.textContent = savedFileLabel;
       preview.src = savedLogoSrc;
+      sizeInput.value = savedSize;
+      updateSizePreview();
       previewBox.classList.remove('is-loading');
       status.textContent = '';
       status.className = 'settings-save-status';
@@ -409,6 +421,7 @@
     cardToggle.addEventListener('click', () => {
       setCardExpanded(cardToggle.getAttribute('aria-expanded') !== 'true');
     });
+    sizeInput.addEventListener('input', updateSizePreview);
 
     fileInput.addEventListener('change', () => {
       const file = fileInput.files && fileInput.files[0];
@@ -456,11 +469,6 @@
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       if (saveButton.disabled) return;
-      if (!fileInput.files || !fileInput.files[0]) {
-        showError('Elegí un logo PNG para guardar.');
-        return;
-      }
-
       saveButton.disabled = true;
       saveButton.textContent = 'Guardando…';
       status.textContent = 'Guardando logo…';
@@ -473,7 +481,10 @@
         const result = await response.json().catch(() => ({}));
         if (!response.ok || !result.ok) throw new Error(result.error || 'No se pudo guardar el logo.');
         savedLogoSrc = result.logo_url || preview.src;
-        savedFileLabel = fileInput.files[0].name;
+        if (fileInput.files && fileInput.files[0]) savedFileLabel = fileInput.files[0].name;
+        savedSize = String(result.tamano || sizeInput.value);
+        sizeInput.value = savedSize;
+        updateSizePreview();
         preview.src = savedLogoSrc;
         fileInput.value = '';
         fileName.textContent = savedFileLabel;
@@ -482,7 +493,7 @@
         showError(error.message || 'No se pudo guardar el logo.');
       } finally {
         saveButton.disabled = false;
-        saveButton.textContent = 'Guardar logo';
+        saveButton.textContent = 'Guardar cambios';
       }
     });
 
@@ -495,6 +506,7 @@
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') resetUnsaved();
     });
+    updateSizePreview();
   })();
 </script>
 
@@ -505,6 +517,8 @@
     const fileName = document.getElementById('portalLogoFileName');
     const preview = document.getElementById('portalLogoPreview');
     const previewBox = preview?.closest('.portal-logo-preview');
+    const sizeInput = document.getElementById('portalLogoSize');
+    const sizeValue = document.getElementById('portalLogoSizeValue');
     const status = document.getElementById('portalLogoSaveStatus');
     const saveButton = document.getElementById('portalLogoSaveButton');
     const cancelButton = document.getElementById('portalLogoCancel');
@@ -512,10 +526,18 @@
     const cardContent = document.getElementById('portalLogoCardContent');
     const drawerClose = document.getElementById('settingsDrawerClose');
     const drawerBackdrop = document.getElementById('settingsDrawerBackdrop');
-    if (!form || !fileInput || !fileName || !preview || !previewBox || !status || !saveButton || !cancelButton || !cardToggle || !cardContent || !drawerClose || !drawerBackdrop) return;
+    if (!form || !fileInput || !fileName || !preview || !previewBox || !sizeInput || !sizeValue || !status || !saveButton || !cancelButton || !cardToggle || !cardContent || !drawerClose || !drawerBackdrop) return;
 
     let savedLogoSrc = preview.src;
     let savedFileLabel = fileName.textContent;
+    let savedSize = sizeInput.value;
+
+    function updateSizePreview() {
+      const size = Math.max(60, Math.min(140, Number(sizeInput.value) || 100));
+      sizeValue.value = `${size}%`;
+      sizeValue.textContent = `${size}%`;
+      preview.style.transform = `scale(${size / 100})`;
+    }
 
     function setCardExpanded(expanded) {
       cardToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
@@ -528,6 +550,8 @@
       fileInput.value = '';
       fileName.textContent = savedFileLabel;
       preview.src = savedLogoSrc;
+      sizeInput.value = savedSize;
+      updateSizePreview();
       previewBox.classList.remove('is-loading');
       status.textContent = '';
       status.className = 'settings-save-status';
@@ -542,6 +566,7 @@
     cardToggle.addEventListener('click', () => {
       setCardExpanded(cardToggle.getAttribute('aria-expanded') !== 'true');
     });
+    sizeInput.addEventListener('input', updateSizePreview);
 
     fileInput.addEventListener('change', () => {
       const file = fileInput.files && fileInput.files[0];
@@ -588,11 +613,6 @@
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       if (saveButton.disabled) return;
-      if (!fileInput.files || !fileInput.files[0]) {
-        showError('Elegí un logo PNG para guardar.');
-        return;
-      }
-
       saveButton.disabled = true;
       saveButton.textContent = 'Guardando…';
       status.textContent = 'Guardando logo del portal…';
@@ -605,7 +625,10 @@
         const result = await response.json().catch(() => ({}));
         if (!response.ok || !result.ok) throw new Error(result.error || 'No se pudo guardar el logo del portal.');
         savedLogoSrc = result.logo_url || preview.src;
-        savedFileLabel = fileInput.files[0].name;
+        if (fileInput.files && fileInput.files[0]) savedFileLabel = fileInput.files[0].name;
+        savedSize = String(result.tamano || sizeInput.value);
+        sizeInput.value = savedSize;
+        updateSizePreview();
         preview.src = savedLogoSrc;
         fileInput.value = '';
         fileName.textContent = savedFileLabel;
@@ -614,7 +637,7 @@
         showError(error.message || 'No se pudo guardar el logo del portal.');
       } finally {
         saveButton.disabled = false;
-        saveButton.textContent = 'Guardar logo';
+        saveButton.textContent = 'Guardar cambios';
       }
     });
 
@@ -627,6 +650,7 @@
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') resetUnsaved();
     });
+    updateSizePreview();
   })();
 </script>
 
@@ -1085,6 +1109,189 @@
     drawerClose.addEventListener('click', resetUnsaved);
     drawerBackdrop.addEventListener('click', resetUnsaved);
     updateState();
+  })();
+</script>
+
+<script>
+  (function () {
+    const quickForm = document.getElementById('maintenanceQuickForm');
+    const quickToggle = document.getElementById('maintenanceQuickToggle');
+    const quickState = document.getElementById('maintenanceQuickState');
+    const settingsForm = document.getElementById('maintenanceSettingsForm');
+    const active = document.getElementById('maintenanceActive');
+    const activeLabel = document.getElementById('maintenanceActiveLabel');
+    const cardState = document.getElementById('maintenanceCardState');
+    let persistedState = Boolean(quickToggle ? quickToggle.checked : (active && active.checked));
+
+    function paintState(isActive) {
+      if (quickToggle) quickToggle.checked = isActive;
+      if (quickState) {
+        quickState.textContent = isActive ? 'Activo' : 'Inactivo';
+        quickState.classList.toggle('is-active', isActive);
+      }
+      if (active) active.checked = isActive;
+      if (activeLabel) activeLabel.textContent = isActive ? 'Activado' : 'Desactivado';
+      if (cardState) {
+        cardState.textContent = isActive ? 'Activo' : 'Inactivo';
+        cardState.classList.toggle('is-active', isActive);
+      }
+    }
+
+    if (quickForm && quickToggle && quickState) {
+      paintState(persistedState);
+      quickToggle.addEventListener('change', async () => {
+        const requestedState = quickToggle.checked;
+        quickToggle.disabled = true;
+        quickState.textContent = 'Guardando…';
+        const data = new FormData(quickForm);
+        data.set('activo', requestedState ? '1' : '0');
+        try {
+          const response = await fetch('configuracion-mantenimiento.php', { method: 'POST', body: data });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok || !result.ok) throw new Error(result.error || 'No se pudo cambiar el estado.');
+          persistedState = Boolean(result.activo);
+          paintState(persistedState);
+          document.dispatchEvent(new CustomEvent('maintenance:state-saved', { detail: { active: persistedState } }));
+        } catch (error) {
+          paintState(persistedState);
+          quickState.textContent = 'Error';
+          quickState.title = error.message || 'No se pudo cambiar el estado.';
+        } finally {
+          quickToggle.disabled = false;
+        }
+      });
+    }
+
+    if (!settingsForm) return;
+    const fileInput = document.getElementById('maintenanceLogoFile');
+    const fileName = document.getElementById('maintenanceLogoFileName');
+    const preview = document.getElementById('maintenanceAdminPreview');
+    const previewLogo = document.getElementById('maintenanceLogoPreview');
+    const size = document.getElementById('maintenanceLogoSize');
+    const sizeValue = document.getElementById('maintenanceLogoSizeValue');
+    const message = document.getElementById('maintenanceMessage');
+    const messagePreview = document.getElementById('maintenanceMessagePreview');
+    const messageCounter = document.getElementById('maintenanceMessageCounter');
+    const showLogin = document.getElementById('maintenanceShowLogin');
+    const previewUser = document.getElementById('maintenancePreviewUser');
+    const status = document.getElementById('maintenanceSaveStatus');
+    const saveButton = document.getElementById('maintenanceSaveButton');
+    const cancelButton = document.getElementById('maintenanceCancel');
+    const cardToggle = document.getElementById('maintenanceCardToggle');
+    const cardContent = document.getElementById('maintenanceCardContent');
+    const drawerClose = document.getElementById('settingsDrawerClose');
+    if (!fileInput || !fileName || !preview || !previewLogo || !size || !sizeValue || !message || !messagePreview || !messageCounter || !showLogin || !previewUser || !status || !saveButton || !cancelButton || !cardToggle || !cardContent || !drawerClose || !active) return;
+
+    let saved = {
+      active: active.checked,
+      logo: previewLogo.src,
+      size: size.value,
+      message: message.value,
+      showLogin: showLogin.checked,
+      fileLabel: fileName.textContent
+    };
+    document.addEventListener('maintenance:state-saved', (event) => {
+      persistedState = Boolean(event.detail && event.detail.active);
+      saved.active = persistedState;
+    });
+    let objectUrl = '';
+
+    function updatePreview() {
+      const sizePercent = Math.max(25, Math.min(80, Number(size.value) || 58));
+      sizeValue.value = sizePercent + '%';
+      sizeValue.textContent = sizePercent + '%';
+      preview.style.setProperty('--maintenance-preview-logo-width', sizePercent + '%');
+      messagePreview.textContent = message.value.trim() || 'En mantenimiento, ¡volvemos pronto!';
+      messageCounter.textContent = message.value.length + '/160';
+      previewUser.classList.toggle('is-hidden', !showLogin.checked);
+      paintState(active.checked);
+    }
+
+    function resetUnsaved() {
+      active.checked = saved.active;
+      size.value = saved.size;
+      message.value = saved.message;
+      showLogin.checked = saved.showLogin;
+      fileInput.value = '';
+      fileName.textContent = saved.fileLabel;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      objectUrl = '';
+      previewLogo.src = saved.logo;
+      status.textContent = '';
+      status.className = 'settings-save-status';
+      updatePreview();
+    }
+
+    function setCardExpanded(expanded) {
+      cardToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      cardToggle.setAttribute('aria-label', expanded ? 'Contraer ajustes de mantenimiento' : 'Expandir ajustes de mantenimiento');
+      cardContent.hidden = !expanded;
+      settingsForm.classList.toggle('is-collapsed', !expanded);
+    }
+
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) { resetUnsaved(); return; }
+      const valid = ['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || /\.(?:jpe?g|png|webp)$/i.test(file.name);
+      if (!valid || file.size > 3 * 1024 * 1024) {
+        fileInput.value = '';
+        fileName.textContent = file.size > 3 * 1024 * 1024 ? 'La imagen supera los 3 MB.' : 'Elegí una imagen JPG, PNG o WEBP.';
+        return;
+      }
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      objectUrl = URL.createObjectURL(file);
+      previewLogo.src = objectUrl;
+      fileName.textContent = file.name + ' · vista previa lista';
+    });
+    size.addEventListener('input', updatePreview);
+    message.addEventListener('input', updatePreview);
+    active.addEventListener('change', updatePreview);
+    showLogin.addEventListener('change', updatePreview);
+    cardToggle.addEventListener('click', () => setCardExpanded(cardToggle.getAttribute('aria-expanded') !== 'true'));
+
+    settingsForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!settingsForm.reportValidity() || saveButton.disabled) return;
+      saveButton.disabled = true;
+      saveButton.textContent = 'Guardando…';
+      status.textContent = 'Guardando modo mantenimiento…';
+      status.className = 'settings-save-status';
+      try {
+        const response = await fetch('configuracion-mantenimiento.php', { method: 'POST', body: new FormData(settingsForm) });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.ok) throw new Error(result.error || 'No se pudo guardar el modo mantenimiento.');
+        active.checked = Boolean(result.activo);
+        persistedState = active.checked;
+        size.value = String(result.logo_tamano);
+        message.value = result.mensaje_publico;
+        showLogin.checked = Boolean(result.mostrar_login);
+        previewLogo.src = result.logo_url;
+        fileInput.value = '';
+        fileName.textContent = 'JPG, PNG o WEBP. Máximo 3 MB.';
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        objectUrl = '';
+        saved = {
+          active: active.checked,
+          logo: previewLogo.src,
+          size: size.value,
+          message: message.value,
+          showLogin: showLogin.checked,
+          fileLabel: fileName.textContent
+        };
+        updatePreview();
+        status.textContent = result.mensaje || 'Configuración de mantenimiento guardada.';
+      } catch (error) {
+        status.textContent = error.message || 'No se pudo guardar el modo mantenimiento.';
+        status.className = 'settings-save-status is-error';
+      } finally {
+        saveButton.disabled = false;
+        saveButton.textContent = 'Guardar mantenimiento';
+      }
+    });
+
+    cancelButton.addEventListener('click', () => { resetUnsaved(); drawerClose.click(); });
+    drawerClose.addEventListener('click', resetUnsaved);
+    updatePreview();
   })();
 </script>
 </body>

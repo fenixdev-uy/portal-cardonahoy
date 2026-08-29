@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/admin/includes/funciones.php';
+exigir_portal_disponible('json');
 
 header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: no-store, max-age=0');

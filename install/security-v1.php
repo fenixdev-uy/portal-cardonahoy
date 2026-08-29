@@ -102,6 +102,7 @@ $permisos = [
     ['roles.gestionar', 'Gestionar roles', 'Configurar permisos de roles.'],
     ['archivos.subir', 'Subir archivos', 'Subir y retirar imagenes del portal.'],
     ['configuracion.gestionar', 'Gestionar configuracion', 'Cambiar ajustes generales y la marca de agua del portal.'],
+    ['mantenimiento.gestionar', 'Gestionar mantenimiento', 'Activar, desactivar y configurar el modo mantenimiento; permite ingresar durante el bloqueo.'],
     ['publicidad.gestionar', 'Gestionar publicidad', 'Crear, editar y eliminar anuncios y popups.'],
 ];
 $stmtPermiso = $pdo->prepare('INSERT INTO permisos (clave, nombre, descripcion) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE nombre=VALUES(nombre), descripcion=VALUES(descripcion)');

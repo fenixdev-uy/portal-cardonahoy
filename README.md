@@ -10,6 +10,16 @@ Backend de noticias para la landing page. Las noticias se administran desde un p
 
 **Estado actual:** panel protegido con login, usuarios, roles/permisos, noticias, categorías y galería. El slider y los dos feeds del front, PC y móvil, están conectados al backend.
 
+### Modo mantenimiento
+
+El menú del panel incluye **Mantenimiento** con un switch rápido, protegido por el permiso independiente `mantenimiento.gestionar`. Durante el bloqueo, el público recibe una pantalla responsive con HTTP `503`; solo las sesiones cuyo rol conserva ese permiso pueden ingresar al Admin y revisar el Portal real.
+
+La card correspondiente en **Configuración** permite elegir la imagen central, su tamaño, el mensaje y si se muestra el icono de acceso administrativo. La migración idempotente para instalaciones existentes es `php install/mantenimiento-v1.php`; el modo nace desactivado y se asigna solamente al rol Administrador.
+
+### Tamaño de los logos
+
+Las cards **Logo del Login** y **Logo del Portal** incluyen controles independientes de `60%` a `140%` con vista previa inmediata. Se puede guardar solamente el tamaño sin volver a subir la imagen. El logo público comparte su porcentaje entre el encabezado y el menú fullscreen, conservando medidas responsive específicas para PC, tablet y móvil. En instalaciones existentes, `php install/configuracion-v1.php` agrega idempotentemente los valores iniciales en `100%`.
+
 ---
 
 ## 2. Requisitos y credenciales
@@ -56,6 +66,7 @@ landing/
 │   ├── schema-v2-legacy.sql    ← esquema histórico, no usar en clientes nuevos
 │   ├── security-v1.php         ← migración CLI de autores a usuarios/roles
 │   ├── configuracion-v1.php    ← migración CLI de configuración y su permiso
+│   ├── mantenimiento-v1.php    ← modo mantenimiento, ajustes y permiso por rol
 │   ├── publicidad-v1.php       ← tabla de anuncios + permiso de publicidad
 │   ├── publicidad-v2.php       ← estado manual de publicación
 │   ├── publicidad-v3.php       ← contador interno de clics
@@ -83,6 +94,7 @@ landing/
 │   ├── acceso-admin.php        ← login o identidad activa en el encabezado público
 │   ├── boton-nota-completa.php ← disparador aprobado de la vista completa móvil
 │   ├── nota-completa.php       ← vista completa compartida, recomendaciones y anuncios
+│   ├── mantenimiento.php       ← pantalla pública 503 durante el mantenimiento
 │   ├── lightbox.php            ← visor ampliado de galerías (PC + móvil)
 │   └── acciones-noticia.php    ← bloque de voto y compartir (PC + móvil)
 │
@@ -105,6 +117,7 @@ landing/
     ├── noticia-borrar.php      ← eliminar noticia (y su galería)
     ├── noticia-detalle.php     ← endpoint JSON del detalle de una noticia
     ├── configuracion-marca-agua.php ← guarda logo, opacidad y tamaño de la marca de agua
+    ├── configuracion-mantenimiento.php ← estado, imagen, mensaje y acceso del mantenimiento
     ├── configuracion-logo-login.php ← guarda el logo de la pantalla de ingreso
     ├── configuracion-logo-portal.php ← guarda únicamente el logo público
     ├── configuracion-logo-admin.php ← guarda logo interno y genera el favicon

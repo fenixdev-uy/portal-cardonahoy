@@ -114,7 +114,7 @@
 
     .logo img {
       display: block;
-      width: 180px;
+      width: var(--portal-logo-desktop, 180px);
       height: auto;
     }
 
@@ -179,7 +179,7 @@
     }
 
     @media (max-width: 1024px) {
-      .logo img { width: 150px; }
+      .logo img { width: var(--portal-logo-tablet, 150px); }
     }
 
     @media (max-width: 768px) {
@@ -187,7 +187,7 @@
         padding: 14px 16px;
       }
       .logo img {
-        width: 115px;
+        width: var(--portal-logo-mobile, 115px);
       }
       .admin-login-link { padding: 8px; }
       .admin-login-link.is-guest > span { display: none; }
@@ -429,13 +429,13 @@
 
     .menu-logo img {
       display: block;
-      width: 180px;
+      width: var(--portal-logo-desktop, 180px);
       height: auto;
     }
 
     @media (max-width: 1024px) {
       .menu-logo img {
-        width: 150px;
+        width: var(--portal-logo-tablet, 150px);
       }
     }
 
@@ -589,7 +589,7 @@
         top: 16px;
       }
       .menu-logo img {
-        width: 115px;
+        width: var(--portal-logo-mobile, 115px);
       }
       .menu-news-search {
         width: calc(100vw - 32px);

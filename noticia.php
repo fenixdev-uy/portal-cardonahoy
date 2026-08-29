@@ -1,6 +1,7 @@
 <?php
 /** Página pública individual, canónica e indexable de una noticia. */
 require_once __DIR__ . '/admin/includes/funciones.php';
+exigir_portal_disponible();
 require_once __DIR__ . '/admin/includes/votos.php';
 
 $pdo = db();
@@ -9,6 +10,9 @@ $logoPortalRuta = configuracion_logo_portal();
 $logoPortalArchivo = __DIR__ . '/' . $logoPortalRuta;
 $logoPortalVersion = is_file($logoPortalArchivo) ? (string) filemtime($logoPortalArchivo) : '1';
 $logoPortalUrl = url_portal($logoPortalRuta) . '?v=' . rawurlencode($logoPortalVersion);
+$logoPortalTamano = configuracion_logo_portal_tamano();
+$logoPortalEscala = $logoPortalTamano / 100;
+$logoPortalEstilo = sprintf('--portal-logo-desktop:%.2fpx;--portal-logo-mobile:%.2fpx', 180 * $logoPortalEscala, 115 * $logoPortalEscala);
 $identidadAdmin = configuracion_logo_admin();
 $faviconPortalArchivo = $identidadAdmin['favicon_ruta'] !== null ? __DIR__ . '/' . $identidadAdmin['favicon_ruta'] : __DIR__ . '/imagenes/Logo2027v2.png';
 $faviconPortalVersion = is_file($faviconPortalArchivo) ? (string) filemtime($faviconPortalArchivo) : '1';
@@ -99,7 +103,7 @@ $misVotos = $noticia ? votos_del_visitante($pdo, visitante_id()) : [];
   <link rel="stylesheet" href="assets/css/popup.css?v=<?= (int) @filemtime(__DIR__ . '/assets/css/popup.css') ?>" />
 <?php imprimir_codigo_header_publico(); ?>
 </head>
-<body>
+<body style="<?= e($logoPortalEstilo) ?>">
   <nav class="navbar" aria-label="Menú principal">
     <button class="hamburger" id="hamburger" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="menuOverlay"><span></span><span></span><span></span></button>
     <a href="<?= e(url_base_portal()) ?>" class="logo" aria-label="Radio Sur - Inicio"><img src="<?= e($logoPortalUrl) ?>" alt="Radio Sur" /></a>

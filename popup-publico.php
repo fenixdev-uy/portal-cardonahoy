@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/admin/includes/funciones.php';
+exigir_portal_disponible('json');
 require_once __DIR__ . '/admin/includes/votos.php';
 
 header('Content-Type: application/json; charset=utf-8');

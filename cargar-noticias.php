@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/admin/includes/funciones.php';
+exigir_portal_disponible('json');
 require_once __DIR__ . '/admin/includes/votos.php';
 require_once __DIR__ . '/partials/portada-paginacion.php';
 

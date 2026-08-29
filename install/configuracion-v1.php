@@ -29,7 +29,9 @@ try {
     $stmtConfiguracion->execute(['marca_agua_opacidad', '15']);
     $stmtConfiguracion->execute(['marca_agua_tamano', '36']);
     $stmtConfiguracion->execute(['logo_login_ruta', 'imagenes/Logo2027v3.png']);
+    $stmtConfiguracion->execute(['logo_login_tamano', '100']);
     $stmtConfiguracion->execute(['logo_portal_ruta', 'imagenes/Logo2027v2.png']);
+    $stmtConfiguracion->execute(['logo_portal_tamano', '100']);
 
     $stmtPermiso = $pdo->prepare(
         'INSERT INTO permisos (clave, nombre, descripcion) VALUES (?, ?, ?)

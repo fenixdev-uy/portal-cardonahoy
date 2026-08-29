@@ -13,6 +13,20 @@ $logoLoginRuta = configuracion_logo_login();
 $logoLoginArchivo = dirname(__DIR__) . '/' . $logoLoginRuta;
 $logoLoginVersion = is_file($logoLoginArchivo) ? (string) filemtime($logoLoginArchivo) : '1';
 $logoLoginUrl = url_imagen($logoLoginRuta) . '?v=' . rawurlencode($logoLoginVersion);
+$logoLoginTamano = configuracion_logo_login_tamano();
+$logoLoginEscala = $logoLoginTamano / 100;
+$logoLoginEstilo = sprintf(
+    '--login-logo-min-height:%.2fpx;--login-logo-fluid-height:%.2fvw;--login-logo-max-height:%.2fpx;--login-logo-max-width:%.2fpx;--login-logo-mobile-min-height:%.2fpx;--login-logo-mobile-fluid-height:%.2fsvh;--login-logo-mobile-max-height:%.2fpx;--login-logo-mobile-max-width:%.2fpx;--login-logo-small-height:%.2fpx',
+    68 * $logoLoginEscala,
+    8 * $logoLoginEscala,
+    102 * $logoLoginEscala,
+    315 * $logoLoginEscala,
+    42 * $logoLoginEscala,
+    7 * $logoLoginEscala,
+    58 * $logoLoginEscala,
+    210 * $logoLoginEscala,
+    38 * $logoLoginEscala
+);
 $identidadAdminLogin = configuracion_logo_admin();
 $faviconLoginArchivo = $identidadAdminLogin['favicon_ruta'] !== null
     ? dirname(__DIR__) . '/' . $identidadAdminLogin['favicon_ruta']
@@ -46,6 +60,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 && password_verify($password, (string) $usuario['password_hash']);
 
             if ($valido) {
+                $mantenimientoActivo = configuracion_mantenimiento()['activo'];
+                $stmtRol = db()->prepare('SELECT rol_id FROM usuarios WHERE id = ? LIMIT 1');
+                $stmtRol->execute([(int) $usuario['id']]);
+                $rolId = (int) $stmtRol->fetchColumn();
+                if ($mantenimientoActivo && !rol_tiene_permiso($rolId, 'mantenimiento.gestionar')) {
+                    db()->prepare('DELETE FROM intentos_login WHERE clave_hash = ?')->execute([$claveIntento]);
+                    $error = 'Tu rol no tiene permiso para ingresar mientras el portal está en mantenimiento.';
+                    $valido = false;
+                }
+            }
+
+            if ($valido) {
                 if (password_needs_rehash((string) $usuario['password_hash'], PASSWORD_DEFAULT)) {
                     $rehash = password_hash($password, PASSWORD_DEFAULT);
                     $upd = db()->prepare('UPDATE usuarios SET password_hash = ? WHERE id = ?');
@@ -57,21 +83,23 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 redirigir('index.php');
             }
 
-            // La respuesta es deliberadamente generica para no revelar cuentas.
-            $ventanaVigente = $intento && strtotime((string) $intento['primer_intento_at']) >= time() - 15 * 60;
-            $intentos = $ventanaVigente ? (int) $intento['intentos'] + 1 : 1;
-            $bloqueadoHasta = $intentos >= 5 ? date('Y-m-d H:i:s', time() + 15 * 60) : null;
-            $stmt = db()->prepare(
-                'INSERT INTO intentos_login (clave_hash, intentos, primer_intento_at, bloqueado_hasta)
-                 VALUES (?, ?, NOW(), ?)
-                 ON DUPLICATE KEY UPDATE
-                   intentos = IF(primer_intento_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE), 1, VALUES(intentos)),
-                   primer_intento_at = IF(primer_intento_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE), NOW(), primer_intento_at),
-                   bloqueado_hasta = VALUES(bloqueado_hasta)'
-            );
-            $stmt->execute([$claveIntento, $intentos, $bloqueadoHasta]);
-            usleep(random_int(180000, 320000));
-            $error = 'El correo o la contrasena no son correctos.';
+            if ($error === '') {
+                // La respuesta es deliberadamente generica para no revelar cuentas.
+                $ventanaVigente = $intento && strtotime((string) $intento['primer_intento_at']) >= time() - 15 * 60;
+                $intentos = $ventanaVigente ? (int) $intento['intentos'] + 1 : 1;
+                $bloqueadoHasta = $intentos >= 5 ? date('Y-m-d H:i:s', time() + 15 * 60) : null;
+                $stmt = db()->prepare(
+                    'INSERT INTO intentos_login (clave_hash, intentos, primer_intento_at, bloqueado_hasta)
+                     VALUES (?, ?, NOW(), ?)
+                     ON DUPLICATE KEY UPDATE
+                       intentos = IF(primer_intento_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE), 1, VALUES(intentos)),
+                       primer_intento_at = IF(primer_intento_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE), NOW(), primer_intento_at),
+                       bloqueado_hasta = VALUES(bloqueado_hasta)'
+                );
+                $stmt->execute([$claveIntento, $intentos, $bloqueadoHasta]);
+                usleep(random_int(180000, 320000));
+                $error = 'El correo o la contrasena no son correctos.';
+            }
         }
     } catch (PDOException $e) {
         $error = 'El acceso al panel aun no esta disponible. Contacta al administrador.';
@@ -88,7 +116,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
   <link rel="icon" href="../favicon.php?v=<?= e(rawurlencode($faviconLoginVersion)) ?>" type="image/x-icon">
   <link rel="stylesheet" href="assets/login.css?v=<?= (int) filemtime(__DIR__ . '/assets/login.css') ?>">
 </head>
-<body>
+<body style="<?= e($logoLoginEstilo) ?>">
   <main class="login-shell">
     <section class="login-visual" aria-label="Estudio de noticias">
       <img src="assets/images/login-newsroom.webp" alt="Estudio profesional de radio y noticias">

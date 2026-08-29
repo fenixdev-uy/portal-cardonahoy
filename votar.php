@@ -8,6 +8,7 @@
  */
 
 require_once __DIR__ . '/admin/includes/votos.php';
+exigir_portal_disponible('json');
 
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/admin/includes/funciones.php';
+exigir_portal_disponible('text');
 header('Content-Type: application/xml; charset=utf-8');
 $noticias = db()->query("SELECT slug, updated_at FROM noticias WHERE slug <> '' ORDER BY updated_at DESC")->fetchAll();
 echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
