@@ -230,11 +230,13 @@
       }
     }
 
-    document.querySelectorAll('.js-ver-noticia').forEach((el) => {
-      el.addEventListener('click', (event) => {
-        event.preventDefault();
-        cargarNoticia(el.getAttribute('data-id'));
-      });
+    // Delegación: también funciona para las filas que se renuevan solas en
+    // las pantallas de análisis.
+    document.addEventListener('click', (event) => {
+      const enlace = event.target.closest('.js-ver-noticia');
+      if (!enlace) return;
+      event.preventDefault();
+      cargarNoticia(enlace.getAttribute('data-id'));
     });
 
     drawerClose.addEventListener('click', closeDrawer);

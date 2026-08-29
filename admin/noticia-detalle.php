@@ -21,7 +21,7 @@ $stmt = db()->prepare(
     'SELECT n.id, n.titulo, n.descripcion,
             n.youtube, n.youtube_2, n.youtube_3,
             n.audio_1, n.audio_2, n.audio_3, n.created_at,
-            n.me_gusta, n.no_me_gusta,
+            n.me_gusta, n.no_me_gusta, n.vistas, n.compartidos,
             c.nombre AS categoria_nombre,
             u.nombre AS autor_nombre
        FROM noticias n
@@ -37,6 +37,10 @@ if (!$n) {
     echo json_encode(['error' => 'Noticia no encontrada']);
     exit;
 }
+
+$noticiaDetalle = [$n];
+cargar_categorias_noticias($noticiaDetalle);
+$n = $noticiaDetalle[0];
 
 $fotos = obtener_fotos_noticia((int) $n['id']);
 $galeria = [];
@@ -65,7 +69,8 @@ echo json_encode([
     'descripcion'    => $n['descripcion'],
     'foto_principal' => $galeria[0]['url'] ?? '',
     'galeria'        => $galeria,
-    'categoria'      => $n['categoria_nombre'] ?? null,
+    'categoria'      => $n['categoria_nombre'] ?: null,
+    'categorias'     => $n['categorias'] ?? [],
     'autor'          => $n['autor_nombre'] ?? null,
     'fecha'          => $n['created_at'] ? date('d/m/Y', strtotime($n['created_at'])) : null,
     'fecha_larga'    => fecha_larga($n['created_at']),
@@ -74,4 +79,6 @@ echo json_encode([
     'audios'         => $audios,
     'me_gusta'       => (int) ($n['me_gusta'] ?? 0),
     'no_me_gusta'    => (int) ($n['no_me_gusta'] ?? 0),
+    'vistas'         => (int) ($n['vistas'] ?? 0),
+    'compartidos'    => (int) ($n['compartidos'] ?? 0),
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

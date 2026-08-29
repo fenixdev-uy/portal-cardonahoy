@@ -76,8 +76,7 @@ $categorias = obtener_categorias();
 // Por cada categoría, contar cuántas noticias la usan
 $stmt = $pdo->query(
     'SELECT categoria_id, COUNT(*) AS total
-       FROM noticias
-      WHERE categoria_id IS NOT NULL
+       FROM noticias_categorias
       GROUP BY categoria_id'
 );
 $conteos = [];

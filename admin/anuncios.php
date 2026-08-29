@@ -105,6 +105,73 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         redirigir('anuncios.php');
     }
 
+    if ($accion === 'ubicacion') {
+        $ubicacion = (string) ($_POST['ubicacion'] ?? '');
+        $seleccionado = (string) ($_POST['seleccionado'] ?? '0') === '1' ? 1 : 0;
+        $columnasUbicacion = [
+            'encabezado' => 'en_encabezado',
+            'pie' => 'en_pie',
+        ];
+
+        if (!isset($columnasUbicacion[$ubicacion])) {
+            if ($solicitudAjax) {
+                http_response_code(422);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['ok' => false, 'error' => 'La ubicación publicitaria no es válida.'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+            flash('danger', 'La ubicación publicitaria no es válida.');
+            redirigir('anuncios.php');
+        }
+
+        $columnaUbicacion = $columnasUbicacion[$ubicacion];
+        try {
+            $pdo->beginTransaction();
+            $stmt = $pdo->query('SELECT id FROM anuncios ORDER BY id FOR UPDATE');
+            $idsAnuncios = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+            if (!in_array($id, $idsAnuncios, true)) {
+                throw new RuntimeException('El anuncio ya no existe.');
+            }
+
+            if ($seleccionado === 1) {
+                $pdo->exec("UPDATE anuncios SET $columnaUbicacion = 0 WHERE $columnaUbicacion = 1");
+            }
+            $stmt = $pdo->prepare("UPDATE anuncios SET $columnaUbicacion = ? WHERE id = ?");
+            $stmt->execute([$seleccionado, $id]);
+            $pdo->commit();
+
+            $etiquetaUbicacion = $ubicacion === 'encabezado' ? 'Encabezado' : 'Pie';
+            if ($solicitudAjax) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'ok' => true,
+                    'ubicacion' => $ubicacion,
+                    'seleccionado' => $seleccionado,
+                    'id' => $id,
+                    'label' => $seleccionado === 1 ? 'Sí' : 'No',
+                    'notice' => $seleccionado === 1 ? "$etiquetaUbicacion seleccionado" : "$etiquetaUbicacion retirado",
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+            flash('success', $seleccionado === 1 ? "$etiquetaUbicacion seleccionado correctamente." : "$etiquetaUbicacion retirado correctamente.");
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            if ($solicitudAjax) {
+                http_response_code($e instanceof RuntimeException ? 404 : 500);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'ok' => false,
+                    'error' => $e instanceof RuntimeException
+                        ? $e->getMessage()
+                        : 'No se pudo guardar la ubicación. Verificá que publicidad-v4 esté aplicada.',
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+            flash('danger', 'No se pudo guardar la ubicación del anuncio.');
+        }
+        redirigir('anuncios.php');
+    }
+
     if ($accion === 'eliminar') {
         $stmt = $pdo->prepare('SELECT imagen FROM anuncios WHERE id = ?');
         $stmt->execute([$id]);
@@ -237,9 +304,9 @@ require __DIR__ . '/includes/header.php';
         <input type="search" id="adsSearch" placeholder="Buscar anuncios..." autocomplete="off" aria-describedby="adsSearchStatus">
       </label>
     <?php endif; ?>
-    <a class="btn btn-primary ads-create-btn js-new-ad" href="anuncios.php?nuevo=1">
+    <a class="btn btn-primary ads-create-btn js-new-ad" href="anuncios.php?nuevo=1" aria-label="Nuevo anuncio" title="Nuevo anuncio">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-      Nuevo Anuncio
+      <span>Nuevo Anuncio</span>
     </a>
     <span class="ads-total" id="adsSearchStatus" aria-live="polite"><strong id="adsSearchCount"><?= count($anuncios) ?></strong><span id="adsSearchLabel"> <?= count($anuncios) === 1 ? 'anuncio' : 'anuncios' ?></span></span>
   </div>
@@ -255,6 +322,8 @@ require __DIR__ . '/includes/header.php';
         <th>Vencimiento</th>
         <th>Creado</th>
         <th>Estado</th>
+        <th>Encabezado</th>
+        <th>Pie</th>
         <th>Clics</th>
         <th style="width:110px;">Acciones</th>
       </tr></thead>
@@ -271,16 +340,16 @@ require __DIR__ . '/includes/header.php';
           ];
       ?>
         <tr class="ad-row" data-search-name="<?= e($anuncio['nombre']) ?>">
-          <td data-label="Imagen"><button type="button" class="ad-table-image-button js-view-ad" data-ad-id="<?= (int) $anuncio['id'] ?>" aria-label="Ver datos de <?= e($anuncio['nombre']) ?>" title="Ver anuncio"><img class="ad-table-image" src="<?= e(url_imagen($anuncio['imagen'])) ?>" alt="Vista previa de <?= e($anuncio['nombre']) ?>"></button></td>
-          <td data-label="Nombre"><strong><?= e($anuncio['nombre']) ?></strong><div class="cell-desc">#<?= (int) $anuncio['id'] ?></div></td>
-          <td data-label="Destinos"><div class="ad-destinations">
+          <td class="td-ad-photo" data-label="Imagen"><button type="button" class="ad-table-image-button js-view-ad" data-ad-id="<?= (int) $anuncio['id'] ?>" aria-label="Ver datos de <?= e($anuncio['nombre']) ?>" title="Ver anuncio"><img class="ad-table-image" src="<?= e(url_imagen($anuncio['imagen'])) ?>" alt="Vista previa de <?= e($anuncio['nombre']) ?>"></button></td>
+          <td class="td-ad-name" data-label="Nombre"><strong><?= e($anuncio['nombre']) ?></strong><div class="cell-desc">#<?= (int) $anuncio['id'] ?></div></td>
+          <td class="td-ad-destinations" data-label="Destinos"><div class="ad-destinations">
             <?php foreach ($enlaces as $tipo => [$etiqueta, $url]): ?>
               <?php if ($url): ?><a href="<?= e($url) ?>" target="_blank" rel="noopener noreferrer" aria-label="Abrir <?= e($etiqueta) ?> de <?= e($anuncio['nombre']) ?>" title="<?= e($etiqueta) ?>" class="ad-destination is-set"><?= icono_destino_anuncio($tipo) ?></a><?php else: ?><span class="ad-destination" title="<?= e($etiqueta) ?> sin configurar"><?= icono_destino_anuncio($tipo) ?></span><?php endif; ?>
             <?php endforeach; ?>
           </div></td>
-          <td data-label="Vencimiento"><?= $vence !== '' ? e(date('d/m/Y', strtotime($vence))) : 'Sin vencimiento' ?></td>
-          <td data-label="Creado"><?= e(date('d/m/Y H:i', strtotime((string) $anuncio['created_at']))) ?></td>
-          <td data-label="Estado">
+          <td class="td-ad-expiry" data-label="Vencimiento"><?= $vence !== '' ? e(date('d/m/Y', strtotime($vence))) : 'Sin vencimiento' ?></td>
+          <td class="td-ad-created" data-label="Creado"><?= e(date('d/m/Y H:i', strtotime((string) $anuncio['created_at']))) ?></td>
+          <td class="td-ad-status" data-label="Estado">
             <form method="post" action="anuncios.php" class="ad-status-form js-ad-status-form">
               <?= csrf_input() ?><input type="hidden" name="accion" value="estado"><input type="hidden" name="id" value="<?= (int) $anuncio['id'] ?>">
               <label class="ad-status-switch">
@@ -292,8 +361,21 @@ require __DIR__ . '/includes/header.php';
               <small class="ad-status-feedback" aria-live="polite"></small>
             </form>
           </td>
-          <td data-label="Clics"><strong><?= number_format((int) ($anuncio['clics'] ?? 0), 0, ',', '.') ?></strong></td>
-          <td data-label="Acciones"><div class="cell-actions user-icon-actions">
+<?php foreach (['encabezado' => 'en_encabezado', 'pie' => 'en_pie'] as $ubicacion => $campoUbicacion): ?>
+          <td class="td-ad-placement" data-label="<?= $ubicacion === 'encabezado' ? 'Encabezado' : 'Pie' ?>">
+            <form method="post" action="anuncios.php" class="ad-status-form js-ad-placement-form" data-placement="<?= e($ubicacion) ?>">
+              <?= csrf_input() ?><input type="hidden" name="accion" value="ubicacion"><input type="hidden" name="id" value="<?= (int) $anuncio['id'] ?>"><input type="hidden" name="ubicacion" value="<?= e($ubicacion) ?>">
+              <label class="ad-status-switch ad-placement-switch">
+                <input type="checkbox" name="seleccionado" value="1" role="switch" class="js-ad-placement-input" <?= (int) ($anuncio[$campoUbicacion] ?? 0) === 1 ? 'checked' : '' ?> aria-label="<?= (int) ($anuncio[$campoUbicacion] ?? 0) === 1 ? 'Retirar' : 'Elegir' ?> <?= e($anuncio['nombre']) ?> como anuncio de <?= e($ubicacion) ?>">
+                <span class="ad-status-switch-track" aria-hidden="true"><span></span></span>
+                <span class="ad-status-switch-text"><?= (int) ($anuncio[$campoUbicacion] ?? 0) === 1 ? 'Sí' : 'No' ?></span>
+              </label>
+              <small class="ad-status-feedback" aria-live="polite"></small>
+            </form>
+          </td>
+<?php endforeach; ?>
+          <td class="td-ad-clicks" data-label="Clics"><strong><?= number_format((int) ($anuncio['clics'] ?? 0), 0, ',', '.') ?></strong></td>
+          <td class="td-ad-actions" data-label="Acciones"><div class="cell-actions user-icon-actions">
             <a class="action-icon action-icon-edit js-edit-ad" href="anuncios.php?editar=<?= (int) $anuncio['id'] ?>"
                data-id="<?= (int) $anuncio['id'] ?>" data-name="<?= e($anuncio['nombre']) ?>" data-image="<?= e(url_imagen($anuncio['imagen'])) ?>"
                data-facebook="<?= e($anuncio['facebook_url'] ?? '') ?>" data-instagram="<?= e($anuncio['instagram_url'] ?? '') ?>"
@@ -432,6 +514,14 @@ require __DIR__ . '/includes/header.php';
   const adsSearchLabel = document.getElementById('adsSearchLabel');
   const adsFilterEmpty = document.getElementById('adsFilterEmpty');
   const adRows = Array.from(document.querySelectorAll('.ad-row'));
+
+  function notifyAdPlacementChange() {
+    try {
+      localStorage.setItem('portal_publicidad_ubicaciones', Date.now() + '-' + Math.random());
+    } catch (error) {
+      // La sincronización por foco del portal sigue disponible si storage está bloqueado.
+    }
+  }
 
   function normalizeSearch(value) {
     return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es');
@@ -717,6 +807,7 @@ require __DIR__ . '/includes/header.php';
         showFormErrors(result.errors || [result.error || 'No se pudo validar el anuncio.'], result.fields || {});
         return;
       }
+      notifyAdPlacementChange();
       window.location.href = result.redirect || 'anuncios.php';
     } catch (error) {
       showFormErrors(['No pudimos guardar el anuncio. Verificá la conexión e intentá nuevamente.']);
@@ -751,6 +842,7 @@ require __DIR__ . '/includes/header.php';
         });
         const result = await response.json();
         if (!response.ok || !result.ok) throw new Error(result.error || 'No se pudo actualizar el estado.');
+        notifyAdPlacementChange();
         input.checked = result.activo === 1;
         text.textContent = result.label;
         input.setAttribute('aria-label', (result.activo === 1 ? 'Desactivar ' : 'Activar ') + text.closest('tr').querySelector('td:nth-child(2) strong').textContent);
@@ -777,6 +869,58 @@ require __DIR__ . '/includes/header.php';
       } finally {
         input.disabled = false;
         window.setTimeout(() => { feedback.textContent = ''; }, 2200);
+      }
+    });
+  });
+  document.querySelectorAll('.js-ad-placement-form').forEach((placementForm) => {
+    const input = placementForm.querySelector('.js-ad-placement-input');
+    const text = placementForm.querySelector('.ad-status-switch-text');
+    const feedback = placementForm.querySelector('.ad-status-feedback');
+    placementForm.addEventListener('submit', (event) => event.preventDefault());
+    input.addEventListener('change', async () => {
+      const requestedState = input.checked;
+      input.disabled = true;
+      feedback.textContent = 'Guardando…';
+      const payload = new FormData(placementForm);
+      payload.set('seleccionado', requestedState ? '1' : '0');
+      try {
+        const response = await fetch(placementForm.action, {
+          method: 'POST',
+          body: payload,
+          headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+          credentials: 'same-origin'
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || 'No se pudo actualizar la ubicación.');
+        notifyAdPlacementChange();
+
+        if (result.seleccionado === 1) {
+          document.querySelectorAll('.js-ad-placement-form[data-placement="' + result.ubicacion + '"]').forEach((otherForm) => {
+            const otherInput = otherForm.querySelector('.js-ad-placement-input');
+            const otherText = otherForm.querySelector('.ad-status-switch-text');
+            const otherFeedback = otherForm.querySelector('.ad-status-feedback');
+            const otherId = otherForm.querySelector('input[name="id"]').value;
+            otherInput.checked = otherId === String(result.id);
+            otherText.textContent = otherInput.checked ? 'Sí' : 'No';
+            const otherName = otherForm.closest('tr').querySelector('td:nth-child(2) strong').textContent;
+            otherInput.setAttribute('aria-label', (otherInput.checked ? 'Retirar ' : 'Elegir ') + otherName + ' como anuncio de ' + result.ubicacion);
+            if (otherForm !== placementForm) otherFeedback.textContent = '';
+          });
+        } else {
+          input.checked = false;
+          text.textContent = 'No';
+        }
+
+        const nombre = placementForm.closest('tr').querySelector('td:nth-child(2) strong').textContent;
+        input.setAttribute('aria-label', (input.checked ? 'Retirar ' : 'Elegir ') + nombre + ' como anuncio de ' + result.ubicacion);
+        feedback.textContent = result.notice || 'Guardado';
+      } catch (error) {
+        input.checked = !requestedState;
+        text.textContent = input.checked ? 'Sí' : 'No';
+        feedback.textContent = error instanceof Error ? error.message : 'No se pudo guardar';
+      } finally {
+        input.disabled = false;
+        window.setTimeout(() => { feedback.textContent = ''; }, 2600);
       }
     });
   });

@@ -55,7 +55,7 @@ function usuario_actual(): ?array
 
     try {
         $stmt = db()->prepare(
-            'SELECT u.id, u.nombre, u.email, u.activo, u.debe_cambiar_password,
+            'SELECT u.id, u.nombre, u.email, u.foto, u.activo, u.debe_cambiar_password,
                     r.id AS rol_id, r.nombre AS rol_nombre, r.slug AS rol_slug
                FROM usuarios u
                JOIN roles r ON r.id = u.rol_id
@@ -73,6 +73,16 @@ function usuario_actual(): ?array
 
     $cache[$id] = $usuario;
     return $usuario;
+}
+
+/** Consulta la sesión desde el portal público sin crear una nueva para visitantes anónimos. */
+function usuario_actual_publico(): ?array
+{
+    if (session_status() !== PHP_SESSION_ACTIVE
+        && empty($_COOKIE['portal_noticias_admin'])) {
+        return null;
+    }
+    return usuario_actual();
 }
 
 function ruta_login(): string

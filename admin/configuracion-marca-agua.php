@@ -1,5 +1,5 @@
 <?php
-/** Guarda la marca de agua y su opacidad desde el drawer de Configuración. */
+/** Guarda la marca de agua, su opacidad y su tamaño desde Configuración. */
 
 require_once __DIR__ . '/includes/funciones.php';
 
@@ -19,6 +19,13 @@ $opacidad = filter_var($_POST['opacidad'] ?? null, FILTER_VALIDATE_INT);
 if ($opacidad === false || $opacidad < 5 || $opacidad > 100) {
     http_response_code(422);
     echo json_encode(['error' => 'La opacidad debe estar entre 5% y 100%.'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+$tamano = filter_var($_POST['tamano'] ?? null, FILTER_VALIDATE_INT);
+if ($tamano === false || $tamano < 15 || $tamano > 65) {
+    http_response_code(422);
+    echo json_encode(['error' => 'El tamaño debe estar entre 15% y 65%.'], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
@@ -82,6 +89,7 @@ try {
     $pdo->beginTransaction();
     $stmt->execute(['marca_agua_ruta', $rutaActiva]);
     $stmt->execute(['marca_agua_opacidad', (string) $opacidad]);
+    $stmt->execute(['marca_agua_tamano', (string) $tamano]);
     $pdo->commit();
 
     if ($rutaNueva !== null
@@ -98,6 +106,7 @@ try {
         'ruta' => $rutaActiva,
         'logo_url' => url_imagen($rutaActiva) . '?v=' . rawurlencode($version),
         'opacidad' => $opacidad,
+        'tamano' => $tamano,
         'mensaje' => 'Configuración de marca de agua guardada.',
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 } catch (Throwable $e) {

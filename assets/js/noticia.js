@@ -1,14 +1,78 @@
     const articleScript = document.currentScript;
     const articleConfig = {
       voteUrl: articleScript?.dataset.voteUrl || 'votar.php',
+      viewUrl: articleScript?.dataset.viewUrl || 'noticia-vista.php',
+      shareUrl: articleScript?.dataset.shareUrl || 'noticia-compartir.php',
+      noticiaId: articleScript?.dataset.noticiaId || '',
+      adPlacementsUrl: articleScript?.dataset.adPlacementsUrl || 'publicidad-ubicaciones.php',
     };
+    if (articleConfig.noticiaId) {
+      fetch(articleConfig.viewUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ noticia_id: articleConfig.noticiaId }),
+        credentials: 'same-origin',
+        keepalive: true,
+      }).catch((error) => console.error(error));
+    }
+    document.addEventListener('click', (event) => {
+      const shareLink = event.target.closest('.share-btn[data-share-noticia-id][data-share-destino]');
+      if (!shareLink) return;
+      fetch(articleConfig.shareUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          noticia_id: shareLink.dataset.shareNoticiaId,
+          destino: shareLink.dataset.shareDestino,
+        }),
+        credentials: 'same-origin',
+        keepalive: true,
+      }).catch((error) => console.error(error));
+    }, { capture: true });
+    let adPlacementsRequest = null;
+    async function syncAdPlacements() {
+      if (adPlacementsRequest) return adPlacementsRequest;
+      adPlacementsRequest = (async () => {
+        try {
+          const response = await fetch(articleConfig.adPlacementsUrl, {
+            headers: { 'Accept': 'application/json' },
+            credentials: 'same-origin',
+            cache: 'no-store'
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || 'No se pudo actualizar la publicidad.');
+          const htmlByPlacement = {
+            encabezado: typeof data.encabezado_html === 'string' ? data.encabezado_html : '',
+            pie: typeof data.pie_html === 'string' ? data.pie_html : '',
+          };
+          document.querySelectorAll('[data-ad-placement]').forEach((slot) => {
+            const html = htmlByPlacement[slot.dataset.adPlacement] ?? '';
+            if (slot.innerHTML.trim() !== html.trim()) slot.innerHTML = html;
+            slot.hidden = html === '';
+          });
+        } catch (error) {
+          console.error(error);
+        } finally {
+          adPlacementsRequest = null;
+        }
+      })();
+      return adPlacementsRequest;
+    }
+    window.addEventListener('storage', event => { if (event.key === 'portal_publicidad_ubicaciones') syncAdPlacements(); });
+    window.addEventListener('focus', syncAdPlacements);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncAdPlacements(); });
     let lightbox = null;
     let closeLightbox = null;
     let moveLightbox = null;
 
     const hamburger=document.getElementById('hamburger'),menuOverlay=document.getElementById('menuOverlay'),closeMenuButton=document.getElementById('closeMenu'),navbar=document.querySelector('.navbar');
-    function setMenu(open){hamburger.classList.toggle('active',open);hamburger.setAttribute('aria-expanded',open?'true':'false');menuOverlay.classList.toggle('open',open);menuOverlay.setAttribute('aria-hidden',open?'false':'true');document.body.classList.toggle('overlay-open',open);if(open)closeMenuButton.focus();}
-    hamburger.addEventListener('click',()=>setMenu(!menuOverlay.classList.contains('open')));closeMenuButton.addEventListener('click',()=>setMenu(false));menuOverlay.querySelectorAll('.menu-link').forEach(link=>link.addEventListener('click',()=>setMenu(false)));window.addEventListener('scroll',()=>navbar.classList.toggle('scrolled',window.scrollY>10),{passive:true});
+    const menuNewsSearch=menuOverlay.querySelector('[data-menu-news-search]'),menuNewsSearchInput=menuNewsSearch?.querySelector('input[type="search"]'),menuNewsSearchResults=menuNewsSearch?.querySelector('.menu-news-search-results');let menuNewsSearchTimer=null,menuNewsSearchController=null;
+    function clearMenuSearch(){menuNewsSearchController?.abort();if(menuNewsSearchTimer)clearTimeout(menuNewsSearchTimer);if(menuNewsSearchInput){menuNewsSearchInput.value='';menuNewsSearchInput.setAttribute('aria-expanded','false');}if(menuNewsSearchResults){menuNewsSearchResults.hidden=true;menuNewsSearchResults.replaceChildren();}}
+    function setMenu(open){hamburger.classList.toggle('active',open);hamburger.setAttribute('aria-expanded',open?'true':'false');menuOverlay.classList.toggle('open',open);menuOverlay.setAttribute('aria-hidden',open?'false':'true');document.body.classList.toggle('overlay-open',open);if(open){closeMenuButton.focus();if(window.matchMedia('(min-width:769px)').matches)setTimeout(()=>menuNewsSearchInput?.focus(),180);}else clearMenuSearch();}
+    hamburger.addEventListener('click',()=>setMenu(!menuOverlay.classList.contains('open')));closeMenuButton.addEventListener('click',()=>setMenu(false));window.addEventListener('scroll',()=>navbar.classList.toggle('scrolled',window.scrollY>10),{passive:true});
+    function renderMenuNewsResults(results,message=''){if(!menuNewsSearchResults||!menuNewsSearchInput)return;menuNewsSearchResults.replaceChildren();if(message){const state=document.createElement('span');state.className='menu-news-search-state';state.textContent=message;menuNewsSearchResults.appendChild(state);}else results.slice(0,5).forEach(news=>{const button=document.createElement('button');button.type='button';button.className='menu-news-search-result';button.dataset.storyUrl=news.url||'';const media=document.createElement('span');media.className='menu-news-search-result-media';if(news.miniatura){const image=document.createElement('img');image.src=news.miniatura;image.alt='';image.loading='lazy';media.appendChild(image);}const copy=document.createElement('span');copy.className='menu-news-search-result-copy';const title=document.createElement('strong');title.className='menu-news-search-result-title';title.textContent=news.titulo||'Noticia';const description=document.createElement('span');description.className='menu-news-search-result-description';description.textContent=news.descripcion||'';copy.append(title,description);button.append(media,copy);menuNewsSearchResults.appendChild(button);});menuNewsSearchResults.hidden=false;menuNewsSearchInput.setAttribute('aria-expanded','true');}
+    async function searchMenuNews(){if(!menuNewsSearch||!menuNewsSearchInput)return;const query=menuNewsSearchInput.value.trim();menuNewsSearchController?.abort();if(query.length<2){menuNewsSearchResults.hidden=true;menuNewsSearchResults.replaceChildren();menuNewsSearchInput.setAttribute('aria-expanded','false');return;}const controller=new AbortController();menuNewsSearchController=controller;const url=new URL(menuNewsSearch.dataset.searchUrl,location.href);url.searchParams.set('q',query);try{const response=await fetch(url,{credentials:'same-origin',signal:controller.signal});if(!response.ok)throw new Error('No se pudo buscar ('+response.status+')');const data=await response.json(),results=Array.isArray(data.resultados)?data.resultados:[];renderMenuNewsResults(results,results.length?'':'No encontramos noticias.');}catch(error){if(error.name!=='AbortError'){renderMenuNewsResults([],'No pudimos completar la búsqueda.');console.error(error);}}}
+    menuNewsSearchInput?.addEventListener('input',()=>{if(menuNewsSearchTimer)clearTimeout(menuNewsSearchTimer);menuNewsSearchTimer=setTimeout(searchMenuNews,240);});menuNewsSearchResults?.addEventListener('click',event=>{const result=event.target.closest('.menu-news-search-result[data-story-url]');if(!result||!result.dataset.storyUrl)return;const url=result.dataset.storyUrl;setMenu(false);setTimeout(()=>{location.href=url;},360);});
     if (document.getElementById('storyGalleryTrack')) {
     const galleryTrack=document.getElementById('storyGalleryTrack'),galleryFrames=[...galleryTrack.querySelectorAll('.story-gallery-frame')],galleryDots=document.getElementById('storyGalleryDots');let galleryIndex=0,galleryTimer=null,galleryTicking=false;
     lightbox=document.getElementById('articleLightbox'),lightboxImage=document.getElementById('articleLightboxImage'),lightboxCounter=document.getElementById('articleLightboxCounter'),lightboxZoom=document.getElementById('articleLightboxZoom'),lightboxStage=document.getElementById('articleLightboxStage');let zoomLevel=1,panX=0,panY=0;

@@ -152,6 +152,11 @@ if (!columna_existe_seguridad($pdo, 'usuarios', 'rol_id')) {
     echo "  [OK] perfiles existentes conservados como usuarios autores inactivos.\n";
 }
 
+if (!columna_existe_seguridad($pdo, 'usuarios', 'foto')) {
+    $pdo->exec('ALTER TABLE usuarios ADD COLUMN foto VARCHAR(255) NULL AFTER bio');
+    echo "  [OK] usuarios.foto agregada.\n";
+}
+
 if (columna_existe_seguridad($pdo, 'noticias', 'autor_id') && !columna_existe_seguridad($pdo, 'noticias', 'usuario_id')) {
     $pdo->exec('ALTER TABLE noticias CHANGE COLUMN autor_id usuario_id INT UNSIGNED NULL');
     echo "  [OK] noticias.autor_id renombrada a usuario_id.\n";

@@ -39,15 +39,16 @@ function obtener_flash(): array
  * Configuración efectiva de la marca de agua.
  * Mantiene el logo histórico como fallback para instalaciones sin migrar.
  *
- * @return array{ruta:string,opacidad:int}
+ * @return array{ruta:string,opacidad:int,tamano:int}
  */
 function configuracion_marca_agua(): array
 {
     $ruta = 'imagenes/Logo2027v2.png';
     $opacidad = 15;
+    $tamano = 36;
 
     try {
-        $stmt = db()->query("SELECT clave, valor FROM configuracion WHERE clave IN ('marca_agua_ruta', 'marca_agua_opacidad')");
+        $stmt = db()->query("SELECT clave, valor FROM configuracion WHERE clave IN ('marca_agua_ruta', 'marca_agua_opacidad', 'marca_agua_tamano')");
         foreach ($stmt->fetchAll() as $fila) {
             if ($fila['clave'] === 'marca_agua_ruta') {
                 $candidata = trim((string) $fila['valor']);
@@ -57,6 +58,8 @@ function configuracion_marca_agua(): array
                 }
             } elseif ($fila['clave'] === 'marca_agua_opacidad') {
                 $opacidad = max(5, min(100, (int) $fila['valor']));
+            } elseif ($fila['clave'] === 'marca_agua_tamano') {
+                $tamano = max(15, min(65, (int) $fila['valor']));
             }
         }
     } catch (PDOException $e) {
@@ -68,7 +71,240 @@ function configuracion_marca_agua(): array
         $ruta = 'imagenes/Logo2027v2.png';
     }
 
-    return ['ruta' => $ruta, 'opacidad' => $opacidad];
+    return ['ruta' => $ruta, 'opacidad' => $opacidad, 'tamano' => $tamano];
+}
+
+/**
+ * Logo efectivo de la pantalla de ingreso.
+ * Mantiene el recurso actual como fallback para instalaciones anteriores.
+ */
+function configuracion_logo_login(): string
+{
+    $ruta = 'imagenes/Logo2027v3.png';
+
+    try {
+        $stmt = db()->prepare("SELECT valor FROM configuracion WHERE clave = 'logo_login_ruta' LIMIT 1");
+        $stmt->execute();
+        $candidata = trim((string) $stmt->fetchColumn());
+        if ($candidata === 'imagenes/Logo2027v3.png'
+            || preg_match('#^uploads/configuracion/logo_login_[A-Za-z0-9_-]+\.png$#', $candidata)) {
+            $ruta = $candidata;
+        }
+    } catch (PDOException $e) {
+        // La tabla de configuración puede estar pendiente durante un despliegue incremental.
+    }
+
+    if (!is_file(dirname(__DIR__, 2) . '/' . $ruta)) {
+        $ruta = 'imagenes/Logo2027v3.png';
+    }
+
+    return $ruta;
+}
+
+/** Logo efectivo del encabezado y menú público. */
+function configuracion_logo_portal(): string
+{
+    $ruta = 'imagenes/Logo2027v2.png';
+
+    try {
+        $stmt = db()->prepare("SELECT valor FROM configuracion WHERE clave = 'logo_portal_ruta' LIMIT 1");
+        $stmt->execute();
+        $valor = trim((string) $stmt->fetchColumn());
+        if ($valor === 'imagenes/Logo2027v2.png'
+            || preg_match('#^uploads/configuracion/logo_portal_[A-Za-z0-9_-]+\.png$#', $valor)) {
+            $ruta = $valor;
+        }
+    } catch (PDOException $e) {
+        // La tabla de configuración puede estar pendiente durante un despliegue incremental.
+    }
+
+    $raiz = dirname(__DIR__, 2);
+    if (!is_file($raiz . '/' . $ruta)) {
+        $ruta = 'imagenes/Logo2027v2.png';
+    }
+
+    return $ruta;
+}
+
+/**
+ * Identidad del menú interno del Admin y favicon compartido por todo el sitio.
+ * La marca del menú queda en null para conservar la "N" histórica hasta que
+ * el administrador elija una imagen.
+ *
+ * @return array{ruta:string|null,favicon_ruta:string|null}
+ */
+function configuracion_logo_admin(): array
+{
+    $ruta = null;
+    $faviconRuta = null;
+
+    try {
+        $stmt = db()->query("SELECT clave, valor FROM configuracion WHERE clave IN ('logo_admin_ruta', 'favicon_admin_ruta')");
+        foreach ($stmt->fetchAll() as $fila) {
+            $valor = trim((string) $fila['valor']);
+            if ($fila['clave'] === 'logo_admin_ruta'
+                && preg_match('#^uploads/configuracion/logo_admin_[A-Za-z0-9_-]+\.png$#', $valor)) {
+                $ruta = $valor;
+            } elseif ($fila['clave'] === 'favicon_admin_ruta'
+                && preg_match('#^uploads/configuracion/favicon_admin_[A-Za-z0-9_-]+\.ico$#', $valor)) {
+                $faviconRuta = $valor;
+            }
+        }
+    } catch (PDOException $e) {
+        // La tabla de configuración puede estar pendiente durante un despliegue incremental.
+    }
+
+    $raiz = dirname(__DIR__, 2);
+    if ($ruta !== null && !is_file($raiz . '/' . $ruta)) {
+        $ruta = null;
+    }
+    if ($faviconRuta !== null && !is_file($raiz . '/' . $faviconRuta)) {
+        $faviconRuta = null;
+    }
+
+    return ['ruta' => $ruta, 'favicon_ruta' => $faviconRuta];
+}
+
+/**
+ * SEO efectivo de la página principal.
+ * Las claves ausentes mantienen valores automáticos seguros.
+ *
+ * @return array{titulo:string,descripcion:string,imagen_ruta:string,imagen_url:string,titulo_personalizado:bool,descripcion_personalizada:bool,imagen_personalizada:bool,url:string}
+ */
+function configuracion_seo_portada(): array
+{
+    $tituloAutomatico = 'Radio Sur | Noticias de Colonia y la región';
+    $descripcionAutomatica = 'Últimas noticias de Colonia, Uruguay y la región. Información local, actualidad, deportes, cultura y comunidad en Radio Sur.';
+    $titulo = $tituloAutomatico;
+    $descripcion = $descripcionAutomatica;
+    $imagenRuta = 'imagenes/Logo2027v3.png';
+    $tituloPersonalizado = false;
+    $descripcionPersonalizada = false;
+    $imagenPersonalizada = false;
+
+    try {
+        $stmt = db()->query("SELECT clave, valor FROM configuracion WHERE clave IN ('seo_portada_titulo', 'seo_portada_descripcion', 'seo_portada_imagen')");
+        foreach ($stmt->fetchAll() as $fila) {
+            $valor = trim((string) $fila['valor']);
+            if ($fila['clave'] === 'seo_portada_titulo' && $valor !== '') {
+                $titulo = $valor;
+                $tituloPersonalizado = true;
+            } elseif ($fila['clave'] === 'seo_portada_descripcion' && $valor !== '') {
+                $descripcion = $valor;
+                $descripcionPersonalizada = true;
+            } elseif ($fila['clave'] === 'seo_portada_imagen'
+                && preg_match('#^uploads/configuracion/seo_portada_[A-Za-z0-9_-]+\.(?:jpg|png|webp)$#', $valor)) {
+                $imagenRuta = $valor;
+                $imagenPersonalizada = true;
+            }
+        }
+    } catch (PDOException $e) {
+        // La tabla de configuración puede estar pendiente durante un despliegue incremental.
+    }
+
+    $raiz = dirname(__DIR__, 2);
+    if (!is_file($raiz . '/' . $imagenRuta)) {
+        $imagenRuta = 'imagenes/Logo2027v3.png';
+        $imagenPersonalizada = false;
+    }
+
+    return [
+        'titulo' => $titulo,
+        'descripcion' => $descripcion,
+        'imagen_ruta' => $imagenRuta,
+        'imagen_url' => url_recurso_portal($imagenRuta),
+        'titulo_personalizado' => $tituloPersonalizado,
+        'descripcion_personalizada' => $descripcionPersonalizada,
+        'imagen_personalizada' => $imagenPersonalizada,
+        'url' => url_portal(),
+    ];
+}
+
+/**
+ * Código de integraciones insertado al final del <head> público.
+ *
+ * @return array{codigo:string,activo:bool}
+ */
+function configuracion_codigo_header(): array
+{
+    $codigo = '';
+    $activo = false;
+
+    try {
+        $stmt = db()->query("SELECT clave, valor FROM configuracion WHERE clave IN ('codigo_header_contenido', 'codigo_header_activo')");
+        foreach ($stmt->fetchAll() as $fila) {
+            if ($fila['clave'] === 'codigo_header_contenido') {
+                $codigo = (string) $fila['valor'];
+            } elseif ($fila['clave'] === 'codigo_header_activo') {
+                $activo = (string) $fila['valor'] === '1';
+            }
+        }
+    } catch (PDOException $e) {
+        // La tabla de configuración puede estar pendiente durante un despliegue incremental.
+    }
+
+    return ['codigo' => $codigo, 'activo' => $activo && trim($codigo) !== ''];
+}
+
+/** Imprime deliberadamente HTML/JS administrado; usar solo dentro del head público. */
+function imprimir_codigo_header_publico(): void
+{
+    $configuracion = configuracion_codigo_header();
+    if (!$configuracion['activo']) return;
+    echo "\n<!-- Código del Header administrado -->\n";
+    echo $configuracion['codigo'];
+    echo "\n<!-- Fin Código del Header administrado -->\n";
+}
+
+/** Genera un ICO de 256×256 cuyo único frame contiene un PNG cuadrado. */
+function generar_favicon_ico_desde_png(string $rutaPng): string
+{
+    if (!extension_loaded('gd')) {
+        throw new RuntimeException('La extensión GD no está disponible.');
+    }
+    $origen = @imagecreatefrompng($rutaPng);
+    if ($origen === false) {
+        throw new RuntimeException('No se pudo procesar el logo para crear el favicon.');
+    }
+
+    $lado = 256;
+    $margen = 24;
+    $destino = imagecreatetruecolor($lado, $lado);
+    if ($destino === false) {
+        imagedestroy($origen);
+        throw new RuntimeException('No se pudo preparar el favicon.');
+    }
+
+    try {
+        imagealphablending($destino, false);
+        imagesavealpha($destino, true);
+        $fondo = imagecolorallocate($destino, 15, 23, 42);
+        imagefilledrectangle($destino, 0, 0, $lado, $lado, $fondo);
+
+        $anchoOrigen = imagesx($origen);
+        $altoOrigen = imagesy($origen);
+        $escala = min(($lado - 2 * $margen) / $anchoOrigen, ($lado - 2 * $margen) / $altoOrigen);
+        $anchoDestino = max(1, (int) round($anchoOrigen * $escala));
+        $altoDestino = max(1, (int) round($altoOrigen * $escala));
+        $x = (int) round(($lado - $anchoDestino) / 2);
+        $y = (int) round(($lado - $altoDestino) / 2);
+        imagealphablending($destino, true);
+        imagecopyresampled($destino, $origen, $x, $y, 0, 0, $anchoDestino, $altoDestino, $anchoOrigen, $altoOrigen);
+
+        ob_start();
+        $guardada = imagepng($destino, null, 6);
+        $png = ob_get_clean();
+        if (!$guardada || !is_string($png) || $png === '') {
+            throw new RuntimeException('No se pudo codificar el favicon.');
+        }
+
+        $cabecera = pack('vvv', 0, 1, 1);
+        $entrada = pack('CCCCvvVV', 0, 0, 0, 0, 1, 32, strlen($png), 22);
+        return $cabecera . $entrada . $png;
+    } finally {
+        imagedestroy($origen);
+        imagedestroy($destino);
+    }
 }
 
 /**
@@ -166,6 +402,63 @@ function subir_imagen_publicidad(array $archivo): ?string
     return 'uploads/publicidad/' . $nombre;
 }
 
+/** Guarda una foto de perfil sin marca de agua, hasta 3 MB. */
+function subir_imagen_usuario(array $archivo): ?string
+{
+    if (($archivo['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) return null;
+    if (($archivo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        throw new RuntimeException('No se pudo subir la foto de perfil.');
+    }
+    if (($archivo['size'] ?? 0) > 3 * 1024 * 1024) {
+        throw new RuntimeException('La foto de perfil supera el máximo permitido de 3 MB.');
+    }
+
+    $info = @getimagesize((string) $archivo['tmp_name']);
+    $tiposPermitidos = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+    if ($info === false || !isset($tiposPermitidos[$info['mime']])) {
+        throw new RuntimeException('La foto de perfil debe ser JPG, PNG o WEBP.');
+    }
+    $pixeles = (int) $info[0] * (int) $info[1];
+    if ($pixeles <= 0 || $pixeles > 20_000_000) {
+        throw new RuntimeException('La foto de perfil tiene dimensiones demasiado grandes.');
+    }
+
+    $directorio = dirname(__DIR__, 2) . '/uploads/usuarios';
+    if (!is_dir($directorio) && !mkdir($directorio, 0775, true) && !is_dir($directorio)) {
+        throw new RuntimeException('No se pudo crear el directorio de fotos de usuario.');
+    }
+    $nombre = 'usuario_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $tiposPermitidos[$info['mime']];
+    $rutaCompleta = $directorio . '/' . $nombre;
+    if (!move_uploaded_file((string) $archivo['tmp_name'], $rutaCompleta)) {
+        throw new RuntimeException('No se pudo guardar la foto de perfil.');
+    }
+    @chmod($rutaCompleta, 0644);
+    return 'uploads/usuarios/' . $nombre;
+}
+
+function ruta_imagen_usuario_valida(string $ruta): bool
+{
+    return (bool) preg_match('#^uploads/usuarios/usuario_[A-Za-z0-9_-]+\.(?:jpe?g|png|webp)$#i', $ruta);
+}
+
+function imagen_usuario_disponible(string $ruta): bool
+{
+    if (!ruta_imagen_usuario_valida($ruta)) return false;
+    return is_file(dirname(__DIR__, 2) . '/' . $ruta);
+}
+
+function eliminar_imagen_usuario(?string $rutaRelativa): void
+{
+    if (!$rutaRelativa || !ruta_imagen_usuario_valida($rutaRelativa)) return;
+    $directorio = realpath(dirname(__DIR__, 2) . '/uploads/usuarios');
+    $rutaCompleta = realpath(dirname(__DIR__, 2) . '/' . $rutaRelativa);
+    if ($directorio !== false && $rutaCompleta !== false
+        && str_starts_with($rutaCompleta, $directorio . DIRECTORY_SEPARATOR)
+        && is_file($rutaCompleta)) {
+        @unlink($rutaCompleta);
+    }
+}
+
 function ruta_imagen_publicidad_valida(string $ruta): bool
 {
     return (bool) preg_match('#^uploads/publicidad/anuncio_[A-Za-z0-9_-]+\.(?:jpe?g|png|webp)$#i', $ruta);
@@ -253,6 +546,7 @@ function aplicar_marca_agua_centrada(string $rutaCompleta, string $mime): void
     $configuracionMarca = configuracion_marca_agua();
     $logoRuta = dirname(__DIR__, 2) . '/' . $configuracionMarca['ruta'];
     $opacidadMarca = $configuracionMarca['opacidad'];
+    $tamanoMarca = $configuracionMarca['tamano'];
     if (!is_file($logoRuta)) {
         throw new RuntimeException('No se encontró el logo para la marca de agua.');
     }
@@ -280,8 +574,8 @@ function aplicar_marca_agua_centrada(string $rutaCompleta, string $mime): void
         $anchoLogo = imagesx($logo);
         $altoLogo = imagesy($logo);
 
-        // Logo centrado al 36% del ancho de la fotografía.
-        $anchoMarca = max(1, (int) round($anchoImagen * 0.36));
+        // Logo centrado al porcentaje del ancho elegido en Configuración.
+        $anchoMarca = max(1, (int) round($anchoImagen * ($tamanoMarca / 100)));
         $altoMarca = max(1, (int) round($anchoMarca * ($altoLogo / $anchoLogo)));
         $marca = imagecreatetruecolor($anchoMarca, $altoMarca);
         if ($marca === false) {
@@ -542,6 +836,104 @@ function limpiar_subidas_no_usadas_de_sesion(): void
 function obtener_categorias(): array
 {
     return db()->query('SELECT id, nombre, slug FROM categorias ORDER BY nombre ASC')->fetchAll();
+}
+
+/**
+ * Normaliza una selección múltiple de categorías enviada por formulario.
+ *
+ * @return array<int, int>
+ */
+function normalizar_ids_categorias(mixed $valores): array
+{
+    if (!is_array($valores)) {
+        $valores = $valores === null || $valores === '' ? [] : [$valores];
+    }
+
+    $ids = [];
+    foreach ($valores as $valor) {
+        $id = filter_var($valor, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($id !== false) {
+            $ids[(int) $id] = (int) $id;
+        }
+    }
+    return array_values($ids);
+}
+
+/** @return array<int, array{id:int,nombre:string,slug:string}> */
+function obtener_categorias_noticia(int $noticiaId): array
+{
+    if ($noticiaId <= 0) return [];
+
+    $stmt = db()->prepare(
+        'SELECT c.id, c.nombre, c.slug
+           FROM noticias_categorias nc
+           JOIN categorias c ON c.id = nc.categoria_id
+          WHERE nc.noticia_id = ?
+          ORDER BY nc.posicion ASC, c.nombre ASC, c.id ASC'
+    );
+    $stmt->execute([$noticiaId]);
+    return $stmt->fetchAll();
+}
+
+/**
+ * Agrega a cada noticia sus categorías completas sin producir consultas N+1.
+ * Conserva categoria_id como categoría principal para compatibilidad.
+ *
+ * @param array<int, array<string,mixed>> $noticias
+ */
+function cargar_categorias_noticias(array &$noticias): void
+{
+    $ids = array_values(array_unique(array_filter(array_map(
+        static fn(array $noticia): int => (int) ($noticia['id'] ?? 0),
+        $noticias
+    ))));
+    if (!$ids) return;
+
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = db()->prepare(
+        "SELECT nc.noticia_id, c.id, c.nombre, c.slug
+           FROM noticias_categorias nc
+           JOIN categorias c ON c.id = nc.categoria_id
+          WHERE nc.noticia_id IN ($placeholders)
+          ORDER BY nc.noticia_id, nc.posicion, c.nombre, c.id"
+    );
+    $stmt->execute($ids);
+
+    $porNoticia = [];
+    foreach ($stmt->fetchAll() as $categoria) {
+        $porNoticia[(int) $categoria['noticia_id']][] = [
+            'id' => (int) $categoria['id'],
+            'nombre' => (string) $categoria['nombre'],
+            'slug' => (string) $categoria['slug'],
+        ];
+    }
+
+    foreach ($noticias as &$noticia) {
+        $categorias = $porNoticia[(int) ($noticia['id'] ?? 0)] ?? [];
+        $noticia['categorias'] = $categorias;
+        $noticia['categoria_ids'] = array_column($categorias, 'id');
+        $noticia['categoria_nombre'] = implode(' · ', array_column($categorias, 'nombre'));
+    }
+    unset($noticia);
+}
+
+/**
+ * Reemplaza atómicamente las categorías asociadas a una noticia.
+ * Debe ejecutarse dentro de la misma transacción que guarda la noticia.
+ *
+ * @param array<int, int> $categoriaIds
+ */
+function guardar_categorias_noticia(PDO $pdo, int $noticiaId, array $categoriaIds): void
+{
+    $pdo->prepare('DELETE FROM noticias_categorias WHERE noticia_id = ?')->execute([$noticiaId]);
+    if (!$categoriaIds) return;
+
+    $insertar = $pdo->prepare(
+        'INSERT INTO noticias_categorias (noticia_id, categoria_id, posicion) VALUES (?, ?, ?)'
+    );
+    foreach (array_values($categoriaIds) as $posicion => $categoriaId) {
+        $insertar->execute([$noticiaId, $categoriaId, $posicion]);
+    }
 }
 
 /** @return array<int, array<string,mixed>> */

@@ -12,16 +12,18 @@
   const lienzo = document.getElementById('vizLienzo');
   const tooltip = document.getElementById('vizTooltip');
   const crudo = document.getElementById('vizDatos');
+  const seriesCrudas = document.getElementById('vizSeries');
   if (!svg || !lienzo || !tooltip || !crudo) return;
 
   const NS = 'http://www.w3.org/2000/svg';
-  const datos = JSON.parse(crudo.textContent);
+  let datos = JSON.parse(crudo.textContent);
   if (!datos.length) return;
 
-  const SERIES = [
+  const SERIES = seriesCrudas ? JSON.parse(seriesCrudas.textContent).map((serie) => ({ ...serie, activa: true })) : [
     { clave: 'meGusta', nombre: 'Me gusta', variable: '--viz-si', id: 'si' },
     { clave: 'noMeGusta', nombre: 'No me gusta', variable: '--viz-no', id: 'no' },
-  ];
+  ].map((serie) => ({ ...serie, activa: true }));
+  const seriesActivas = () => SERIES.filter((serie) => serie.activa);
 
   // Especificaciones fijas de las marcas.
   const MARGEN = { arriba: 26, derecha: 22, abajo: 62, izquierda: 52 };
@@ -38,15 +40,13 @@
   const estilo = getComputedStyle(document.querySelector('.viz-figura'));
   const color = (nombre) => estilo.getPropertyValue(nombre).trim();
   const paleta = {
-    si: color('--viz-si'),
-    no: color('--viz-no'),
     superficie: color('--viz-surface') || '#ffffff',
     grilla: color('--viz-grid') || '#e1e0d9',
     eje: color('--viz-axis') || '#c3c2b7',
     tenue: color('--viz-muted') || '#898781',
     texto: color('--viz-ink') || '#0f172a',
   };
-  const colorSerie = (s) => (s.id === 'si' ? paleta.si : paleta.no);
+  const colorSerie = (serie) => color(serie.variable);
 
   const crear = (etiqueta, atributos = {}) => {
     const el = document.createElementNS(NS, etiqueta);
@@ -145,7 +145,8 @@
     texturas(defs);
     svg.appendChild(defs);
 
-    const maximo = Math.max(...datos.flatMap((d) => [d.meGusta, d.noMeGusta]));
+    const activas = seriesActivas();
+    const maximo = Math.max(...datos.flatMap((d) => activas.map((serie) => d[serie.clave])));
     const { tope, pasos } = escalaY(maximo);
     const y = (v) => MARGEN.arriba + ALTO_TRAZADO - (v / tope) * ALTO_TRAZADO;
     const anchoBanda = anchoTrazado / datos.length;
@@ -197,7 +198,7 @@
 
     if (modo === 'area') {
       // Se dibuja primero la serie de mayor techo, para que la menor quede arriba.
-      const orden = [...SERIES].sort((a, b) =>
+      const orden = [...activas].sort((a, b) =>
         Math.max(...datos.map((d) => d[b.clave])) - Math.max(...datos.map((d) => d[a.clave])));
 
       orden.forEach((s) => {
@@ -228,12 +229,12 @@
       });
       svg.appendChild(cruz);
     } else {
-      const anchoPar = Math.min(COLUMNA_MAX * 2 + HUECO, anchoBanda * 0.62);
-      const anchoCol = (anchoPar - HUECO) / 2;
+      const anchoPar = Math.min(COLUMNA_MAX * activas.length + HUECO * (activas.length - 1), anchoBanda * 0.62);
+      const anchoCol = (anchoPar - HUECO * (activas.length - 1)) / activas.length;
 
       datos.forEach((d, i) => {
         const inicio = centro(i) - anchoPar / 2;
-        SERIES.forEach((s, j) => {
+        activas.forEach((s, j) => {
           const valor = d[s.clave];
           const yTope = y(valor);
           const altoCol = MARGEN.arriba + ALTO_TRAZADO - yTope;
@@ -248,7 +249,7 @@
 
     // ---- Etiqueta directa: solo la líder, nunca un número en cada marca ----
     const lider = datos[0];
-    const claveLider = lider.meGusta >= lider.noMeGusta ? 'meGusta' : 'noMeGusta';
+    const claveLider = activas.reduce((mejor, serie) => lider[serie.clave] > lider[mejor.clave] ? serie : mejor).clave;
     const etiqueta = crear('text', {
       x: centro(0), y: y(lider[claveLider]) - 14, 'text-anchor': 'middle',
       'font-size': 12, 'font-weight': 700, fill: paleta.texto,
@@ -263,7 +264,7 @@
         x: MARGEN.izquierda + anchoBanda * i, y: MARGEN.arriba,
         width: anchoBanda, height: ALTO_TRAZADO,
         fill: 'transparent', 'data-indice': i, class: 'viz-zona', tabindex: 0,
-        role: 'button', 'aria-label': `${d.titulo}: ${d.meGusta} me gusta, ${d.noMeGusta} no me gusta`,
+        role: 'button', 'aria-label': `${d.titulo}: ${activas.map((serie) => `${d[serie.clave]} ${serie.nombre.toLocaleLowerCase('es')}`).join(', ')}`,
       });
       capaZonas.appendChild(z);
     });
@@ -297,12 +298,13 @@
       cruz.setAttribute('opacity', 1);
     }
 
+    const activas = seriesActivas();
+    const totalVisible = activas.reduce((suma, serie) => suma + Number(d[serie.clave] || 0), 0);
     tooltip.innerHTML =
       `<span class="viz-tooltip-titulo"></span>`
       + (d.categoria ? `<span class="viz-tooltip-cat"></span>` : '')
-      + `<span class="viz-tooltip-fila"><i class="viz-swatch viz-swatch-si"></i>Me gusta<b>${d.meGusta}</b></span>`
-      + `<span class="viz-tooltip-fila"><i class="viz-swatch viz-swatch-no"></i>No me gusta<b>${d.noMeGusta}</b></span>`
-      + `<span class="viz-tooltip-total">Total<b>${d.total}</b></span>`;
+      + activas.map((serie) => `<span class="viz-tooltip-fila"><i class="viz-swatch" style="background:${colorSerie(serie)}"></i>${serie.nombre}<b>${d[serie.clave]}</b></span>`).join('')
+      + (activas.length > 1 ? `<span class="viz-tooltip-total">Total<b>${totalVisible}</b></span>` : '');
     // textContent, no innerHTML, para el contenido variable.
     tooltip.querySelector('.viz-tooltip-titulo').textContent = '#' + d.puesto + ' · ' + d.titulo;
     if (d.categoria) tooltip.querySelector('.viz-tooltip-cat').textContent = d.categoria;
@@ -310,7 +312,7 @@
 
     if (moverCaja && ultimo) {
       // Se prefiere arriba de la marca; si no entra, se voltea abajo.
-      const cima = ultimo.y(Math.max(d.meGusta, d.noMeGusta));
+      const cima = ultimo.y(Math.max(...activas.map((serie) => d[serie.clave])));
       colocarEnSvg(x, cima - tooltip.offsetHeight - 14, cima + 16);
     }
   }
@@ -375,6 +377,24 @@
     });
   });
 
+  // ---- Series visibles: siempre queda al menos una activa ----
+  document.querySelectorAll('.viz-serie-btn[data-serie]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const serie = SERIES.find((item) => item.id === btn.dataset.serie);
+      if (!serie || (serie.activa && seriesActivas().length === 1)) return;
+      serie.activa = !serie.activa;
+      document.querySelectorAll(`.viz-serie-btn[data-serie="${serie.id}"]`).forEach((control) => {
+        control.classList.toggle('is-activo', serie.activa);
+        control.setAttribute('aria-pressed', serie.activa ? 'true' : 'false');
+      });
+      document.querySelectorAll(`.viz-leyenda-item[data-serie="${serie.id}"]`).forEach((item) => {
+        item.classList.toggle('is-inactivo', !serie.activa);
+      });
+      apagar();
+      dibujar();
+    });
+  });
+
   // ---- Gemelo en tabla ----
   const tablaBtn = document.getElementById('vizTablaBtn');
   const tabla = document.getElementById('vizTabla');
@@ -395,6 +415,16 @@
   aplicarTrama();
 
   dibujar();
+
+  // Recibe datos frescos sin reconstruir los controles ni perder el estado
+  // elegido por el usuario (tipo de gráfico y series visibles).
+  document.addEventListener('analisis:datos-actualizados', (event) => {
+    const nuevosDatos = event.detail && event.detail.datos;
+    if (!Array.isArray(nuevosDatos) || !nuevosDatos.length) return;
+    datos = nuevosDatos;
+    apagar();
+    dibujar();
+  });
 
   // Redibuja al cambiar el ancho disponible del panel.
   if (window.ResizeObserver) {

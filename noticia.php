@@ -4,6 +4,15 @@ require_once __DIR__ . '/admin/includes/funciones.php';
 require_once __DIR__ . '/admin/includes/votos.php';
 
 $pdo = db();
+$usuarioPublico = usuario_actual_publico();
+$logoPortalRuta = configuracion_logo_portal();
+$logoPortalArchivo = __DIR__ . '/' . $logoPortalRuta;
+$logoPortalVersion = is_file($logoPortalArchivo) ? (string) filemtime($logoPortalArchivo) : '1';
+$logoPortalUrl = url_portal($logoPortalRuta) . '?v=' . rawurlencode($logoPortalVersion);
+$identidadAdmin = configuracion_logo_admin();
+$faviconPortalArchivo = $identidadAdmin['favicon_ruta'] !== null ? __DIR__ . '/' . $identidadAdmin['favicon_ruta'] : __DIR__ . '/imagenes/Logo2027v2.png';
+$faviconPortalVersion = is_file($faviconPortalArchivo) ? (string) filemtime($faviconPortalArchivo) : '1';
+require_once __DIR__ . '/partials/publicidad.php';
 $slugSolicitado = normalizar_slug_noticia($_GET['slug'] ?? '');
 $stmt = $pdo->prepare(
     'SELECT n.*, c.nombre AS categoria_nombre, u.nombre AS autor_nombre
@@ -28,6 +37,12 @@ if (!$noticia) {
     $noticia = null;
 }
 
+if ($noticia) {
+    $noticiaConCategorias = [$noticia];
+    cargar_categorias_noticias($noticiaConCategorias);
+    $noticia = $noticiaConCategorias[0];
+}
+
 $fotos = $noticia ? obtener_fotos_noticia((int) $noticia['id']) : [];
 $seo = $noticia ? valores_seo_noticia($noticia, $fotos) : [
     'titulo' => 'Noticia no encontrada', 'descripcion' => 'La noticia solicitada no está disponible.',
@@ -35,6 +50,7 @@ $seo = $noticia ? valores_seo_noticia($noticia, $fotos) : [
 ];
 $autor = trim((string) ($noticia['autor_nombre'] ?? '')) ?: 'Radio Sur';
 $categoria = trim((string) ($noticia['categoria_nombre'] ?? ''));
+$categoriasNoticia = $noticia['categorias'] ?? [];
 $fecha = $noticia ? fecha_larga($noticia['created_at']) : '';
 $jsonLd = $noticia ? [
     '@context' => 'https://schema.org', '@type' => 'NewsArticle',
@@ -43,9 +59,9 @@ $jsonLd = $noticia ? [
     'dateModified' => date(DATE_ATOM, strtotime($noticia['updated_at'])),
     'mainEntityOfPage' => ['@type' => 'WebPage', '@id' => $seo['url']],
     'author' => ['@type' => 'Person', 'name' => $autor],
-    'publisher' => ['@type' => 'Organization', 'name' => 'Radio Sur', 'logo' => ['@type' => 'ImageObject', 'url' => url_portal('imagenes/Logo2027v2.png')]],
+    'publisher' => ['@type' => 'Organization', 'name' => 'Radio Sur', 'logo' => ['@type' => 'ImageObject', 'url' => url_portal($logoPortalRuta)]],
 ] : null;
-if ($jsonLd && $categoria !== '') $jsonLd['articleSection'] = $categoria;
+if ($jsonLd && $categoriasNoticia) $jsonLd['articleSection'] = array_column($categoriasNoticia, 'nombre');
 $misVotos = $noticia ? votos_del_visitante($pdo, visitante_id()) : [];
 ?>
 <!DOCTYPE html>
@@ -55,6 +71,7 @@ $misVotos = $noticia ? votos_del_visitante($pdo, visitante_id()) : [];
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <base href="<?= e(url_base_portal()) ?>/" />
   <title><?= e($seo['titulo']) ?></title>
+  <link rel="icon" href="<?= e(url_portal('favicon.php')) ?>?v=<?= e(rawurlencode($faviconPortalVersion)) ?>" type="image/x-icon" />
   <meta name="description" content="<?= e($seo['descripcion']) ?>" />
   <link rel="canonical" href="<?= e($seo['url']) ?>" />
 <?php if ($noticia): ?>
@@ -67,7 +84,8 @@ $misVotos = $noticia ? votos_del_visitante($pdo, visitante_id()) : [];
   <meta property="og:site_name" content="Radio Sur" />
   <meta property="article:published_time" content="<?= e(date(DATE_ATOM, strtotime($noticia['created_at']))) ?>" />
   <meta property="article:modified_time" content="<?= e(date(DATE_ATOM, strtotime($noticia['updated_at']))) ?>" />
-<?php if ($categoria !== ''): ?>  <meta property="article:section" content="<?= e($categoria) ?>" /><?php endif; ?>
+<?php foreach ($categoriasNoticia as $categoriaNoticia): ?>  <meta property="article:section" content="<?= e($categoriaNoticia['nombre']) ?>" />
+<?php endforeach; ?>
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="<?= e($seo['titulo']) ?>" />
   <meta name="twitter:description" content="<?= e($seo['descripcion']) ?>" />
@@ -78,18 +96,25 @@ $misVotos = $noticia ? votos_del_visitante($pdo, visitante_id()) : [];
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,400;1,700&amp;display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/noticia.css?v=<?= (int) @filemtime(__DIR__ . '/assets/css/noticia.css') ?>" />
+  <link rel="stylesheet" href="assets/css/popup.css?v=<?= (int) @filemtime(__DIR__ . '/assets/css/popup.css') ?>" />
+<?php imprimir_codigo_header_publico(); ?>
 </head>
 <body>
   <nav class="navbar" aria-label="Menú principal">
     <button class="hamburger" id="hamburger" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="menuOverlay"><span></span><span></span><span></span></button>
-    <a href="<?= e(url_base_portal()) ?>" class="logo" aria-label="Radio Sur - Inicio"><img src="<?= e(url_portal('imagenes/Logo2027v2.png')) ?>" alt="Radio Sur" /></a>
-    <a href="#" class="logo-right" aria-label="Escuchar Radio Sur"><img src="<?= e(url_portal('imagenes/Logo2027-radiosur.png')) ?>" alt="Escuchar Radio Sur" /></a>
+    <a href="<?= e(url_base_portal()) ?>" class="logo" aria-label="Radio Sur - Inicio"><img src="<?= e($logoPortalUrl) ?>" alt="Radio Sur" /></a>
+    <?php require __DIR__ . '/partials/acceso-admin.php'; ?>
   </nav>
   <div class="menu-overlay" id="menuOverlay" aria-hidden="true">
     <button class="close-btn" id="closeMenu" type="button" aria-label="Cerrar menú"><span></span><span></span></button>
-    <a href="<?= e(url_base_portal()) ?>" class="menu-logo" aria-label="Radio Sur - Inicio"><img src="<?= e(url_portal('imagenes/Logo2027v2.png')) ?>" alt="Radio Sur" /></a>
-    <a href="#" class="menu-radio" aria-label="Escuchar Radio Sur"><img src="<?= e(url_portal('imagenes/Logo2027-radiosur.png')) ?>" alt="Escuchar Radio Sur" /></a>
-    <nav class="menu-nav" aria-label="Navegación"><a href="<?= e(url_base_portal()) ?>" class="menu-link">Noticias</a><a href="#" class="menu-link">Videos</a><a href="#" class="menu-link">Contactos</a></nav>
+    <a href="<?= e(url_base_portal()) ?>" class="menu-logo" aria-label="Radio Sur - Inicio"><img src="<?= e($logoPortalUrl) ?>" alt="Radio Sur" /></a>
+    <div class="menu-news-search" role="search" data-menu-news-search data-search-url="<?= e(url_portal('buscar-noticias.php')) ?>">
+      <label class="menu-news-search-field" for="articleMenuNewsSearchInput">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+        <input type="search" id="articleMenuNewsSearchInput" placeholder="Buscar noticias..." maxlength="100" autocomplete="off" spellcheck="false" aria-controls="articleMenuNewsSearchResults" aria-expanded="false" />
+      </label>
+      <div class="menu-news-search-results" id="articleMenuNewsSearchResults" aria-live="polite" hidden></div>
+    </div>
   </div>
   <main>
 <?php if (!$noticia): ?>
@@ -117,9 +142,19 @@ $misVotos = $noticia ? votos_del_visitante($pdo, visitante_id()) : [];
       </section>
       <div class="story-content">
         <div class="story-meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg><?php if ($fecha !== ''): ?><span><?= e($fecha) ?></span><?php endif; ?><?php if ($fecha !== '' && $autor !== ''): ?><span>—</span><?php endif; ?><span class="story-author"><?= e($autor) ?></span></div>
+        <div class="article-placement-ad article-placement-ad-header" data-ad-placement="encabezado"<?= $anuncioPublicidadEncabezado === null ? ' hidden' : '' ?>>
+<?php if ($anuncioPublicidadEncabezado !== null): ?>
+<?php $publicidad = $anuncioPublicidadEncabezado; $claseTarjetaPublicidad = 'story-sheet-placement-ad article-ad-card'; require __DIR__ . '/partials/anuncio-card.php'; ?>
+<?php endif; ?>
+        </div>
         <div class="article-body"><?= $noticia['descripcion'] ?></div>
 <?php $n=$noticia; include __DIR__ . '/partials/medios-noticia.php'; ?>
 <?php $prefijo='article'; include __DIR__ . '/partials/acciones-noticia.php'; ?>
+        <div class="article-placement-ad article-placement-ad-footer" data-ad-placement="pie"<?= $anuncioPublicidadPie === null ? ' hidden' : '' ?>>
+<?php if ($anuncioPublicidadPie !== null): ?>
+<?php $publicidad = $anuncioPublicidadPie; $claseTarjetaPublicidad = 'story-sheet-placement-ad article-ad-card'; require __DIR__ . '/partials/anuncio-card.php'; ?>
+<?php endif; ?>
+        </div>
       </div>
     </article>
 <?php endif; ?>
@@ -135,6 +170,8 @@ $misVotos = $noticia ? votos_del_visitante($pdo, visitante_id()) : [];
     <div class="article-lightbox-zoom" id="articleLightboxZoom" aria-live="polite">Pinza para ampliar · 100%</div>
   </div>
 <?php endif; ?>
-  <script src="assets/js/noticia.js?v=<?= (int) @filemtime(__DIR__ . '/assets/js/noticia.js') ?>" data-vote-url="<?= e(url_portal('votar.php')) ?>"></script>
+<?php require __DIR__ . '/partials/popup-publico.php'; ?>
+  <script src="assets/js/noticia.js?v=<?= (int) @filemtime(__DIR__ . '/assets/js/noticia.js') ?>" data-vote-url="<?= e(url_portal('votar.php')) ?>" data-view-url="<?= e(url_portal('noticia-vista.php')) ?>" data-share-url="<?= e(url_portal('noticia-compartir.php')) ?>" data-noticia-id="<?= (int) ($noticia['id'] ?? 0) ?>" data-ad-placements-url="<?= e(url_portal('publicidad-ubicaciones.php')) ?>"></script>
+  <script src="assets/js/popup.js?v=<?= (int) @filemtime(__DIR__ . '/assets/js/popup.js') ?>" data-popup-endpoint="<?= e(url_portal('popup-publico.php')) ?>"></script>
 </body>
 </html>

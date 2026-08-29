@@ -3,6 +3,11 @@ require_once __DIR__ . '/includes/funciones.php';
 
 $usuario = exigir_login();
 $errores = [];
+$identidadAdminPassword = configuracion_logo_admin();
+$faviconPasswordArchivo = $identidadAdminPassword['favicon_ruta'] !== null
+    ? dirname(__DIR__) . '/' . $identidadAdminPassword['favicon_ruta']
+    : dirname(__DIR__) . '/imagenes/Logo2027v2.png';
+$faviconPasswordVersion = is_file($faviconPasswordArchivo) ? (string) filemtime($faviconPasswordArchivo) : '1';
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     verificar_csrf();
@@ -38,6 +43,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>Cambiar contraseña</title>
+  <link rel="icon" href="../favicon.php?v=<?= e(rawurlencode($faviconPasswordVersion)) ?>" type="image/x-icon">
   <link rel="stylesheet" href="assets/login.css">
 </head>
 <body class="password-page">
@@ -59,4 +65,3 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
   </main>
 </body>
 </html>
-

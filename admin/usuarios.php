@@ -40,6 +40,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $bio = trim((string) ($_POST['bio'] ?? ''));
     $password = (string) ($_POST['password'] ?? '');
     $activo = isset($_POST['activo']) ? 1 : 0;
+    $fotoAnterior = '';
+    if ($id > 0) {
+        $stmt = $pdo->prepare('SELECT foto FROM usuarios WHERE id = ?');
+        $stmt->execute([$id]);
+        $fotoAnterior = trim((string) $stmt->fetchColumn());
+    }
 
     if ($nombre === '') $errores[] = 'El nombre es obligatorio.';
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errores[] = 'Ingresa un correo valido.';
@@ -59,22 +65,44 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $errores[] = 'No podes desactivar ni quitar el rol administrador a tu propia cuenta.';
     }
 
+    $fotoNueva = null;
     if (!$errores) {
-        if ($id > 0) {
-            if ($password !== '') {
-                $stmt = $pdo->prepare('UPDATE usuarios SET rol_id=?, nombre=?, email=?, password_hash=?, bio=?, activo=?, debe_cambiar_password=1 WHERE id=?');
-                $stmt->execute([$rolId, $nombre, $email, password_hash($password, PASSWORD_DEFAULT), $bio ?: null, $activo, $id]);
-            } else {
-                $stmt = $pdo->prepare('UPDATE usuarios SET rol_id=?, nombre=?, email=?, bio=?, activo=? WHERE id=?');
-                $stmt->execute([$rolId, $nombre, $email, $bio ?: null, $activo, $id]);
-            }
-            flash('success', 'Usuario actualizado correctamente.');
-        } else {
-            $stmt = $pdo->prepare('INSERT INTO usuarios (rol_id,nombre,email,password_hash,bio,activo,debe_cambiar_password) VALUES (?,?,?,?,?,?,1)');
-            $stmt->execute([$rolId, $nombre, $email, password_hash($password, PASSWORD_DEFAULT), $bio ?: null, $activo]);
-            flash('success', 'Usuario creado. Debera cambiar su contrasena al ingresar.');
+        try {
+            $fotoNueva = subir_imagen_usuario($_FILES['foto'] ?? ['error' => UPLOAD_ERR_NO_FILE]);
+        } catch (RuntimeException $e) {
+            $errores[] = $e->getMessage();
         }
-        redirigir('usuarios.php');
+    }
+
+    if (!$errores) {
+        $fotoFinal = $fotoNueva ?? $fotoAnterior;
+        try {
+            $pdo->beginTransaction();
+            if ($id > 0) {
+                if ($password !== '') {
+                    $stmt = $pdo->prepare('UPDATE usuarios SET rol_id=?, nombre=?, email=?, password_hash=?, bio=?, foto=?, activo=?, debe_cambiar_password=1 WHERE id=?');
+                    $stmt->execute([$rolId, $nombre, $email, password_hash($password, PASSWORD_DEFAULT), $bio ?: null, $fotoFinal ?: null, $activo, $id]);
+                } else {
+                    $stmt = $pdo->prepare('UPDATE usuarios SET rol_id=?, nombre=?, email=?, bio=?, foto=?, activo=? WHERE id=?');
+                    $stmt->execute([$rolId, $nombre, $email, $bio ?: null, $fotoFinal ?: null, $activo, $id]);
+                }
+                $mensaje = 'Usuario actualizado correctamente.';
+            } else {
+                $stmt = $pdo->prepare('INSERT INTO usuarios (rol_id,nombre,email,password_hash,bio,foto,activo,debe_cambiar_password) VALUES (?,?,?,?,?,?,?,1)');
+                $stmt->execute([$rolId, $nombre, $email, password_hash($password, PASSWORD_DEFAULT), $bio ?: null, $fotoFinal ?: null, $activo]);
+                $mensaje = 'Usuario creado. Debera cambiar su contrasena al ingresar.';
+            }
+            $pdo->commit();
+            if ($fotoNueva !== null && $fotoAnterior !== '' && $fotoAnterior !== $fotoNueva) {
+                eliminar_imagen_usuario($fotoAnterior);
+            }
+            flash('success', $mensaje);
+            redirigir('usuarios.php');
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            if ($fotoNueva !== null) eliminar_imagen_usuario($fotoNueva);
+            $errores[] = 'No se pudo guardar el usuario. Intenta nuevamente.';
+        }
     }
 
     // Conserva los datos ingresados si hay errores y vuelve a abrir el panel.
@@ -84,18 +112,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         'nombre' => $nombre,
         'email' => $email,
         'bio' => $bio,
+        'foto' => $fotoAnterior,
         'activo' => $activo,
     ];
 }
 
 if ($editar === null && isset($_GET['editar'])) {
-    $stmt = $pdo->prepare('SELECT id,rol_id,nombre,email,bio,activo FROM usuarios WHERE id=?');
+    $stmt = $pdo->prepare('SELECT id,rol_id,nombre,email,bio,foto,activo FROM usuarios WHERE id=?');
     $stmt->execute([(int) $_GET['editar']]);
     $editar = $stmt->fetch() ?: null;
 }
 $roles = $pdo->query('SELECT id,nombre,descripcion FROM roles ORDER BY id')->fetchAll();
 $usuarios = $pdo->query(
-    'SELECT u.id,u.nombre,u.email,u.bio,u.activo,u.debe_cambiar_password,u.ultimo_acceso_at,(u.password_hash <> \'\') AS tiene_clave,r.nombre AS rol_nombre,r.slug AS rol_slug,
+    'SELECT u.id,u.nombre,u.email,u.bio,u.foto,u.activo,u.debe_cambiar_password,u.ultimo_acceso_at,(u.password_hash <> \'\') AS tiene_clave,r.nombre AS rol_nombre,r.slug AS rol_slug,
             (SELECT COUNT(*) FROM noticias n WHERE n.usuario_id=u.id) AS total_noticias
        FROM usuarios u JOIN roles r ON r.id=u.rol_id ORDER BY u.activo DESC,u.nombre'
 )->fetchAll();
@@ -125,7 +154,27 @@ require __DIR__ . '/includes/header.php';
   </div>
 
   <div class="table-wrap users-table-wrap"><table class="table users-table"><thead><tr><th>Usuario</th><th>Rol</th><th>Noticias</th><th>Estado</th><th>Último acceso</th><th>Acciones</th></tr></thead><tbody>
-  <?php foreach($usuarios as $u): ?><tr><td data-label="Usuario"><strong><?= e($u['nombre']) ?></strong><div class="cell-desc"><?= e($u['email']) ?></div></td><td data-label="Rol"><span class="badge"><?= e($u['rol_nombre']) ?></span></td><td data-label="Noticias"><?= (int)$u['total_noticias'] ?></td><td data-label="Estado"><span class="user-status <?= (int)$u['activo']===1?'is-active':'is-inactive' ?>"><span aria-hidden="true"></span><?= (int)$u['activo']===1?'Activo':'Inactivo' ?></span><div class="user-access-note"><?= (int)$u['tiene_clave']===0?'Sin contraseña':((int)$u['debe_cambiar_password']===1?'Contraseña temporal':'Acceso configurado') ?></div></td><td data-label="Último acceso"><?= $u['ultimo_acceso_at']?e(date('d/m/Y H:i',strtotime($u['ultimo_acceso_at']))):'—' ?></td><td data-label="Acciones"><div class="cell-actions user-icon-actions"><a class="action-icon action-icon-edit" href="usuarios.php?editar=<?= (int)$u['id'] ?>" aria-label="Editar a <?= e($u['nombre']) ?>" title="Editar usuario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></a><?php if((int)$u['id']!==(int)$actual['id']): ?><form method="post" action="usuarios.php" onsubmit="return confirm('¿<?= (int)$u['activo']===1?'Desactivar':'Activar' ?> a <?= e($u['nombre']) ?>?')"><?= csrf_input() ?><input type="hidden" name="accion" value="estado"><input type="hidden" name="id" value="<?= (int)$u['id'] ?>"><input type="hidden" name="activo" value="<?= (int)$u['activo']===1?0:1 ?>"><button class="action-icon <?= (int)$u['activo']===1?'action-icon-deactivate':'action-icon-activate' ?>" type="submit" aria-label="<?= (int)$u['activo']===1?'Desactivar':'Activar' ?> a <?= e($u['nombre']) ?>" title="<?= (int)$u['activo']===1?'Desactivar':'Activar' ?> usuario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg></button></form><?php endif; ?></div></td></tr><?php endforeach; ?>
+  <?php foreach($usuarios as $u):
+    $fotoFila = trim((string) ($u['foto'] ?? ''));
+    $fotoFilaValida = $fotoFila !== '' && imagen_usuario_disponible($fotoFila);
+    $inicialFila = mb_strtoupper(mb_substr(trim((string) $u['nombre']) ?: 'U', 0, 1, 'UTF-8'), 'UTF-8');
+  ?>
+    <tr>
+      <td data-label="Usuario">
+        <div class="user-table-identity">
+          <span class="user-table-avatar" aria-hidden="true">
+            <?php if ($fotoFilaValida): ?><img src="<?= e(url_imagen($fotoFila)) ?>" alt=""><?php else: ?><?= e($inicialFila) ?><?php endif; ?>
+          </span>
+          <span><strong><?= e($u['nombre']) ?></strong><span class="cell-desc"><?= e($u['email']) ?></span></span>
+        </div>
+      </td>
+      <td data-label="Rol"><span class="badge"><?= e($u['rol_nombre']) ?></span></td>
+      <td data-label="Noticias"><?= (int)$u['total_noticias'] ?></td>
+      <td data-label="Estado"><span class="user-status <?= (int)$u['activo']===1?'is-active':'is-inactive' ?>"><span aria-hidden="true"></span><?= (int)$u['activo']===1?'Activo':'Inactivo' ?></span><div class="user-access-note"><?= (int)$u['tiene_clave']===0?'Sin contraseña':((int)$u['debe_cambiar_password']===1?'Contraseña temporal':'Acceso configurado') ?></div></td>
+      <td data-label="Último acceso"><?= $u['ultimo_acceso_at']?e(date('d/m/Y H:i',strtotime($u['ultimo_acceso_at']))):'—' ?></td>
+      <td data-label="Acciones"><div class="cell-actions user-icon-actions"><a class="action-icon action-icon-edit" href="usuarios.php?editar=<?= (int)$u['id'] ?>" aria-label="Editar a <?= e($u['nombre']) ?>" title="Editar usuario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></a><?php if((int)$u['id']!==(int)$actual['id']): ?><form method="post" action="usuarios.php" onsubmit="return confirm('¿<?= (int)$u['activo']===1?'Desactivar':'Activar' ?> a <?= e($u['nombre']) ?>?')"><?= csrf_input() ?><input type="hidden" name="accion" value="estado"><input type="hidden" name="id" value="<?= (int)$u['id'] ?>"><input type="hidden" name="activo" value="<?= (int)$u['activo']===1?0:1 ?>"><button class="action-icon <?= (int)$u['activo']===1?'action-icon-deactivate':'action-icon-activate' ?>" type="submit" aria-label="<?= (int)$u['activo']===1?'Desactivar':'Activar' ?> a <?= e($u['nombre']) ?>" title="<?= (int)$u['activo']===1?'Desactivar':'Activar' ?> usuario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg></button></form><?php endif; ?></div></td>
+    </tr>
+  <?php endforeach; ?>
   </tbody></table></div>
 </section>
 
@@ -141,9 +190,24 @@ require __DIR__ . '/includes/header.php';
     </button>
   </header>
   <div class="drawer-body user-drawer-body">
-    <form method="post" action="usuarios.php" id="userForm">
+    <form method="post" action="usuarios.php" id="userForm" enctype="multipart/form-data">
       <?= csrf_input() ?>
       <input type="hidden" name="accion" value="guardar"><input type="hidden" name="id" id="userId" value="<?= (int) ($editar['id'] ?? 0) ?>">
+      <?php
+        $fotoEditar = trim((string) ($editar['foto'] ?? ''));
+        $fotoEditarValida = $fotoEditar !== '' && imagen_usuario_disponible($fotoEditar);
+        $inicialEditar = mb_strtoupper(mb_substr(trim((string) ($editar['nombre'] ?? '')) ?: 'U', 0, 1, 'UTF-8'), 'UTF-8');
+      ?>
+      <div class="user-photo-field">
+        <span class="user-photo-preview<?= $fotoEditarValida ? ' has-image' : '' ?>" id="userPhotoPreview" aria-hidden="true">
+          <?php if ($fotoEditarValida): ?><img src="<?= e(url_imagen($fotoEditar)) ?>" alt=""><?php else: ?><span class="user-photo-initial"><?= e($inicialEditar) ?></span><?php endif; ?>
+        </span>
+        <span class="user-photo-controls">
+          <label class="btn btn-outline user-photo-button" for="foto">Seleccionar foto</label>
+          <input type="file" id="foto" name="foto" accept="image/jpeg,image/png,image/webp">
+          <small id="userPhotoHelp" aria-live="polite">JPG, PNG o WEBP. Máximo 3 MB; se recomienda una imagen cuadrada.</small>
+        </span>
+      </div>
       <div class="form-group"><label for="nombre">Nombre</label><input class="form-control" id="nombre" name="nombre" maxlength="120" required value="<?= e($editar['nombre'] ?? '') ?>"></div>
       <div class="form-group"><label for="email">Correo electrónico</label><input class="form-control" type="email" id="email" name="email" maxlength="190" required value="<?= e($editar['email'] ?? '') ?>"></div>
       <div class="form-group"><label for="rol_id">Rol</label><select class="form-control" id="rol_id" name="rol_id" required><option value="">Seleccionar</option><?php foreach ($roles as $rol): ?><option value="<?= (int) $rol['id'] ?>" <?= (int) ($editar['rol_id'] ?? 0)===(int)$rol['id']?'selected':'' ?>><?= e($rol['nombre']) ?></option><?php endforeach; ?></select></div>
@@ -173,6 +237,97 @@ require __DIR__ . '/includes/header.php';
     const passwordLabel = document.getElementById('passwordLabel');
     const submit = document.getElementById('userSubmit');
     const editRoles = form.querySelector('a[href="roles.php"]');
+    const photoInput = document.getElementById('foto');
+    const photoPreview = document.getElementById('userPhotoPreview');
+    const photoHelp = document.getElementById('userPhotoHelp');
+    const nameInput = document.getElementById('nombre');
+    const defaultPhotoHelp = photoHelp.textContent;
+    let originalPhotoNodes = Array.from(photoPreview.childNodes, node => node.cloneNode(true));
+    let photoPreviewSequence = 0;
+
+    function clearPhotoState() {
+      photoPreview.classList.remove('is-loading', 'has-error', 'has-image');
+    }
+
+    function restoreOriginalPhoto(message = defaultPhotoHelp) {
+      clearPhotoState();
+      photoPreview.replaceChildren(...originalPhotoNodes.map(node => node.cloneNode(true)));
+      if (photoPreview.querySelector('img')) photoPreview.classList.add('has-image');
+      photoHelp.textContent = message;
+    }
+
+    function showPhotoInitial(message = defaultPhotoHelp) {
+      clearPhotoState();
+      photoPreview.replaceChildren();
+      const initial = document.createElement('span');
+      initial.className = 'user-photo-initial';
+      initial.textContent = (nameInput.value.trim().charAt(0) || 'U').toLocaleUpperCase('es');
+      photoPreview.appendChild(initial);
+      photoHelp.textContent = message;
+    }
+
+    photoInput.addEventListener('change', () => {
+      const sequence = ++photoPreviewSequence;
+      const file = photoInput.files && photoInput.files[0];
+      if (!file) {
+        restoreOriginalPhoto();
+        return;
+      }
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      const allowedName = /\.(?:jpe?g|png|webp)$/i.test(file.name);
+      if (!allowedTypes.includes(file.type) && !allowedName) {
+        photoInput.value = '';
+        restoreOriginalPhoto('Elegí una imagen JPG, PNG o WEBP.');
+        photoPreview.classList.add('has-error');
+        return;
+      }
+      if (file.size > 3 * 1024 * 1024) {
+        photoInput.value = '';
+        restoreOriginalPhoto('La foto no puede superar los 3 MB.');
+        photoPreview.classList.add('has-error');
+        return;
+      }
+
+      clearPhotoState();
+      photoPreview.classList.add('is-loading');
+      photoHelp.textContent = 'Preparando la vista previa…';
+      const reader = new FileReader();
+      reader.addEventListener('load', () => {
+        if (sequence !== photoPreviewSequence) return;
+        if (typeof reader.result !== 'string') {
+          restoreOriginalPhoto('No pudimos leer esta imagen. Elegí otra.');
+          photoPreview.classList.add('has-error');
+          return;
+        }
+        const probe = new Image();
+        probe.addEventListener('load', () => {
+          if (sequence !== photoPreviewSequence) return;
+          const image = document.createElement('img');
+          image.src = reader.result;
+          image.alt = '';
+          photoPreview.replaceChildren(image);
+          photoPreview.classList.remove('is-loading', 'has-error');
+          photoPreview.classList.add('has-image');
+          photoHelp.textContent = file.name + ' · vista previa lista';
+        });
+        probe.addEventListener('error', () => {
+          if (sequence !== photoPreviewSequence) return;
+          restoreOriginalPhoto('La imagen no pudo mostrarse. Elegí otra.');
+          photoPreview.classList.add('has-error');
+        });
+        probe.src = reader.result;
+      });
+      reader.addEventListener('error', () => {
+        if (sequence !== photoPreviewSequence) return;
+        restoreOriginalPhoto('No pudimos leer esta imagen. Elegí otra.');
+        photoPreview.classList.add('has-error');
+      });
+      reader.readAsDataURL(file);
+    });
+
+    nameInput.addEventListener('input', () => {
+      if (photoPreview.querySelector('.user-photo-initial')) showPhotoInitial(photoHelp.textContent);
+    });
 
     function openDrawer() {
       drawer.classList.add('open');
@@ -199,6 +354,10 @@ require __DIR__ . '/includes/header.php';
       document.getElementById('rol_id').value = '';
       document.getElementById('password').value = '';
       document.getElementById('bio').value = '';
+      photoInput.value = '';
+      photoPreviewSequence += 1;
+      showPhotoInitial();
+      originalPhotoNodes = Array.from(photoPreview.childNodes, node => node.cloneNode(true));
       document.getElementById('activo').checked = true;
       title.textContent = 'Nuevo usuario';
       label.textContent = 'Nueva cuenta';

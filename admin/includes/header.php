@@ -15,6 +15,8 @@ $activo = $active ?? '';
 $titulo = $titulo ?? 'Panel';
 $nombreUsuarioPanel = trim((string) ($usuarioPanel['nombre'] ?? 'Usuario'));
 $inicialUsuarioPanel = mb_strtoupper(mb_substr($nombreUsuarioPanel !== '' ? $nombreUsuarioPanel : 'U', 0, 1, 'UTF-8'), 'UTF-8');
+$fotoUsuarioPanel = trim((string) ($usuarioPanel['foto'] ?? ''));
+$fotoUsuarioPanelValida = $fotoUsuarioPanel !== '' && imagen_usuario_disponible($fotoUsuarioPanel);
 // Las URLs del HTML se resuelven respecto a la ubicación de la página (landing/admin/),
 // no respecto a la carpeta includes/. Por eso $BASE queda vacío.
 $BASE = '';
@@ -27,8 +29,23 @@ $grupoUsuariosVisible = $puedeGestionarUsuarios || $puedeGestionarRoles;
 $grupoNoticiasActivo = in_array($activo, ['noticias', 'categorias'], true);
 $grupoUsuariosActivo = in_array($activo, ['usuarios', 'roles'], true);
 $grupoPublicidadActivo = in_array($activo, ['publicidad-anuncios', 'publicidad-popups'], true);
-$grupoAnalisisActivo = $activo === 'votaciones';
+$grupoAnalisisActivo = in_array($activo, ['publicaciones', 'votaciones', 'vistas'], true);
 $marcaAguaPanel = null;
+$logoLoginPanel = null;
+$logoPortalPanel = null;
+$logoAdminPanel = null;
+$seoPortadaPanel = null;
+$codigoHeaderPanel = null;
+$logoPortalRuta = configuracion_logo_portal();
+$archivoLogoPortal = dirname(__DIR__, 2) . '/' . $logoPortalRuta;
+$versionLogoPortal = is_file($archivoLogoPortal) ? (string) filemtime($archivoLogoPortal) : '1';
+$identidadLogoAdmin = configuracion_logo_admin();
+$archivoLogoAdmin = $identidadLogoAdmin['ruta'] !== null ? dirname(__DIR__, 2) . '/' . $identidadLogoAdmin['ruta'] : null;
+$versionLogoAdmin = $archivoLogoAdmin !== null && is_file($archivoLogoAdmin) ? (string) filemtime($archivoLogoAdmin) : '1';
+$archivoFaviconPortal = $identidadLogoAdmin['favicon_ruta'] !== null
+    ? dirname(__DIR__, 2) . '/' . $identidadLogoAdmin['favicon_ruta']
+    : dirname(__DIR__, 2) . '/imagenes/Logo2027v2.png';
+$versionFaviconPortal = is_file($archivoFaviconPortal) ? (string) filemtime($archivoFaviconPortal) : $versionLogoPortal;
 $fotoDemoMarcaAgua = '../imagenes/Publicidad-intendencia.jpg';
 if ($puedeConfigurarPanel) {
     $marcaAguaPanel = configuracion_marca_agua();
@@ -41,6 +58,25 @@ if ($puedeConfigurarPanel) {
     } catch (PDOException $e) {
         // La imagen de respaldo mantiene disponible la vista previa.
     }
+    $rutaLogoLogin = configuracion_logo_login();
+    $archivoLogoLogin = dirname(__DIR__, 2) . '/' . $rutaLogoLogin;
+    $versionLogoLogin = is_file($archivoLogoLogin) ? (string) filemtime($archivoLogoLogin) : '1';
+    $logoLoginPanel = [
+        'ruta' => $rutaLogoLogin,
+        'url' => url_imagen($rutaLogoLogin) . '?v=' . rawurlencode($versionLogoLogin),
+    ];
+    $logoPortalPanel = [
+        'url' => url_imagen($logoPortalRuta) . '?v=' . rawurlencode($versionLogoPortal),
+    ];
+    $logoAdminPanel = [
+        'url' => $identidadLogoAdmin['ruta'] !== null ? url_imagen($identidadLogoAdmin['ruta']) . '?v=' . rawurlencode($versionLogoAdmin) : null,
+        'favicon_url' => '../favicon.php?v=' . rawurlencode($versionFaviconPortal),
+    ];
+    $seoPortadaPanel = configuracion_seo_portada();
+    $archivoSeoPortada = dirname(__DIR__, 2) . '/' . $seoPortadaPanel['imagen_ruta'];
+    $versionSeoPortada = is_file($archivoSeoPortada) ? (string) filemtime($archivoSeoPortada) : '1';
+    $seoPortadaPanel['imagen_url_versionada'] = $seoPortadaPanel['imagen_url'] . '?v=' . rawurlencode($versionSeoPortada);
+    $codigoHeaderPanel = configuracion_codigo_header();
 }
 header('Cache-Control: no-store, private');
 ?>
@@ -50,6 +86,7 @@ header('Cache-Control: no-store, private');
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title><?= e($titulo) ?> · Panel Noticias</title>
+  <link rel="icon" href="../favicon.php?v=<?= e(rawurlencode($versionFaviconPortal)) ?>" type="image/x-icon" />
   <link rel="stylesheet" href="<?= $BASE ?>assets/admin.css?v=<?= e($adminCssVersion) ?>" />
 </head>
 <body>
@@ -61,7 +98,13 @@ header('Cache-Control: no-store, private');
   <!-- ===== Menú lateral ===== -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
-      <div class="brand-mark">N</div>
+      <div class="brand-mark" id="adminSidebarBrandMark">
+<?php if ($identidadLogoAdmin['ruta'] !== null): ?>
+        <img src="<?= e(url_imagen($identidadLogoAdmin['ruta'])) ?>?v=<?= e(rawurlencode($versionLogoAdmin)) ?>" alt="Logo del Admin">
+<?php else: ?>
+        <span>N</span>
+<?php endif; ?>
+      </div>
       <div>
         <h1>Noticias</h1>
         <span class="subtitle">Panel de administración</span>
@@ -126,9 +169,17 @@ header('Cache-Control: no-store, private');
           <svg class="nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
         </button>
         <div class="nav-submenu" id="analyticsNavSubmenu"<?= $grupoAnalisisActivo ? '' : ' hidden' ?>>
+          <a href="<?= $BASE ?>publicaciones.php" class="nav-sub-link has-icon <?= $activo === 'publicaciones' ? 'active' : '' ?>">
+            <svg class="nav-sub-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M8 2v4M16 2v4M3 10h18"></path><path d="M8 14h2M14 14h2M8 18h2"></path></svg>
+            <span>Publicaciones</span>
+          </a>
           <a href="<?= $BASE ?>votaciones.php" class="nav-sub-link has-icon <?= $activo === 'votaciones' ? 'active' : '' ?>">
             <svg class="nav-sub-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v12H3V10h4Z"></path><path d="M7 20h10.8a2 2 0 0 0 1.96-1.61l1.2-6A2 2 0 0 0 19 10h-5l1-4.57A2 2 0 0 0 13.05 3H12l-5 7v10Z"></path></svg>
             <span>Votaciones</span>
+          </a>
+          <a href="<?= $BASE ?>vistas.php" class="nav-sub-link has-icon <?= $activo === 'vistas' ? 'active' : '' ?>">
+            <svg class="nav-sub-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <span>Vistas</span>
           </a>
         </div>
       </div>
@@ -149,16 +200,64 @@ header('Cache-Control: no-store, private');
 <?php endif; ?>
 
     <div class="sidebar-footer">
-      <span class="sidebar-user-avatar" aria-hidden="true"><?= e($inicialUsuarioPanel) ?></span>
-      <span class="sidebar-user-data">
-        <strong><?= e($nombreUsuarioPanel) ?></strong>
-        <small><?= e($usuarioPanel['rol_nombre']) ?></small>
-      </span>
+      <button type="button" class="sidebar-profile-button" id="profileMenuButton" aria-expanded="false" aria-controls="profileDrawer" title="Editar perfil">
+        <span class="sidebar-user-avatar" id="sidebarUserAvatar" aria-hidden="true"><?php if ($fotoUsuarioPanelValida): ?><img src="<?= e(url_imagen($fotoUsuarioPanel)) ?>" alt=""><?php else: ?><?= e($inicialUsuarioPanel) ?><?php endif; ?></span>
+        <span class="sidebar-user-data">
+          <strong id="sidebarUserName"><?= e($nombreUsuarioPanel) ?></strong>
+          <small><?= e($usuarioPanel['rol_nombre']) ?></small>
+        </span>
+      </button>
       <form method="post" action="<?= $BASE ?>logout.php" class="sidebar-logout-form">
         <?= csrf_input() ?>
         <button type="submit" class="sidebar-logout-btn" aria-label="Cerrar sesión" title="Cerrar sesión">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17l5-5-5-5"></path><path d="M15 12H3"></path><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path></svg>
         </button>
+      </form>
+
+    </div>
+  </aside>
+
+  <div class="drawer-backdrop profile-drawer-backdrop" id="profileDrawerBackdrop"></div>
+  <aside class="drawer user-drawer profile-drawer" id="profileDrawer" aria-hidden="true" aria-labelledby="profileDrawerTitle">
+    <header class="drawer-header user-drawer-header">
+      <div>
+        <span class="drawer-title-label">Cuenta personal</span>
+        <h2 id="profileDrawerTitle">Editar perfil</h2>
+      </div>
+      <button type="button" class="drawer-close" id="profileDrawerClose" aria-label="Cerrar perfil">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </header>
+    <div class="drawer-body user-drawer-body">
+      <form id="profileForm" enctype="multipart/form-data">
+        <?= csrf_input() ?>
+        <div class="user-photo-field">
+          <span class="user-photo-preview<?= $fotoUsuarioPanelValida ? ' has-image' : '' ?>" id="profilePhotoPreview" aria-hidden="true">
+            <?php if ($fotoUsuarioPanelValida): ?><img src="<?= e(url_imagen($fotoUsuarioPanel)) ?>" alt=""><?php else: ?><span class="user-photo-initial"><?= e($inicialUsuarioPanel) ?></span><?php endif; ?>
+          </span>
+          <span class="user-photo-controls">
+            <label class="btn btn-outline user-photo-button" for="profilePhoto">Seleccionar foto</label>
+            <input type="file" id="profilePhoto" name="foto" accept="image/jpeg,image/png,image/webp">
+            <small id="profilePhotoHelp" aria-live="polite">JPG, PNG o WEBP. Máximo 3 MB; se recomienda una imagen cuadrada.</small>
+          </span>
+        </div>
+
+        <div class="form-group"><label for="profileName">Nombre</label><input class="form-control" id="profileName" name="nombre" maxlength="120" required value="<?= e($nombreUsuarioPanel) ?>" autocomplete="name"></div>
+        <div class="form-group"><label for="profileEmail">Correo electrónico</label><input class="form-control" type="email" id="profileEmail" name="email" maxlength="190" required value="<?= e($usuarioPanel['email']) ?>" autocomplete="email"></div>
+
+        <section class="profile-password-section" aria-labelledby="profilePasswordTitle">
+          <h3 id="profilePasswordTitle">Cambiar contraseña</h3>
+          <p>Dejá estos campos vacíos si querés conservar la contraseña actual.</p>
+          <div class="form-group"><label for="profileCurrentPassword">Contraseña actual</label><input class="form-control" type="password" id="profileCurrentPassword" name="password_actual" autocomplete="current-password"></div>
+          <div class="form-group"><label for="profileNewPassword">Nueva contraseña</label><input class="form-control" type="password" id="profileNewPassword" name="password_nueva" minlength="12" autocomplete="new-password"><div class="form-hint">Mínimo 12 caracteres.</div></div>
+          <div class="form-group"><label for="profileRepeatPassword">Repetir nueva contraseña</label><input class="form-control" type="password" id="profileRepeatPassword" name="password_repetida" minlength="12" autocomplete="new-password"></div>
+        </section>
+
+        <div class="profile-save-status" id="profileSaveStatus" role="status" aria-live="polite"></div>
+        <div class="form-actions user-form-actions">
+          <button class="btn btn-primary" type="submit" id="profileSaveButton">Guardar cambios</button>
+          <button class="btn btn-outline" type="button" id="profileDrawerCancel">Cancelar</button>
+        </div>
       </form>
     </div>
   </aside>
@@ -183,15 +282,19 @@ header('Cache-Control: no-store, private');
           <span class="settings-card-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.2-3.2a2 2 0 0 0-2.8 0L6 21"></path><path d="M13 5h6M16 2v6"></path></svg>
           </span>
-          <div>
+          <div class="settings-card-heading-copy">
             <h3>Marca de Agua</h3>
             <p>Se aplicará centrada sobre todas las imágenes nuevas.</p>
           </div>
+          <button type="button" class="settings-card-toggle" id="watermarkCardToggle" aria-expanded="true" aria-controls="watermarkCardContent" aria-label="Contraer ajustes de marca de agua">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"></path></svg>
+          </button>
         </div>
 
+        <div class="settings-card-content" id="watermarkCardContent">
         <div class="watermark-preview" aria-label="Vista previa de la marca de agua">
           <img class="watermark-preview-photo" src="<?= e($fotoDemoMarcaAgua) ?>" alt="Fotografía de demostración">
-          <img class="watermark-preview-logo" id="watermarkPreviewLogo" src="<?= e($marcaAguaPanel['url']) ?>" alt="Marca de agua actual" style="opacity: <?= e(number_format($marcaAguaPanel['opacidad'] / 100, 2, '.', '')) ?>">
+          <img class="watermark-preview-logo" id="watermarkPreviewLogo" src="<?= e($marcaAguaPanel['url']) ?>" alt="Marca de agua actual" style="width: <?= (int) $marcaAguaPanel['tamano'] ?>%; opacity: <?= e(number_format($marcaAguaPanel['opacidad'] / 100, 2, '.', '')) ?>">
           <span class="watermark-preview-label">Vista previa</span>
         </div>
 
@@ -214,6 +317,16 @@ header('Cache-Control: no-store, private');
           <p>Un porcentaje bajo deja la marca más transparente. La vista previa cambia mientras movés el control.</p>
         </div>
 
+        <div class="watermark-range-group">
+          <div class="watermark-range-heading">
+            <label for="watermarkSize">Tamaño de la marca</label>
+            <output id="watermarkSizeValue" for="watermarkSize"><?= (int) $marcaAguaPanel['tamano'] ?>%</output>
+          </div>
+          <input type="range" id="watermarkSize" name="tamano" min="15" max="65" step="1" value="<?= (int) $marcaAguaPanel['tamano'] ?>">
+          <div class="watermark-range-scale"><span>Más chica</span><span>Más grande</span></div>
+          <p>Define cuánto ancho ocupa la marca sobre cada imagen. La vista previa refleja el tamaño elegido.</p>
+        </div>
+
         <div class="settings-card-notice">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>
           <span>Los cambios se aplican a próximas subidas. Las fotos publicadas no se modifican.</span>
@@ -224,7 +337,280 @@ header('Cache-Control: no-store, private');
           <button type="button" class="btn btn-outline" id="settingsDrawerCancel">Cancelar</button>
           <button type="submit" class="btn btn-primary" id="watermarkSaveButton">Guardar configuración</button>
         </div>
+        </div>
       </form>
+
+      <?php if ($logoLoginPanel !== null): ?>
+      <form class="settings-card" id="loginLogoSettingsForm" enctype="multipart/form-data">
+        <?= csrf_input() ?>
+        <div class="settings-card-heading">
+          <span class="settings-card-icon settings-card-icon-login" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"></rect><path d="M8 9h8M7 15h10"></path></svg>
+          </span>
+          <div class="settings-card-heading-copy">
+            <h3>Logo del Login</h3>
+            <p>Personalizá la identidad de la pantalla de ingreso.</p>
+          </div>
+          <button type="button" class="settings-card-toggle" id="loginLogoCardToggle" aria-expanded="true" aria-controls="loginLogoCardContent" aria-label="Contraer ajustes del logo del login">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"></path></svg>
+          </button>
+        </div>
+
+        <div class="settings-card-content" id="loginLogoCardContent">
+          <div class="login-logo-preview" aria-label="Vista previa del logo del login">
+            <span class="login-logo-preview-label">Vista previa</span>
+            <img id="loginLogoPreview" src="<?= e($logoLoginPanel['url']) ?>" alt="Logo actual del login">
+          </div>
+
+          <div class="watermark-upload-row login-logo-upload-row">
+            <div>
+              <strong>Imagen del logo</strong>
+              <span id="loginLogoFileName">PNG transparente, máximo 2 MB.</span>
+            </div>
+            <label class="btn btn-outline watermark-upload-button" for="loginLogoFile">Cambiar logo</label>
+            <input type="file" id="loginLogoFile" name="logo_login" accept="image/png" hidden>
+          </div>
+
+          <div class="settings-card-notice">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>
+            <span>Usá preferentemente un PNG horizontal con fondo transparente. El cambio aparecerá en el próximo ingreso.</span>
+          </div>
+
+          <span class="settings-save-status" id="loginLogoSaveStatus" aria-live="polite"></span>
+          <div class="settings-form-actions">
+            <button type="button" class="btn btn-outline" id="loginLogoCancel">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="loginLogoSaveButton">Guardar logo</button>
+          </div>
+        </div>
+      </form>
+      <?php endif; ?>
+
+      <?php if ($logoPortalPanel !== null): ?>
+      <form class="settings-card" id="portalLogoSettingsForm" enctype="multipart/form-data">
+        <?= csrf_input() ?>
+        <div class="settings-card-heading">
+          <span class="settings-card-icon settings-card-icon-portal" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"></path></svg>
+          </span>
+          <div class="settings-card-heading-copy">
+            <h3>Logo del Portal</h3>
+            <p>Identidad del encabezado y menú público.</p>
+          </div>
+          <button type="button" class="settings-card-toggle" id="portalLogoCardToggle" aria-expanded="true" aria-controls="portalLogoCardContent" aria-label="Contraer ajustes del logo del portal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"></path></svg>
+          </button>
+        </div>
+
+        <div class="settings-card-content" id="portalLogoCardContent">
+          <div class="portal-logo-preview" aria-label="Vista previa del logo del portal">
+            <span class="login-logo-preview-label">Menú público</span>
+            <img id="portalLogoPreview" src="<?= e($logoPortalPanel['url']) ?>" alt="Logo actual del portal">
+          </div>
+          <div class="watermark-upload-row portal-logo-upload-row">
+            <div>
+              <strong>Imagen principal</strong>
+              <span id="portalLogoFileName">PNG transparente, máximo 2 MB.</span>
+            </div>
+            <label class="btn btn-outline watermark-upload-button" for="portalLogoFile">Cambiar logo</label>
+            <input type="file" id="portalLogoFile" name="logo_portal" accept="image/png" hidden>
+          </div>
+
+          <div class="settings-card-notice">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>
+            <span>Este PNG se muestra únicamente en el encabezado y en el menú público del Portal.</span>
+          </div>
+
+          <span class="settings-save-status" id="portalLogoSaveStatus" aria-live="polite"></span>
+          <div class="settings-form-actions">
+            <button type="button" class="btn btn-outline" id="portalLogoCancel">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="portalLogoSaveButton">Guardar logo</button>
+          </div>
+        </div>
+      </form>
+      <?php endif; ?>
+
+      <?php if ($logoAdminPanel !== null): ?>
+      <form class="settings-card" id="adminLogoSettingsForm" enctype="multipart/form-data">
+        <?= csrf_input() ?>
+        <div class="settings-card-heading">
+          <span class="settings-card-icon settings-card-icon-admin-logo" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"></rect><path d="M8 15.5 11 12l2.3 2.3L16 11l2 2.5"></path><circle cx="9" cy="8.5" r="1.5"></circle></svg>
+          </span>
+          <div class="settings-card-heading-copy">
+            <h3>Logo del Admin y Favicon</h3>
+            <p>Una misma identidad para el menú interno y la pestaña del navegador.</p>
+          </div>
+          <button type="button" class="settings-card-toggle" id="adminLogoCardToggle" aria-expanded="true" aria-controls="adminLogoCardContent" aria-label="Contraer ajustes del logo del Admin y favicon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"></path></svg>
+          </button>
+        </div>
+
+        <div class="settings-card-content" id="adminLogoCardContent">
+          <div class="admin-logo-preview" id="adminLogoPreviewBox" aria-label="Vista previa del logo en el menú interno">
+            <span class="login-logo-preview-label">Menú interno</span>
+            <div class="admin-logo-preview-brand">
+              <span class="brand-mark-preview" id="adminLogoFallback"<?= $logoAdminPanel['url'] !== null ? ' hidden' : '' ?>>N</span>
+              <img id="adminLogoPreview" src="<?= e($logoAdminPanel['url'] ?? '') ?>" alt="Logo actual del Admin"<?= $logoAdminPanel['url'] === null ? ' hidden' : '' ?>>
+              <div><strong>Noticias</strong><small>Panel de administración</small></div>
+            </div>
+          </div>
+
+          <div class="portal-favicon-preview">
+            <div>
+              <strong>Vista de pestaña</strong>
+              <span>El favicon se genera automáticamente con esta misma imagen.</span>
+            </div>
+            <span class="portal-favicon-tile"><img id="adminFaviconPreview" src="<?= e($logoAdminPanel['favicon_url']) ?>" alt="Favicon actual"></span>
+          </div>
+
+          <div class="watermark-upload-row admin-logo-upload-row">
+            <div>
+              <strong>Imagen principal</strong>
+              <span id="adminLogoFileName">PNG transparente, máximo 2 MB.</span>
+            </div>
+            <label class="btn btn-outline watermark-upload-button" for="adminLogoFile">Cambiar logo</label>
+            <input type="file" id="adminLogoFile" name="logo_admin" accept="image/png" hidden>
+          </div>
+
+          <div class="settings-card-notice">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>
+            <span>El logo se adapta al espacio superior izquierdo del Admin y genera un favicon cuadrado compatible con navegadores.</span>
+          </div>
+
+          <span class="settings-save-status" id="adminLogoSaveStatus" aria-live="polite"></span>
+          <div class="settings-form-actions">
+            <button type="button" class="btn btn-outline" id="adminLogoCancel">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="adminLogoSaveButton">Guardar identidad</button>
+          </div>
+        </div>
+      </form>
+      <?php endif; ?>
+
+      <?php if ($seoPortadaPanel !== null): ?>
+      <form class="settings-card settings-seo-card" id="homeSeoSettingsForm" enctype="multipart/form-data"
+            data-default-title="Radio Sur | Noticias de Colonia y la región"
+            data-default-description="Últimas noticias de Colonia, Uruguay y la región. Información local, actualidad, deportes, cultura y comunidad en Radio Sur."
+            data-default-image="<?= e(url_portal('imagenes/Logo2027v3.png')) ?>"
+            data-public-url="<?= e($seoPortadaPanel['url']) ?>">
+        <?= csrf_input() ?>
+        <input type="hidden" id="homeSeoTitleMode" name="titulo_personalizado" value="<?= $seoPortadaPanel['titulo_personalizado'] ? '1' : '0' ?>">
+        <input type="hidden" id="homeSeoDescriptionMode" name="descripcion_personalizada" value="<?= $seoPortadaPanel['descripcion_personalizada'] ? '1' : '0' ?>">
+        <input type="hidden" id="homeSeoImageAutomatic" name="imagen_automatica" value="0">
+
+        <div class="settings-card-heading">
+          <span class="settings-card-icon settings-card-icon-seo" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path><path d="M8 11h6M11 8v6"></path></svg>
+          </span>
+          <div class="settings-card-heading-copy">
+            <h3>SEO de la Página Principal</h3>
+            <p>Configurá cómo aparece la portada en Google y al compartir.</p>
+          </div>
+          <span class="seo-mode-badge<?= ($seoPortadaPanel['titulo_personalizado'] || $seoPortadaPanel['descripcion_personalizada'] || $seoPortadaPanel['imagen_personalizada']) ? ' is-custom' : '' ?>" id="homeSeoModeBadge"><?= ($seoPortadaPanel['titulo_personalizado'] || $seoPortadaPanel['descripcion_personalizada'] || $seoPortadaPanel['imagen_personalizada']) ? 'Personalizado' : 'Automático' ?></span>
+          <button type="button" class="settings-card-toggle" id="homeSeoCardToggle" aria-expanded="true" aria-controls="homeSeoCardContent" aria-label="Contraer ajustes SEO de la página principal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"></path></svg>
+          </button>
+        </div>
+
+        <div class="settings-card-content settings-seo-content" id="homeSeoCardContent">
+          <div class="seo-field-group" data-home-seo-field="title">
+            <div class="seo-field-heading"><label for="homeSeoTitle">Título SEO</label><button type="button" class="seo-auto-action" data-home-seo-auto="title"><?= $seoPortadaPanel['titulo_personalizado'] ? 'Volver a automático' : 'Personalizar' ?></button></div>
+            <input class="form-control" type="text" id="homeSeoTitle" name="titulo" value="<?= e($seoPortadaPanel['titulo']) ?>" maxlength="255"<?= $seoPortadaPanel['titulo_personalizado'] ? '' : ' readonly' ?>>
+            <span class="seo-counter" id="homeSeoTitleCounter"><?= mb_strlen($seoPortadaPanel['titulo']) ?> caracteres</span>
+          </div>
+
+          <div class="seo-field-group" data-home-seo-field="description">
+            <div class="seo-field-heading"><label for="homeSeoDescription">Descripción SEO</label><button type="button" class="seo-auto-action" data-home-seo-auto="description"><?= $seoPortadaPanel['descripcion_personalizada'] ? 'Volver a automático' : 'Personalizar' ?></button></div>
+            <textarea class="form-control seo-description-input" id="homeSeoDescription" name="descripcion" maxlength="500"<?= $seoPortadaPanel['descripcion_personalizada'] ? '' : ' readonly' ?>><?= e($seoPortadaPanel['descripcion']) ?></textarea>
+            <span class="seo-counter" id="homeSeoDescriptionCounter"><?= mb_strlen($seoPortadaPanel['descripcion']) ?> caracteres</span>
+          </div>
+
+          <div class="seo-field-group">
+            <div class="seo-field-heading"><label for="homeSeoImage">Imagen SEO/social</label><span>Recomendado 1200 × 630 px</span></div>
+            <div class="home-seo-image-row">
+              <div class="home-seo-image-preview"><img id="homeSeoImagePreview" src="<?= e($seoPortadaPanel['imagen_url_versionada']) ?>" alt="Imagen SEO actual de la portada"></div>
+              <div class="home-seo-image-actions">
+                <label class="btn btn-outline" for="homeSeoImage">Cambiar imagen</label>
+                <button type="button" class="seo-auto-action" id="homeSeoImageAuto"<?= $seoPortadaPanel['imagen_personalizada'] ? '' : ' hidden' ?>>Volver a automática</button>
+              </div>
+              <input type="file" id="homeSeoImage" name="imagen" accept="image/jpeg,image/png,image/webp" hidden>
+            </div>
+            <span class="media-upload-status" id="homeSeoImageStatus" aria-live="polite"><?= $seoPortadaPanel['imagen_personalizada'] ? 'Imagen personalizada' : 'Imagen automática del portal' ?></span>
+          </div>
+
+          <div class="home-seo-preview-block">
+            <div class="seo-preview-tabs" role="tablist" aria-label="Tipo de vista previa SEO de portada">
+              <button type="button" role="tab" aria-selected="true" data-home-seo-tab="social">Al compartir</button>
+              <button type="button" role="tab" aria-selected="false" data-home-seo-tab="google">En Google</button>
+            </div>
+            <div class="seo-social-preview" data-home-seo-panel="social">
+              <div class="seo-social-image"><img id="homeSeoSocialImage" src="<?= e($seoPortadaPanel['imagen_url_versionada']) ?>" alt=""></div>
+              <div class="seo-social-copy"><span><?= e((string) parse_url($seoPortadaPanel['url'], PHP_URL_HOST)) ?></span><strong id="homeSeoSocialTitle"><?= e($seoPortadaPanel['titulo']) ?></strong><p id="homeSeoSocialDescription"><?= e($seoPortadaPanel['descripcion']) ?></p><small><?= e($seoPortadaPanel['url']) ?></small></div>
+            </div>
+            <div class="seo-google-preview" data-home-seo-panel="google" hidden>
+              <span><?= e($seoPortadaPanel['url']) ?></span>
+              <strong id="homeSeoGoogleTitle"><?= e($seoPortadaPanel['titulo']) ?></strong>
+              <p id="homeSeoGoogleDescription"><?= e($seoPortadaPanel['descripcion']) ?></p>
+            </div>
+            <p class="seo-preview-note">La vista es orientativa: cada plataforma puede recortar imágenes o textos de forma diferente.</p>
+          </div>
+
+          <span class="settings-save-status" id="homeSeoSaveStatus" aria-live="polite"></span>
+          <div class="settings-form-actions">
+            <button type="button" class="btn btn-outline" id="homeSeoCancel">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="homeSeoSaveButton">Guardar SEO</button>
+          </div>
+        </div>
+      </form>
+      <?php endif; ?>
+
+      <?php if ($codigoHeaderPanel !== null): ?>
+      <form class="settings-card header-code-card" id="headerCodeSettingsForm">
+        <?= csrf_input() ?>
+        <div class="settings-card-heading">
+          <span class="settings-card-icon settings-card-icon-code" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m8 9-4 3 4 3M16 9l4 3-4 3M14 5l-4 14"></path></svg>
+          </span>
+          <div class="settings-card-heading-copy">
+            <h3>Código del Header</h3>
+            <p>Google Analytics, Meta Pixel y otras integraciones públicas.</p>
+          </div>
+          <span class="header-code-state<?= $codigoHeaderPanel['activo'] ? ' is-active' : '' ?>" id="headerCodeState"><?= $codigoHeaderPanel['activo'] ? 'Activo' : 'Inactivo' ?></span>
+          <button type="button" class="settings-card-toggle" id="headerCodeCardToggle" aria-expanded="true" aria-controls="headerCodeCardContent" aria-label="Contraer ajustes del Código del Header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"></path></svg>
+          </button>
+        </div>
+
+        <div class="settings-card-content header-code-content" id="headerCodeCardContent">
+          <div class="header-code-toolbar">
+            <div><strong>Fragmento HTML / JavaScript</strong><span>Se inserta al final del &lt;head&gt; público.</span></div>
+            <label class="header-code-switch ad-form-switch" for="headerCodeActive">
+              <input type="checkbox" id="headerCodeActive" name="activo" value="1" role="switch"<?= $codigoHeaderPanel['activo'] ? ' checked' : '' ?>>
+              <span class="ad-form-switch-track" aria-hidden="true"><span></span></span>
+              <span id="headerCodeActiveLabel"><?= $codigoHeaderPanel['activo'] ? 'Activado' : 'Desactivado' ?></span>
+            </label>
+          </div>
+
+          <textarea class="header-code-editor" id="headerCodeEditor" name="codigo" maxlength="60000" spellcheck="false" autocomplete="off" placeholder="<!-- Pegá aquí el código de Google Analytics o Meta Pixel -->"><?= e($codigoHeaderPanel['codigo']) ?></textarea>
+          <div class="header-code-meta"><span id="headerCodeCounter"><?= mb_strlen($codigoHeaderPanel['codigo']) ?> caracteres</span><span>No se ejecuta dentro del Admin.</span></div>
+
+          <div class="settings-card-notice header-code-notice">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>
+            <span>El código activo se carga en portada y noticias públicas. Pegá únicamente snippets de proveedores confiables.</span>
+          </div>
+
+          <div class="header-code-events">
+            <strong>Aperturas de noticias sin recarga</strong>
+            <span>El portal enviará automáticamente <code>page_view</code> a Google, <code>PageView</code> y <code>ViewContent</code> a Meta, además del evento <code>portal:noticia-abierta</code>.</span>
+          </div>
+
+          <span class="settings-save-status" id="headerCodeSaveStatus" aria-live="polite"></span>
+          <div class="settings-form-actions">
+            <button type="button" class="btn btn-outline" id="headerCodeCancel">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="headerCodeSaveButton">Guardar código</button>
+          </div>
+        </div>
+      </form>
+      <?php endif; ?>
     </div>
   </aside>
 <?php endif; ?>

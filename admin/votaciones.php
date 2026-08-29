@@ -25,6 +25,7 @@ $noticiasVotadas = $pdo->query(
       WHERE n.me_gusta > 0 OR n.no_me_gusta > 0
       ORDER BY total DESC, n.me_gusta DESC, n.id DESC'
 )->fetchAll();
+cargar_categorias_noticias($noticiasVotadas);
 
 $totalConVotos = count($noticiasVotadas);
 $enGrafico = array_slice($noticiasVotadas, 0, VOTACIONES_TOPE);
@@ -173,7 +174,8 @@ require __DIR__ . '/includes/header.php';
       </div>
 
       <script id="vizDatos" type="application/json"><?= json_encode($datosGrafico, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
-      <script src="assets/votaciones.js" defer></script>
+      <script src="assets/votaciones.js?v=<?= (int) @filemtime(__DIR__ . '/assets/votaciones.js') ?>" defer></script>
       <?php require __DIR__ . '/includes/noticia-preview-drawer.php'; ?>
 <?php endif; ?>
+      <script src="assets/analisis-refresh.js?v=<?= (int) @filemtime(__DIR__ . '/assets/analisis-refresh.js') ?>" data-refresh-seconds="30" defer></script>
 <?php require __DIR__ . '/includes/footer.php'; ?>

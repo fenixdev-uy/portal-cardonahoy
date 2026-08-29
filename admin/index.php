@@ -46,49 +46,11 @@ if ($solicitudPortada) {
     exit;
 }
 
-// Publicaciones por día del mes corriente para el resumen gráfico.
-$inicioMes = new DateTimeImmutable('first day of this month 00:00:00');
-$inicioMesSiguiente = $inicioMes->modify('first day of next month');
-$consultaPublicaciones = $pdo->prepare(
-    'SELECT DATE(created_at) AS fecha, COUNT(*) AS cantidad
-       FROM noticias
-      WHERE created_at >= :inicio AND created_at < :fin
-      GROUP BY DATE(created_at)
-      ORDER BY fecha ASC'
-);
-$consultaPublicaciones->execute([
-    ':inicio' => $inicioMes->format('Y-m-d H:i:s'),
-    ':fin' => $inicioMesSiguiente->format('Y-m-d H:i:s'),
-]);
-
-$publicacionesPorFecha = [];
-foreach ($consultaPublicaciones->fetchAll() as $fila) {
-    $publicacionesPorFecha[(string) $fila['fecha']] = (int) $fila['cantidad'];
-}
-
-$datosPublicaciones = [];
-$totalPublicacionesMes = 0;
-for ($dia = $inicioMes; $dia < $inicioMesSiguiente; $dia = $dia->modify('+1 day')) {
-    $cantidad = $publicacionesPorFecha[$dia->format('Y-m-d')] ?? 0;
-    $totalPublicacionesMes += $cantidad;
-    $datosPublicaciones[] = [
-        'dia' => (int) $dia->format('j'),
-        'fecha' => $dia->format('Y-m-d'),
-        'cantidad' => $cantidad,
-    ];
-}
-
-$meses = [
-    1 => 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-];
-$nombreMes = $meses[(int) $inicioMes->format('n')] . ' ' . $inicioMes->format('Y');
-
 // Últimas noticias para el listado
 $noticias = $pdo->query(
     'SELECT n.id, n.titulo, n.descripcion, n.created_at, n.portada AS portada_estado,
             n.audio_1, n.audio_2, n.audio_3,
-            n.me_gusta, n.no_me_gusta,
+            n.me_gusta, n.no_me_gusta, n.vistas, n.compartidos,
             c.nombre AS categoria_nombre,
             u.nombre AS autor_nombre,
             (SELECT f.ruta FROM noticias_fotos f
@@ -99,6 +61,7 @@ $noticias = $pdo->query(
        LEFT JOIN usuarios u ON u.id = n.usuario_id
       ORDER BY n.created_at DESC, n.id DESC'
 )->fetchAll();
+cargar_categorias_noticias($noticias);
 
 // Una sola consulta para calcular el peso de todas las galerías, sin N+1.
 $fotosPorNoticiaAdmin = [];
@@ -121,43 +84,7 @@ require __DIR__ . '/includes/header.php';
 
 <div class="users-page-heading">
   <h1>Noticias</h1>
-  <p>Creá, editá y organizá las noticias publicadas en el portal. Consultá la actividad del mes y administrá sus imágenes, audios y videos.</p>
-</div>
-
-<details class="publication-chart-card" open>
-  <summary class="publication-chart-summary">
-    <span class="publication-chart-heading">
-      <span class="publication-chart-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M7 15l4-4 3 3 5-7"></path></svg>
-      </span>
-      <span>
-        <strong>Publicaciones del mes</strong>
-        <small><?= e($nombreMes) ?> · cantidad de noticias por día</small>
-      </span>
-    </span>
-    <span class="publication-chart-meta">
-      <span><strong><?= (int) $totalPublicacionesMes ?></strong> en el mes</span>
-      <span class="publication-chart-toggle" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-      </span>
-    </span>
-  </summary>
-  <div class="publication-chart-body">
-    <figure class="publication-chart-figure">
-      <div class="publication-chart-canvas" id="publicationChartCanvas">
-        <svg id="publicationChart" role="img" aria-label="Cantidad de noticias publicadas por día durante <?= e($nombreMes) ?>"></svg>
-        <div class="publication-chart-tooltip" id="publicationChartTooltip" role="status" aria-live="polite"></div>
-      </div>
-      <figcaption>Pasá el mouse o usá el teclado sobre un día para ver su cantidad.</figcaption>
-    </figure>
-  </div>
-</details>
-
-<script id="publicationChartData" type="application/json"><?= json_encode($datosPublicaciones, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
-<script src="assets/noticias-chart.js" defer></script>
-
-<div class="section-header">
-  <h3>Últimas noticias</h3>
+  <p>Creá, editá y organizá las noticias publicadas en el portal y administrá sus imágenes, audios y videos.</p>
 </div>
 
 <div class="table-wrap noticias-table">
@@ -170,9 +97,9 @@ require __DIR__ . '/includes/header.php';
     <?php endif; ?>
     <span class="noticias-search-status" id="noticiasSearchStatus" aria-live="polite"><?= count($noticias) ?> noticias</span>
     <?php if (tiene_permiso('noticias.crear')): ?>
-      <a href="noticia-form.php" class="btn btn-primary noticias-create-btn">
+      <a href="noticia-form.php" class="btn btn-primary noticias-create-btn" aria-label="Nueva noticia" title="Nueva noticia">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-        Nueva noticia
+        <span>Nueva noticia</span>
       </a>
     <?php endif; ?>
   </div>
@@ -190,23 +117,43 @@ require __DIR__ . '/includes/header.php';
           <th class="table-sort-th date-sort-th" aria-sort="descending">
             <button class="table-sort-btn is-desc" type="button" id="dateSortBtn" aria-label="Ordenado por fecha, de más reciente a más antigua. Cambiar a más antigua primero">
               Fecha
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 9l4-4 4 4"></path><path d="M16 15l-4 4-4-4"></path></svg>
+              <svg class="table-sort-indicator" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 9l4-4 4 4"></path><path d="M16 15l-4 4-4-4"></path></svg>
             </button>
           </th>
           <th class="table-sort-th weight-sort-th" style="width: 105px;" aria-sort="none">
             <button class="table-sort-btn weight-sort-btn" type="button" id="weightSortBtn" aria-label="Ordenar por peso, primero las noticias más pesadas">
               Peso
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 9l4-4 4 4"></path><path d="M16 15l-4 4-4-4"></path></svg>
+              <svg class="table-sort-indicator" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 9l4-4 4 4"></path><path d="M16 15l-4 4-4-4"></path></svg>
             </button>
           </th>
-          <th style="width: 110px;">Votos</th>
+          <th class="table-sort-th metric-header" style="width: 110px;" aria-sort="none">
+            <button class="table-sort-btn metric-sort-btn" type="button" id="votesSortBtn" aria-label="Ordenar por votos, primero las noticias más votadas" title="Ordenar por votos">
+              <span class="metric-header-icon metric-header-votes" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"></path></svg>
+              </span>
+              <svg class="table-sort-indicator" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 9l4-4 4 4"></path><path d="M16 15l-4 4-4-4"></path></svg>
+            </button>
+          </th>
+          <th class="table-sort-th metric-header" style="width: 85px;" aria-sort="none">
+            <button class="table-sort-btn metric-sort-btn" type="button" id="viewsSortBtn" aria-label="Ordenar por vistas, primero las noticias más vistas" title="Ordenar por vistas">
+              <span class="metric-header-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></span>
+              <svg class="table-sort-indicator" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 9l4-4 4 4"></path><path d="M16 15l-4 4-4-4"></path></svg>
+            </button>
+          </th>
+          <th class="table-sort-th metric-header" style="width: 110px;" aria-sort="none">
+            <button class="table-sort-btn metric-sort-btn" type="button" id="sharesSortBtn" aria-label="Ordenar por compartidos, primero las noticias más compartidas" title="Ordenar por compartidos">
+              <span class="metric-header-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.59 13.51 6.83 3.98"></path><path d="m15.41 6.51-6.82 3.98"></path></svg></span>
+              <svg class="table-sort-indicator" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 9l4-4 4 4"></path><path d="M16 15l-4 4-4-4"></path></svg>
+            </button>
+          </th>
           <th style="width: 125px;">Portada</th>
           <th style="width: 130px;">Acciones</th>
         </tr>
       </thead>
       <tbody>
         <?php foreach ($noticias as $n): ?>
-          <tr class="noticia-row" data-weight="<?= (int) $n['_peso']['total'] ?>" data-date="<?= e((string) strtotime($n['created_at'])) ?>">
+          <tr class="noticia-row" data-weight="<?= (int) $n['_peso']['total'] ?>" data-date="<?= e((string) strtotime($n['created_at'])) ?>" data-votes="<?= (int) ($n['me_gusta'] ?? 0) + (int) ($n['no_me_gusta'] ?? 0) ?>" data-views="<?= (int) ($n['vistas'] ?? 0) ?>" data-shares="<?= (int) ($n['compartidos'] ?? 0) ?>">
             <td class="td-photo">
               <a href="#" class="thumb-link js-ver-noticia" data-id="<?= (int) $n['id'] ?>" title="Ver noticia completa">
                 <?php if (!empty($n['portada'])): ?>
@@ -242,6 +189,18 @@ require __DIR__ . '/includes/header.php';
               <span class="vote-stat" title="No me gusta">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"></path></svg>
                 <?= (int) ($n['no_me_gusta'] ?? 0) ?>
+              </span>
+            </td>
+            <td class="td-views">
+              <span class="metric-stat" title="Vistas únicas por día">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                <?= (int) ($n['vistas'] ?? 0) ?>
+              </span>
+            </td>
+            <td class="td-shares">
+              <span class="metric-stat" title="Veces que se pulsó compartir">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.59 13.51 6.83 3.98"></path><path d="m15.41 6.51-6.82 3.98"></path></svg>
+                <?= (int) ($n['compartidos'] ?? 0) ?>
               </span>
             </td>
             <td class="td-news-cover">
@@ -288,15 +247,48 @@ require __DIR__ . '/includes/header.php';
   (function () {
     const weightButton = document.getElementById('weightSortBtn');
     const dateButton = document.getElementById('dateSortBtn');
+    const votesButton = document.getElementById('votesSortBtn');
+    const viewsButton = document.getElementById('viewsSortBtn');
+    const sharesButton = document.getElementById('sharesSortBtn');
     const search = document.getElementById('noticiasSearch');
     const status = document.getElementById('noticiasSearchStatus');
     const empty = document.getElementById('noticiasFilterEmpty');
     const tbody = document.querySelector('.noticias-list tbody');
-    if (!weightButton || !dateButton || !search || !status || !empty || !tbody) return;
+    if (!weightButton || !dateButton || !votesButton || !viewsButton || !sharesButton || !search || !status || !empty || !tbody) return;
 
     const original = new Map(Array.from(tbody.rows).map((row, index) => [row, index]));
-    const weightHeader = weightButton.closest('th');
-    const dateHeader = dateButton.closest('th');
+    const controls = {
+      date: {
+        button: dateButton,
+        inactive: 'Ordenar por fecha, primero las noticias más recientes',
+        descending: 'Ordenado por fecha, de más reciente a más antigua. Cambiar a más antigua primero',
+        ascending: 'Ordenado por fecha, de más antigua a más reciente. Quitar ordenamiento',
+      },
+      weight: {
+        button: weightButton,
+        inactive: 'Ordenar por peso, primero las noticias más pesadas',
+        descending: 'Ordenado por peso de mayor a menor. Cambiar a menor a mayor',
+        ascending: 'Ordenado por peso de menor a mayor. Quitar ordenamiento',
+      },
+      votes: {
+        button: votesButton,
+        inactive: 'Ordenar por votos, primero las noticias más votadas',
+        descending: 'Ordenado por votos de mayor a menor. Cambiar a menor a mayor',
+        ascending: 'Ordenado por votos de menor a mayor. Quitar ordenamiento',
+      },
+      views: {
+        button: viewsButton,
+        inactive: 'Ordenar por vistas, primero las noticias más vistas',
+        descending: 'Ordenado por vistas de mayor a menor. Cambiar a menor a mayor',
+        ascending: 'Ordenado por vistas de menor a mayor. Quitar ordenamiento',
+      },
+      shares: {
+        button: sharesButton,
+        inactive: 'Ordenar por compartidos, primero las noticias más compartidas',
+        descending: 'Ordenado por compartidos de mayor a menor. Cambiar a menor a mayor',
+        ascending: 'Ordenado por compartidos de menor a mayor. Quitar ordenamiento',
+      },
+    };
     let sortKey = 'date';
     let direction = 'desc';
 
@@ -306,25 +298,15 @@ require __DIR__ . '/includes/header.php';
       .toLocaleLowerCase('es');
 
     function updateSortControls() {
-      weightHeader.setAttribute('aria-sort', sortKey === 'weight' ? (direction === 'desc' ? 'descending' : 'ascending') : 'none');
-      dateHeader.setAttribute('aria-sort', sortKey === 'date' ? (direction === 'desc' ? 'descending' : 'ascending') : 'none');
-
-      [weightButton, dateButton].forEach((button) => {
-        button.classList.remove('is-desc', 'is-asc');
+      Object.entries(controls).forEach(([key, control]) => {
+        const active = sortKey === key;
+        control.button.closest('th').setAttribute('aria-sort', active ? (direction === 'desc' ? 'descending' : 'ascending') : 'none');
+        control.button.classList.remove('is-desc', 'is-asc');
+        if (active) control.button.classList.add(direction === 'desc' ? 'is-desc' : 'is-asc');
+        control.button.setAttribute('aria-label', active
+          ? (direction === 'desc' ? control.descending : control.ascending)
+          : control.inactive);
       });
-      const activeButton = sortKey === 'weight' ? weightButton : dateButton;
-      activeButton.classList.add(direction === 'desc' ? 'is-desc' : 'is-asc');
-
-      weightButton.setAttribute('aria-label', sortKey === 'weight'
-        ? (direction === 'desc'
-          ? 'Ordenado por peso de mayor a menor. Cambiar a menor a mayor'
-          : 'Ordenado por peso de menor a mayor. Cambiar a mayor a menor')
-        : 'Ordenar por peso, primero las noticias más pesadas');
-      dateButton.setAttribute('aria-label', sortKey === 'date'
-        ? (direction === 'desc'
-          ? 'Ordenado por fecha, de más reciente a más antigua. Cambiar a más antigua primero'
-          : 'Ordenado por fecha, de más antigua a más reciente. Cambiar a más reciente primero')
-        : 'Ordenar por fecha, primero las noticias más recientes');
     }
 
     function sortRows(key, nextDirection) {
@@ -337,6 +319,15 @@ require __DIR__ . '/includes/header.php';
         return difference || original.get(a) - original.get(b);
       });
       rows.forEach((row) => tbody.appendChild(row));
+      updateSortControls();
+    }
+
+    function restoreOriginalOrder() {
+      sortKey = null;
+      direction = null;
+      Array.from(tbody.rows)
+        .sort((a, b) => original.get(a) - original.get(b))
+        .forEach((row) => tbody.appendChild(row));
       updateSortControls();
     }
 
@@ -353,11 +344,16 @@ require __DIR__ . '/includes/header.php';
       empty.hidden = visible !== 0;
     }
 
-    weightButton.addEventListener('click', () => {
-      sortRows('weight', sortKey === 'weight' && direction === 'desc' ? 'asc' : 'desc');
-    });
-    dateButton.addEventListener('click', () => {
-      sortRows('date', sortKey === 'date' && direction === 'desc' ? 'asc' : 'desc');
+    Object.entries(controls).forEach(([key, control]) => {
+      control.button.addEventListener('click', () => {
+        if (sortKey !== key) {
+          sortRows(key, 'desc');
+        } else if (direction === 'desc') {
+          sortRows(key, 'asc');
+        } else {
+          restoreOriginalOrder();
+        }
+      });
     });
     search.addEventListener('input', filterRows);
   })();

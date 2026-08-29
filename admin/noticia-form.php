@@ -37,6 +37,7 @@ $fotos = [];
 $audiosOriginales = [];
 $slugOriginal = '';
 $seoImagenOriginal = '';
+$categoriaIds = [];
 
 if ($editando) {
     $stmt = $pdo->prepare('SELECT * FROM noticias WHERE id = ?');
@@ -51,6 +52,10 @@ if ($editando) {
     $noticia = $existente;
     $slugOriginal = (string) ($existente['slug'] ?? '');
     $seoImagenOriginal = (string) ($existente['seo_imagen'] ?? '');
+    $categoriaIds = array_column(obtener_categorias_noticia($id), 'id');
+    if (!$categoriaIds && !empty($existente['categoria_id'])) {
+        $categoriaIds = [(int) $existente['categoria_id']];
+    }
     $fotos = obtener_fotos_noticia($id);
     $audiosOriginales = array_filter([
         (string) ($existente['audio_1'] ?? ''),
@@ -68,8 +73,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
     $editando = $id > 0;
 
-    $categoriaId = $_POST['categoria_id'] ?? '';
-    $categoriaId = $categoriaId !== '' ? (int) $categoriaId : null;
+    $categoriaIds = normalizar_ids_categorias($_POST['categoria_ids'] ?? []);
+    $categoriaId = $categoriaIds[0] ?? null;
 
     $usuarioId = $_POST['usuario_id'] ?? '';
     $usuarioId = $usuarioId !== '' ? (int) $usuarioId : null;
@@ -124,6 +129,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $noticia = [
         'id' => $id,
         'categoria_id' => $categoriaId ?: '',
+        'categoria_ids' => $categoriaIds,
         'usuario_id' => $usuarioId ?: '',
         'titulo' => $titulo,
         'slug' => $slug,
@@ -146,10 +152,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     if ($descripcion === '') {
         $errores[] = 'La descripción es obligatoria.';
     }
-    if ($categoriaId !== null) {
-        $stmt = $pdo->prepare('SELECT COUNT(*) FROM categorias WHERE id=?');
-        $stmt->execute([$categoriaId]);
-        if (!(int) $stmt->fetchColumn()) $errores[] = 'La categoría seleccionada no existe.';
+    if ($categoriaIds) {
+        $placeholdersCategorias = implode(',', array_fill(0, count($categoriaIds), '?'));
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM categorias WHERE id IN ($placeholdersCategorias)");
+        $stmt->execute($categoriaIds);
+        if ((int) $stmt->fetchColumn() !== count($categoriaIds)) {
+            $errores[] = 'Una o más categorías seleccionadas no existen.';
+        }
     }
     if ($usuarioId !== null) {
         $stmt = $pdo->prepare('SELECT COUNT(*) FROM usuarios WHERE id=?');
@@ -209,6 +218,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             ]);
             $id = (int) $pdo->lastInsertId();
         }
+
+        guardar_categorias_noticia($pdo, $id, $categoriaIds);
 
         // ===== Gestión de la galería =====
 
@@ -336,16 +347,24 @@ require __DIR__ . '/includes/header.php';
     </div>
 
     <div class="noticia-form-grid">
-      <div class="form-group">
-        <label for="categoria_id">Categoría</label>
-        <select class="form-control" id="categoria_id" name="categoria_id">
-          <option value="">— Sin categoría —</option>
-          <?php foreach ($categorias as $c): ?>
-            <option value="<?= (int) $c['id'] ?>" <?= $noticia['categoria_id'] == $c['id'] ? 'selected' : '' ?>>
-              <?= e($c['nombre']) ?>
-            </option>
-          <?php endforeach; ?>
-        </select>
+      <div class="form-group category-multiselect" data-category-multiselect>
+        <label id="categoriasLabel">Categorías</label>
+        <details>
+          <summary class="form-control" aria-labelledby="categoriasLabel">
+            <span data-category-summary><?= $categoriaIds ? e(count($categoriaIds) === 1 ? '1 categoría seleccionada' : count($categoriaIds) . ' categorías seleccionadas') : '— Sin categoría —' ?></span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+          </summary>
+          <div class="category-multiselect-options">
+            <?php foreach ($categorias as $c): ?>
+              <label>
+                <input type="checkbox" name="categoria_ids[]" value="<?= (int) $c['id'] ?>" <?= in_array((int) $c['id'], array_map('intval', $categoriaIds), true) ? 'checked' : '' ?>>
+                <span><?= e($c['nombre']) ?></span>
+              </label>
+            <?php endforeach; ?>
+            <?php if (!$categorias): ?><span class="category-multiselect-empty">No hay categorías creadas.</span><?php endif; ?>
+          </div>
+        </details>
+        <div class="form-hint">Podés marcar varias. La primera seleccionada se conserva como categoría principal para compatibilidad.</div>
       </div>
 
       <div class="form-group">
@@ -672,6 +691,38 @@ require __DIR__ . '/includes/header.php';
   </section>
 </div>
 
+<script>
+(() => {
+  const root = document.querySelector('[data-category-multiselect]');
+  if (!root) return;
+  const details = root.querySelector('details');
+  const summary = root.querySelector('[data-category-summary]');
+  const checks = Array.from(root.querySelectorAll('input[type="checkbox"]'));
+
+  const actualizarResumen = () => {
+    const activas = checks.filter((checkbox) => checkbox.checked);
+    if (activas.length === 0) {
+      summary.textContent = '— Sin categoría —';
+    } else if (activas.length <= 2) {
+      summary.textContent = activas.map((checkbox) => checkbox.nextElementSibling.textContent.trim()).join(' · ');
+    } else {
+      summary.textContent = `${activas.length} categorías seleccionadas`;
+    }
+  };
+
+  checks.forEach((checkbox) => checkbox.addEventListener('change', actualizarResumen));
+  document.addEventListener('click', (event) => {
+    if (details.open && !root.contains(event.target)) details.open = false;
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && details.open) {
+      details.open = false;
+      details.querySelector('summary').focus();
+    }
+  });
+  actualizarResumen();
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
   (function () {

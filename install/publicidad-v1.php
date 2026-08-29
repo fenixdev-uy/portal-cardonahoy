@@ -23,12 +23,16 @@ try {
       sitio_web_url VARCHAR(500) NULL,
       fecha_vencimiento DATE NULL,
       activo TINYINT(1) NOT NULL DEFAULT 1,
+      en_encabezado TINYINT(1) NOT NULL DEFAULT 0,
+      en_pie TINYINT(1) NOT NULL DEFAULT 0,
       clics INT UNSIGNED NOT NULL DEFAULT 0,
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       PRIMARY KEY (id),
       KEY idx_anuncios_vencimiento (fecha_vencimiento),
-      KEY idx_anuncios_publicacion (activo, fecha_vencimiento)
+      KEY idx_anuncios_publicacion (activo, fecha_vencimiento),
+      KEY idx_anuncios_encabezado (en_encabezado),
+      KEY idx_anuncios_pie (en_pie)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
     $pdo->beginTransaction();

@@ -16,3 +16,5 @@
 !/uploads/configuracion/.htaccess
 /uploads/publicidad/*
 !/uploads/publicidad/.htaccess
+/uploads/usuarios/*
+!/uploads/usuarios/.htaccess

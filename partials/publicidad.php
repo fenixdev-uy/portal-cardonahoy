@@ -55,13 +55,15 @@ $redesPublicidadPortal = [
 ];
 
 $anunciosPublicidadActivos = [];
+$anuncioPublicidadEncabezado = null;
+$anuncioPublicidadPie = null;
 
 // Los anuncios administrados reemplazan el banco PC y alimentan el feed móvil
 // solamente cuando están activos, vigentes y la migración de clics está lista.
 if (isset($pdo) && $pdo instanceof PDO) {
     try {
         $stmtPublicidadPortal = $pdo->prepare(
-            'SELECT id, nombre, imagen, facebook_url, instagram_url, whatsapp_url, sitio_web_url, clics
+            'SELECT *
                FROM anuncios
               WHERE activo = 1
                 AND (fecha_vencimiento IS NULL OR fecha_vencimiento > ?)
@@ -75,6 +77,14 @@ if (isset($pdo) && $pdo instanceof PDO) {
                 return $anuncio;
             }, $anunciosPublicables);
             $filaPublicidadPc = $anunciosPublicidadActivos;
+            foreach ($anunciosPublicidadActivos as $anuncioPublicable) {
+                if ($anuncioPublicidadEncabezado === null && (int) ($anuncioPublicable['en_encabezado'] ?? 0) === 1) {
+                    $anuncioPublicidadEncabezado = $anuncioPublicable;
+                }
+                if ($anuncioPublicidadPie === null && (int) ($anuncioPublicable['en_pie'] ?? 0) === 1) {
+                    $anuncioPublicidadPie = $anuncioPublicable;
+                }
+            }
         }
     } catch (PDOException $e) {
         // Permite desplegar código y migración de forma incremental.

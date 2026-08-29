@@ -7,24 +7,30 @@
 
 require_once __DIR__ . '/admin/includes/funciones.php';
 require_once __DIR__ . '/admin/includes/votos.php';
+require_once __DIR__ . '/partials/portada-paginacion.php';
 
 $pdo = db();
-
-// Última noticia creada = primera en verse (más reciente primero).
-// Los contadores de votos viajan en la misma consulta: son columnas de
-// noticias, así que mostrarlos no cuesta ninguna consulta extra.
-$noticias = $pdo->query(
-    'SELECT n.id, n.categoria_id, n.titulo, n.slug, n.descripcion,
-            n.youtube, n.youtube_2, n.youtube_3,
-            n.audio_1, n.audio_2, n.audio_3, n.created_at,
-            n.me_gusta, n.no_me_gusta, n.portada,
-            c.nombre AS categoria_nombre,
-            u.nombre AS autor_nombre
-       FROM noticias n
-       LEFT JOIN categorias c ON c.id = n.categoria_id
-       LEFT JOIN usuarios u ON u.id = n.usuario_id
-      ORDER BY n.created_at DESC, n.id DESC'
-)->fetchAll();
+$usuarioPublico = usuario_actual_publico();
+$logoPortalRuta = configuracion_logo_portal();
+$logoPortalArchivo = __DIR__ . '/' . $logoPortalRuta;
+$logoPortalVersion = is_file($logoPortalArchivo) ? (string) filemtime($logoPortalArchivo) : '1';
+$logoPortalUrl = url_portal($logoPortalRuta) . '?v=' . rawurlencode($logoPortalVersion);
+$identidadAdmin = configuracion_logo_admin();
+$faviconPortalArchivo = $identidadAdmin['favicon_ruta'] !== null ? __DIR__ . '/' . $identidadAdmin['favicon_ruta'] : __DIR__ . '/imagenes/Logo2027v2.png';
+$faviconPortalVersion = is_file($faviconPortalArchivo) ? (string) filemtime($faviconPortalArchivo) : '1';
+$seoPortada = configuracion_seo_portada();
+$jsonLdPortada = [
+    '@context' => 'https://schema.org',
+    '@type' => 'WebSite',
+    'name' => 'Radio Sur',
+    'url' => $seoPortada['url'],
+    'description' => $seoPortada['descripcion'],
+    'publisher' => [
+        '@type' => 'Organization',
+        'name' => 'Radio Sur',
+        'logo' => ['@type' => 'ImageObject', 'url' => url_portal($logoPortalRuta)],
+    ],
+];
 
 // La barra de filtros pertenece únicamente a la portada PC. El feed móvil y
 // los templates de nota completa siguen recibiendo el conjunto entero.
@@ -38,10 +44,9 @@ if (mb_strlen($buscarPc, 'UTF-8') > 150) {
     $buscarPc = mb_substr($buscarPc, 0, 150, 'UTF-8');
 }
 
-$categoriaPc = filter_input(INPUT_GET, 'categoria', FILTER_VALIDATE_INT, [
-    'options' => ['min_range' => 1],
-]);
-$categoriaPc = $categoriaPc !== false && $categoriaPc !== null ? (int) $categoriaPc : null;
+$categoriaIdsPc = normalizar_ids_categorias($_GET['categoria'] ?? []);
+$categoriaIdsValidasPc = array_map('intval', array_column($categoriasFiltroPc, 'id'));
+$categoriaIdsPc = array_values(array_intersect($categoriaIdsPc, $categoriaIdsValidasPc));
 
 $validarFechaPc = static function (mixed $valor): string {
     if (!is_string($valor)) {
@@ -60,59 +65,47 @@ $validarFechaPc = static function (mixed $valor): string {
 $desdePc = $validarFechaPc($_GET['desde'] ?? '');
 $hastaPc = $validarFechaPc($_GET['hasta'] ?? '');
 
-$normalizarBusquedaPc = static function (string $valor): string {
-    $texto = html_entity_decode(strip_tags($valor), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-    $texto = function_exists('mb_strtolower') ? mb_strtolower($texto, 'UTF-8') : strtolower($texto);
-    $ascii = function_exists('iconv') ? iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $texto) : false;
-    $texto = $ascii !== false ? $ascii : $texto;
-    return trim((string) preg_replace('/\s+/', ' ', $texto));
-};
+$filtrosPc = [
+    'buscar' => $buscarPc,
+    'categorias' => $categoriaIdsPc,
+    'desde' => $desdePc,
+    'hasta' => $hastaPc,
+];
+$paginaMovil = consultar_bloque_portada($pdo, ['limite' => PORTAL_NOTICIAS_POR_BLOQUE]);
+$paginaPc = consultar_bloque_portada($pdo, $filtrosPc + ['limite' => PORTAL_NOTICIAS_POR_BLOQUE]);
+$paginaRecientes = consultar_bloque_portada($pdo, ['limite' => 11]);
+$noticias = $paginaMovil['noticias'];
+$noticiasPc = $paginaPc['noticias'];
+$noticiasRecientes = $paginaRecientes['noticias'];
+$hayMasNoticiasMovil = $paginaMovil['hay_mas'];
+$cursorNoticiasMovil = $paginaMovil['cursor'];
+$hayMasNoticiasPc = $paginaPc['hay_mas'];
+$cursorNoticiasPc = $paginaPc['cursor'];
+$semillaPortadaPc = (int) sprintf('%u', crc32(json_encode($filtrosPc, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)));
 
-$terminosBusquedaPc = preg_split('/\s+/', $normalizarBusquedaPc($buscarPc), -1, PREG_SPLIT_NO_EMPTY) ?: [];
-$noticiasPc = array_values(array_filter($noticias, static function (array $noticia) use (
-    $categoriaPc,
-    $desdePc,
-    $hastaPc,
-    $terminosBusquedaPc,
-    $normalizarBusquedaPc
-): bool {
-    if ($categoriaPc !== null && (int) ($noticia['categoria_id'] ?? 0) !== $categoriaPc) {
-        return false;
-    }
-
-    $fechaNoticia = substr((string) ($noticia['created_at'] ?? ''), 0, 10);
-    if ($desdePc !== '' && $fechaNoticia < $desdePc) {
-        return false;
-    }
-    if ($hastaPc !== '' && $fechaNoticia > $hastaPc) {
-        return false;
-    }
-
-    if ($terminosBusquedaPc) {
-        $contenido = $normalizarBusquedaPc(
-            (string) ($noticia['titulo'] ?? '') . ' ' . (string) ($noticia['descripcion'] ?? '')
-        );
-        foreach ($terminosBusquedaPc as $termino) {
-            if (!str_contains($contenido, $termino)) {
-                return false;
-            }
-        }
-    }
-
-    return true;
-}));
-
-// Todas las galerias se cargan en una sola consulta para evitar una consulta
-// adicional por cada noticia.
-$fotosPorNoticia = [];
-foreach ($pdo->query('SELECT id, noticia_id, ruta, posicion FROM noticias_fotos ORDER BY noticia_id, posicion, id') as $foto) {
-    $fotosPorNoticia[(int) $foto['noticia_id']][] = $foto;
+$noticiasTemplatesPorId = [];
+foreach (array_merge($noticias, $noticiasPc, $noticiasRecientes) as $noticiaTemplate) {
+    $noticiasTemplatesPorId[(int) $noticiaTemplate['id']] = $noticiaTemplate;
 }
+$noticiasTemplates = array_values($noticiasTemplatesPorId);
+$fotosPorNoticia = $paginaRecientes['fotos'] + $paginaPc['fotos'] + $paginaMovil['fotos'];
 
-$noticiasPortada = array_values(array_filter($noticias, static function (array $noticia) use ($fotosPorNoticia): bool {
-    return (int) ($noticia['portada'] ?? 0) === 1
-        && !empty($fotosPorNoticia[(int) $noticia['id']][0]['ruta']);
-}));
+$noticiasPortada = $pdo->query(
+    'SELECT n.id, n.categoria_id, n.titulo, n.slug, n.descripcion,
+            n.youtube, n.youtube_2, n.youtube_3,
+            n.audio_1, n.audio_2, n.audio_3, n.created_at,
+            n.me_gusta, n.no_me_gusta, n.portada,
+            c.nombre AS categoria_nombre,
+            u.nombre AS autor_nombre
+       FROM noticias n
+       LEFT JOIN categorias c ON c.id = n.categoria_id
+       LEFT JOIN usuarios u ON u.id = n.usuario_id
+      WHERE n.portada = 1
+        AND EXISTS (SELECT 1 FROM noticias_fotos nf WHERE nf.noticia_id = n.id)
+      ORDER BY n.created_at DESC, n.id DESC'
+)->fetchAll();
+cargar_categorias_noticias($noticiasPortada);
+$fotosPorNoticia = fotos_noticias_portada($pdo, array_column($noticiasPortada, 'id')) + $fotosPorNoticia;
 
 // Votos ya emitidos por este visitante, en una sola consulta, para marcar los
 // botones. No se crea la cookie al mirar: se emite recién al votar.
@@ -123,11 +116,28 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Landing - Slider</title>
+  <title><?= e($seoPortada['titulo']) ?></title>
+  <meta name="description" content="<?= e($seoPortada['descripcion']) ?>" />
+  <link rel="canonical" href="<?= e($seoPortada['url']) ?>" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="<?= e($seoPortada['titulo']) ?>" />
+  <meta property="og:description" content="<?= e($seoPortada['descripcion']) ?>" />
+  <meta property="og:image" content="<?= e($seoPortada['imagen_url']) ?>" />
+  <meta property="og:image:alt" content="<?= e($seoPortada['titulo']) ?>" />
+  <meta property="og:url" content="<?= e($seoPortada['url']) ?>" />
+  <meta property="og:site_name" content="Radio Sur" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="<?= e($seoPortada['titulo']) ?>" />
+  <meta name="twitter:description" content="<?= e($seoPortada['descripcion']) ?>" />
+  <meta name="twitter:image" content="<?= e($seoPortada['imagen_url']) ?>" />
+  <script type="application/ld+json"><?= json_encode($jsonLdPortada, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
+  <link rel="icon" href="<?= e(url_portal('favicon.php')) ?>?v=<?= e(rawurlencode($faviconPortalVersion)) ?>" type="image/x-icon" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,400;1,700&amp;display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/portal.css?v=<?= (int) @filemtime(__DIR__ . '/assets/css/portal.css') ?>">
+  <link rel="stylesheet" href="assets/css/popup.css?v=<?= (int) @filemtime(__DIR__ . '/assets/css/popup.css') ?>">
+<?php imprimir_codigo_header_publico(); ?>
 </head>
 <body>
   <header class="hero" aria-label="Banner principal">
@@ -139,12 +149,10 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
       </button>
 
       <a href="#" class="logo" aria-label="Logo - Inicio">
-        <img src="imagenes/Logo2027v2.png" alt="Logo 2027" />
+        <img src="<?= e($logoPortalUrl) ?>" alt="Logo del portal" />
       </a>
 
-      <a href="#" class="logo-right" aria-label="Radio Sur">
-        <img src="imagenes/Logo2027-radiosur.png" alt="Radio Sur" />
-      </a>
+      <?php require __DIR__ . '/partials/acceso-admin.php'; ?>
     </nav>
 
     <div class="slider" id="slider">
@@ -198,20 +206,25 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
     </button>
 
     <a href="#" class="menu-logo" aria-label="Logo - Inicio">
-      <img src="imagenes/Logo2027v2.png" alt="Logo 2027" />
+      <img src="<?= e($logoPortalUrl) ?>" alt="Logo del portal" />
     </a>
 
-    <a href="#" class="menu-radio" aria-label="Escuchar Radio Sur">
-      <img src="imagenes/Logo2027-radiosur.png" alt="Escuchar Radio Sur" />
-    </a>
+    <div class="menu-news-search" role="search" data-menu-news-search data-search-url="<?= e(url_portal('buscar-noticias.php')) ?>">
+      <label class="menu-news-search-field" for="menuNewsSearchInput">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle>
+          <path d="m20 20-4-4"></path>
+        </svg>
+        <input type="search" id="menuNewsSearchInput" placeholder="Buscar noticias..." maxlength="100" autocomplete="off" spellcheck="false" aria-controls="menuNewsSearchResults" aria-expanded="false" />
+      </label>
+      <div class="menu-news-search-results" id="menuNewsSearchResults" aria-live="polite" hidden></div>
+    </div>
 
-    <nav class="menu-nav" aria-label="Menú de navegación">
-      <a href="#" class="menu-link">Noticias</a>
-      <a href="#" class="menu-link">Videos</a>
-      <a href="#" class="menu-link">Contactos</a>
-    </nav>
   </div>
 
-  <script src="assets/js/portal.js?v=<?= (int) @filemtime(__DIR__ . '/assets/js/portal.js') ?>" data-vote-url="<?= e(url_portal('votar.php')) ?>"></script>
+<?php require __DIR__ . '/partials/popup-publico.php'; ?>
+
+  <script src="assets/js/portal.js?v=<?= (int) @filemtime(__DIR__ . '/assets/js/portal.js') ?>" data-vote-url="<?= e(url_portal('votar.php')) ?>" data-view-url="<?= e(url_portal('noticia-vista.php')) ?>" data-share-url="<?= e(url_portal('noticia-compartir.php')) ?>" data-ad-placements-url="<?= e(url_portal('publicidad-ubicaciones.php')) ?>"></script>
+  <script src="assets/js/popup.js?v=<?= (int) @filemtime(__DIR__ . '/assets/js/popup.js') ?>" data-popup-endpoint="<?= e(url_portal('popup-publico.php')) ?>"></script>
 </body>
 </html>
