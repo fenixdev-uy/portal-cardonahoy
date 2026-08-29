@@ -12,7 +12,6 @@
 
 require_once __DIR__ . '/../config.php';
 
-const VOTOS_COOKIE = 'portal_visitante';
 const VOTOS_COOKIE_DIAS = 365;
 const VOTOS_LIMITE_POR_VENTANA = 60;
 const VOTOS_VENTANA_SEGUNDOS = 3600;
@@ -50,7 +49,8 @@ function visitante_id(bool $crear = false): string
         return $cache;
     }
 
-    $actual = (string) ($_COOKIE[VOTOS_COOKIE] ?? '');
+    $cookieNombre = portal_cookie_name('visitante');
+    $actual = (string) ($_COOKIE[$cookieNombre] ?? '');
     $valido = (bool) preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', $actual);
 
     if ($valido) {
@@ -63,14 +63,14 @@ function visitante_id(bool $crear = false): string
 
     $nuevo = votos_uuid();
     // httponly: el identificador no necesita leerse desde JavaScript.
-    setcookie(VOTOS_COOKIE, $nuevo, [
+    setcookie($cookieNombre, $nuevo, [
         'expires' => time() + VOTOS_COOKIE_DIAS * 86400,
-        'path' => '/',
+        'path' => portal_cookie_path(),
         'secure' => votos_conexion_segura(),
         'httponly' => true,
         'samesite' => 'Lax',
     ]);
-    $_COOKIE[VOTOS_COOKIE] = $nuevo;
+    $_COOKIE[$cookieNombre] = $nuevo;
 
     return $cache = $nuevo;
 }

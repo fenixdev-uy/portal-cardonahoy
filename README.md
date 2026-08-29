@@ -98,6 +98,7 @@ landing/
     ├── login.php / logout.php  ← autenticación del panel
     ├── cambiar-password.php    ← cambio obligatorio de clave temporal
     ├── config.php              ← cargador de configuración privada
+    ├── config.instance.php     ← identidad pública única de la instalación
     ├── config.local.php        ← conexión PDO y credenciales, ignorado
     ├── index.php               ← listado de noticias + drawer de vista previa
     ├── noticia-form.php        ← crear/editar noticia (editor TipTap + galería)
@@ -260,7 +261,7 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 - **Análisis**:
   - **Votaciones** (`votaciones.php`) reúne el ranking y sus métricas dentro de este grupo, identificado con iconos de gráfica y aprobación.
 - **Seguridad**:
-  - Login, sesiones seguras con vencimiento, control de intentos y respuestas genéricas. En móvil, imagen, identidad, campos, botón y aviso de seguridad se adaptan a `100svh` para quedar visibles en una sola pantalla sin scroll, incluso en `320×568`.
+  - Login, sesiones seguras con vencimiento, control de intentos y respuestas genéricas. `config.instance.php` asigna una identidad única y versionada que, junto con el alcance limitado a la ruta de la aplicación, aísla las cookies administrativas y públicas de otros portales instalados en el mismo dominio. En móvil, imagen, identidad, campos, botón y aviso de seguridad se adaptan a `100svh` para quedar visibles en una sola pantalla sin scroll, incluso en `320×568`.
   - Autorización por rol y permiso en páginas y endpoints.
   - Tokens CSRF en todas las operaciones que modifican datos.
   - Instaladores, logs, configuración local y listados de directorio bloqueados por Apache.
@@ -333,7 +334,7 @@ El esquema completo y los datos de ejemplo están en `install/schema.sql`. La mi
 - [x] Botones de "me gusta / no me gusta" funcionales en los dos feeds, con el contador al lado de cada opción.
 - [x] Un voto por visitante y por noticia, **definitivo**: no se deshace ni se cambia. Los contadores solo suman y nunca pueden ser negativos.
 - [x] Contadores `me_gusta` y `no_me_gusta` en `noticias` como caché de lectura; la verdad vive en `noticias_votos`.
-- [x] Visitante identificado por cookie `portal_visitante` (UUID v4, `httpOnly`, `SameSite=Lax`, un año). Se emite al votar, no al mirar.
+- [x] Visitante identificado por una cookie propia de la instalación (`portal_visitante_<instancia>`, UUID v4, `httpOnly`, `SameSite=Lax`, un año). Se emite al votar, no al mirar.
 - [x] Endpoint `votar.php` en la raíz, sin login, idempotente, con límite de 60 votos por hora y por IP.
 - [x] Contadores visibles en el listado del panel y en el JSON del detalle.
 - [x] Bloque de voto y compartir unificado en `partials/acciones-noticia.php`; antes estaba duplicado en los dos feeds.
@@ -436,7 +437,7 @@ En el cloud cPanel/WHM actual todas las cuentas usan el servicio FTPS global med
 ### Votos del feed
 - Regla de negocio: **un voto por visitante y por noticia, definitivo.** No se deshace ni se cambia, y por eso los contadores solo se incrementan. `INT UNSIGNED` es seguro porque nunca se resta.
 - La verdad vive en `noticias_votos`, cuya clave primaria `(noticia_id, visitante)` es la que impide el segundo voto. `noticias.me_gusta` y `noticias.no_me_gusta` son un caché para que el feed no agrupe en cada carga; viajan en la consulta que ya existía, sin costo extra.
-- El visitante es una cookie `portal_visitante` con UUID v4, `httpOnly`, `SameSite=Lax`, `Secure` bajo HTTPS, un año. Se descartó identificar por IP porque los celulares salen por NAT del operador.
+- El visitante usa una cookie aislada por instalación (`portal_visitante_<instancia>`) con UUID v4, `httpOnly`, `SameSite=Lax`, `Secure` bajo HTTPS y un año de vigencia. Se descartó identificar por IP porque los celulares salen por NAT del operador.
 - `index.php` lee los votos del visitante en una sola consulta (`votos_del_visitante()`) para marcar los botones. Pasa de 2 a 3 consultas por carga.
 - `votar.php` es POST, público y **idempotente**: si ya se votó, devuelve el estado actual con `nuevo: false` sin tocar nada. Corre en transacción con `SELECT ... FOR UPDATE` y preserva `updated_at` para que votar no figure como edición.
 - El techo real de abuso es `votos_limite`: 60 votos por hora por hash de IP. La cookie no protege contra peticiones directas.

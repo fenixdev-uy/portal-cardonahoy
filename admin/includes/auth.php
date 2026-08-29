@@ -18,10 +18,10 @@ function iniciar_sesion_segura(): void
 
     $segura = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
         || strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
-    session_name('portal_noticias_admin');
+    session_name(portal_cookie_name('noticias_admin'));
     session_set_cookie_params([
         'lifetime' => 0,
-        'path' => '/',
+        'path' => portal_cookie_path(),
         'domain' => '',
         'secure' => $segura,
         'httponly' => true,
@@ -79,7 +79,7 @@ function usuario_actual(): ?array
 function usuario_actual_publico(): ?array
 {
     if (session_status() !== PHP_SESSION_ACTIVE
-        && empty($_COOKIE['portal_noticias_admin'])) {
+        && empty($_COOKIE[portal_cookie_name('noticias_admin')])) {
         return null;
     }
     return usuario_actual();

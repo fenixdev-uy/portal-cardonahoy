@@ -2,6 +2,13 @@
 
 > **Identidad de este checkout — 29 de agosto de 2026:** esta copia es `portal-cardonahoy`, ubicada en `/home/fenixdev/public_html/proyectos.fenixdev.uno/09portal-noticias/portal-cardonahoy`. Nació del commit aprobado `5ec3e42` y todavía no tiene remoto Git ni destino PROD. Las referencias operativas a RS Medios que siguen debajo documentan el origen funcional y no autorizan usar sus destinos o credenciales en esta copia.
 
+## Aislamiento de sesiones por instalación — 29 de agosto de 2026
+
+- La identidad pública versionada vive en `admin/config.instance.php` y para este checkout es `cardonahoy`.
+- La cookie del panel es `portal_noticias_admin_cardonahoy` y limita su ruta al portal; ya no comparte sesión ni cierre de sesión con los otros portales del dominio.
+- La cookie anónima de votos y popups es `portal_visitante_cardonahoy`, evitando cruces de visitantes entre instalaciones.
+- La validación HTTPS real respondió `200` y emitió la nueva cookie con `Secure`, `HttpOnly`, `SameSite=Lax` y la ruta exclusiva de este checkout.
+
 ## Alta DEV autónoma — 29 de agosto de 2026
 
 - `admin/config.local.php` existe con modo `600`, está ignorado por Git y el acceso HTTP devuelve `403`.
