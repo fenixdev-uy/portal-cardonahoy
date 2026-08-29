@@ -6,9 +6,8 @@ Este archivo es la **única agenda aplicable a `portal-cardonahoy`**. La aplicac
 
 ## Prioridad activa
 
-1. Crear un repositorio GitHub privado exclusivo y configurar `origin` sin reutilizar credenciales de RS Medios.
-2. Crear `servicios.local.json` privado para Cardona Hoy, conservando DEV y dejando PROD pendiente hasta contar con su destino real.
-3. Configurar identidad, logos, SEO, administradores y contenido propios del cliente.
+1. Crear `servicios.local.json` privado para Cardona Hoy, conservando DEV y dejando PROD pendiente hasta contar con su destino real.
+2. Configurar identidad, logos, SEO, administradores y contenido propios del cliente.
 
 ## Pendientes posteriores
 

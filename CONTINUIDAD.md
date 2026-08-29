@@ -11,7 +11,9 @@
 - La verificación posterior coincide exactamente con el origen: 18 tablas, 111 filas, esquema `1e0d06672259177ab3ac594a10fbde30648a528fab207d501a3fac135c3372ac` y datos `56fa78cf24882ab3baa2b183b74e530d64d21f4e27f209e5d1e2589e9a2d8819`.
 - Los 29 archivos persistentes de `uploads/` suman 16.520.582 bytes y tienen huella conjunta `0b5a910f5a64ac8f2388df824904ad172808372ef24fb057adba97cea5985360`, idéntica a RS Medios.
 - Portada y login respondieron HTTP `200`. Esta comprobación no reemplaza la validación visual autenticada en navegador.
-- No se creó GitHub, `servicios.local.json` ni configuración o despliegue PROD.
+- GitHub privado: `git@github.com:fenixdev-uy/portal-cardonahoy.git`. `main` sigue `origin/main` y el primer push incluyó las etiquetas `cardonahoy-initial-2026-08-29` y `cardonahoy-dev-clone-2026-08-29`.
+- La Deploy Key ED25519 es exclusiva de este repositorio, tiene escritura habilitada y huella `SHA256:qirI8yvr0xwmEzitzDObDPeTCa/qxA2GxEL5ZMdsBqg`; la clave privada permanece fuera de `public_html` con modo `600`.
+- No se creó `servicios.local.json` ni configuración o despliegue PROD.
 
 Fecha del punto de continuidad: **28 de agosto de 2026**.
 
