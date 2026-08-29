@@ -1,6 +1,17 @@
 # Continuidad — Portal de Noticias
 
-> **Identidad de este checkout — 29 de agosto de 2026:** esta copia es `portal-cardonahoy`, ubicada en `/home/fenixdev/public_html/proyectos.fenixdev.uno/09portal-noticias/portal-cardonahoy`. Nació del commit aprobado `5ec3e42`, no tiene remoto Git, configuración privada, base de datos, uploads reales ni estado de despliegue. Las referencias operativas a RS Medios que siguen debajo documentan el origen funcional y no autorizan usar sus destinos o credenciales en esta copia.
+> **Identidad de este checkout — 29 de agosto de 2026:** esta copia es `portal-cardonahoy`, ubicada en `/home/fenixdev/public_html/proyectos.fenixdev.uno/09portal-noticias/portal-cardonahoy`. Nació del commit aprobado `5ec3e42` y todavía no tiene remoto Git ni destino PROD. Las referencias operativas a RS Medios que siguen debajo documentan el origen funcional y no autorizan usar sus destinos o credenciales en esta copia.
+
+## Alta DEV autónoma — 29 de agosto de 2026
+
+- `admin/config.local.php` existe con modo `600`, está ignorado por Git y el acceso HTTP devuelve `403`.
+- La conexión DEV tiene huella `93774fb37b9`, distinta de RS Medios y Portal Base, sobre el servidor verificado `a45af3c91c16`.
+- Antes de importar se confirmó que el destino tenía cero tablas y cero filas. Su respaldo privado previo está en `.deploy/respaldos-db/2026-08-29-clone/cardonahoy-dev-before-clone.sql`: 1.069 bytes, SHA-256 `f0903d651035419b47cfde5afd53d6911fb01f362cd6d1aacf22dc74061567bf`.
+- Se importó el mismo respaldo DEV de RS Medios de 38.588 bytes y SHA-256 `309f28e75ab29f3a63fa098ae53ba936f0bce2625e1fb3e2c7fd923b98d6a627`.
+- La verificación posterior coincide exactamente con el origen: 18 tablas, 111 filas, esquema `1e0d06672259177ab3ac594a10fbde30648a528fab207d501a3fac135c3372ac` y datos `56fa78cf24882ab3baa2b183b74e530d64d21f4e27f209e5d1e2589e9a2d8819`.
+- Los 29 archivos persistentes de `uploads/` suman 16.520.582 bytes y tienen huella conjunta `0b5a910f5a64ac8f2388df824904ad172808372ef24fb057adba97cea5985360`, idéntica a RS Medios.
+- Portada y login respondieron HTTP `200`. Esta comprobación no reemplaza la validación visual autenticada en navegador.
+- No se creó GitHub, `servicios.local.json` ni configuración o despliegue PROD.
 
 Fecha del punto de continuidad: **28 de agosto de 2026**.
 
