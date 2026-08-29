@@ -1,5 +1,7 @@
 # Continuidad — Portal de Noticias
 
+> **Identidad de este checkout — 29 de agosto de 2026:** esta copia es `portal-cardonahoy`, ubicada en `/home/fenixdev/public_html/proyectos.fenixdev.uno/09portal-noticias/portal-cardonahoy`. Nació del commit aprobado `5ec3e42`, no tiene remoto Git, configuración privada, base de datos, uploads reales ni estado de despliegue. Las referencias operativas a RS Medios que siguen debajo documentan el origen funcional y no autorizan usar sus destinos o credenciales en esta copia.
+
 Fecha del punto de continuidad: **28 de agosto de 2026**.
 
 ## Carpeta oficial
