@@ -1105,6 +1105,52 @@
       opacity: 0.6;
     }
 
+    .news-copy-link-tool {
+      display: flex;
+      margin-top: 12px;
+    }
+
+    .news-copy-link-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0;
+      color: #475569;
+      border: 0;
+      background: none;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 700;
+      line-height: 1.25;
+      cursor: pointer;
+      transition: color 0.2s ease, opacity 0.2s ease;
+    }
+
+    .news-copy-link-button svg {
+      width: 17px;
+      height: 17px;
+      flex: 0 0 17px;
+    }
+
+    .news-copy-link-button:hover,
+    .news-copy-link-button:focus-visible {
+      color: #0f766e;
+    }
+
+    .news-copy-link-button:focus-visible {
+      outline: 2px solid currentColor;
+      outline-offset: 4px;
+    }
+
+    .news-copy-link-button.is-copied {
+      color: #0f766e;
+    }
+
+    .news-copy-link-button:disabled {
+      opacity: 0.58;
+      cursor: progress;
+    }
+
     /* ===== Vista inferior de nota completa (solo móvil) ===== */
     .story-sheet-trigger {
       display: inline-flex;

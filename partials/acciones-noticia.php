@@ -14,6 +14,8 @@ $miVoto = (int) ($misVotos[$noticiaId] ?? 0);
 $conteos = [1 => (int) ($n['me_gusta'] ?? 0), -1 => (int) ($n['no_me_gusta'] ?? 0)];
 $mostrarCompartir = $mostrarCompartir ?? true;
 $urlCompartir = isset($n['slug']) && trim((string) $n['slug']) !== '' ? url_noticia((string) $n['slug']) : url_base_portal();
+$usuarioAcciones = is_array($usuarioPublico ?? null) ? $usuarioPublico : usuario_actual_publico();
+$puedeCopiarLinkNoticia = $usuarioAcciones !== null && tiene_permiso('noticias.editar');
 
 $opciones = [
     1 => [
@@ -57,3 +59,11 @@ $opciones = [
           </div>
 <?php endif; ?>
         </div>
+<?php if ($puedeCopiarLinkNoticia): ?>
+        <div class="news-copy-link-tool">
+          <button class="news-copy-link-button" type="button" data-copy-news-url="<?= e($urlCompartir) ?>">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+            <span data-copy-news-label aria-live="polite">Copiar link de noticia</span>
+          </button>
+        </div>
+<?php endif; ?>

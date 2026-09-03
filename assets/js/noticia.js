@@ -29,6 +29,43 @@
         keepalive: true,
       }).catch((error) => console.error(error));
     }, { capture: true });
+    async function copyNewsUrl(url) {
+      if (navigator.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(url);
+        return;
+      }
+      const helper = document.createElement('textarea');
+      helper.value = url;
+      helper.setAttribute('readonly', '');
+      helper.style.position = 'fixed';
+      helper.style.opacity = '0';
+      document.body.appendChild(helper);
+      helper.select();
+      const copied = document.execCommand('copy');
+      helper.remove();
+      if (!copied) throw new Error('El navegador no permitió copiar el enlace.');
+    }
+    document.addEventListener('click', async (event) => {
+      const button = event.target.closest('[data-copy-news-url]');
+      if (!button || button.disabled) return;
+      const label = button.querySelector('[data-copy-news-label]');
+      const originalLabel = label?.textContent || 'Copiar link de noticia';
+      button.disabled = true;
+      try {
+        await copyNewsUrl(button.dataset.copyNewsUrl || '');
+        button.classList.add('is-copied');
+        if (label) label.textContent = 'Link copiado';
+      } catch (error) {
+        if (label) label.textContent = 'No se pudo copiar';
+        console.error(error);
+      } finally {
+        window.setTimeout(() => {
+          button.disabled = false;
+          button.classList.remove('is-copied');
+          if (label) label.textContent = originalLabel;
+        }, 1800);
+      }
+    });
     let adPlacementsRequest = null;
     async function syncAdPlacements() {
       if (adPlacementsRequest) return adPlacementsRequest;
