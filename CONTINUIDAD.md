@@ -1,5 +1,10 @@
 # Continuidad — Portal de Noticias
 
+## Checkpoint GitHub aprobado — 3 de septiembre de 2026
+
+- El lote funcional de imágenes SEO, fecha y hora administrativa y máximo de cinco noticias en Portada quedó consolidado en `4c3f01c` (`feat: optimizar SEO y limitar noticias de portada`) y publicado en `origin/main`.
+- Cardona Hoy PROD recibió los despliegues y el ajuste de datos documentados debajo; Portal Base y RS Medios conservan sus destinos separados.
+
 ## Máximo de cinco noticias en Portada — 3 de septiembre de 2026
 
 - `PORTADA_NOTICIAS_LIMITE=5` centraliza la regla. El switch AJAX de `admin/index.php` y el guardado de `admin/noticia-form.php` validan el cupo dentro de la transacción; una noticia que ya estaba seleccionada puede seguir editándose.
@@ -8,7 +13,7 @@
 - Prueba transaccional DEV: cinco selecciones aceptadas, sexta rechazada, caso histórico de seis limitado a cinco públicamente y rollback con estado exacto. Puppeteer pasó en `1440×950` y `390×844`, sin overflow ni errores de consola. El código permanece idéntico en los tres portales.
 - Cardona Hoy PROD fue actualizado por autorización expresa. El preflight autenticado confirmó 18 tablas, 74 noticias, 9 marcadas para Portada y las 9 con foto. Se conservaron por `created_at DESC, id DESC` las IDs 85, 84, 83, 82 y 81; una transacción desmarcó las otras 4 y el postflight confirmó exactamente 5 seleccionadas.
 - Antes de escribir se generó el respaldo PROD `.deploy/respaldos-db/2026-09-03-portada-maximo-prod/cardonahoy-production-before-portada.sql`: 1.038.339 bytes, 18 tablas, 74 filas de noticias y SHA-256 `4677fac6be575199349c3c19fea8b6d9228fd8113ef5893532bc2b6b756fdff2`. El ejecutor autenticado y su token fueron retirados; su URL final respondió HTTP 404.
-- Se publicaron con preflight, respaldo, temporal más renombrado y descarga SHA-256 los cinco archivos `admin/assets/admin.css`, `admin/includes/funciones.php`, `admin/index.php`, `admin/noticia-form.php` e `index.php`. HTTP final: portada 200 con exactamente 5 slides, login 200, formulario sin sesión 302 y configuraciones privadas 403. No hubo borrados de noticias, cambios de contenido, migración de esquema, commit ni push.
+- Se publicaron con preflight, respaldo, temporal más renombrado y descarga SHA-256 los cinco archivos `admin/assets/admin.css`, `admin/includes/funciones.php`, `admin/index.php`, `admin/noticia-form.php` e `index.php`. HTTP final: portada 200 con exactamente 5 slides, login 200, formulario sin sesión 302 y configuraciones privadas 403. No hubo borrados de noticias, cambios de contenido ni migración de esquema; el checkpoint GitHub se completó después de la aprobación del usuario.
 
 ## Fecha y hora en la tabla de Noticias — 3 de septiembre de 2026
 
