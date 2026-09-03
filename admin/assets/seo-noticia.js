@@ -14,8 +14,9 @@
   const uploadButton = document.getElementById('seoImageUpload');
   const uploadInput = document.getElementById('seoImageInput');
   const uploadStatus = document.getElementById('seoImageStatus');
+  const previewImage = document.getElementById('seoPreviewImage');
+  const previewImageFrame = document.getElementById('seoPreviewImageFrame');
   const publicBase = root.dataset.publicBase.replace(/\/$/, '');
-  const defaultImage = root.dataset.defaultImage;
   const editing = root.dataset.editing === '1';
   let editorText = htmlToText(descriptionSource.value);
   let galleryItems = readGallery();
@@ -47,7 +48,7 @@
   function effectiveImage() {
     const selected = imageSelect.value;
     const route = selected || galleryItems[0]?.url || '';
-    if (!route) return defaultImage;
+    if (!route) return '';
     if (/^https?:\/\//i.test(route)) return route;
     return publicBase + '/' + route.replace(/^\/+/, '');
   }
@@ -73,7 +74,10 @@
       image: effectiveImage(),
       url: effectiveUrl(),
     };
-    document.getElementById('seoPreviewImage').src = values.image;
+    previewImageFrame.classList.toggle('is-empty', values.image === '');
+    previewImage.hidden = values.image === '';
+    if (values.image === '') previewImage.removeAttribute('src');
+    else previewImage.src = values.image;
     document.getElementById('seoPreviewTitle').textContent = values.title;
     document.getElementById('seoPreviewDescription').textContent = values.description;
     document.getElementById('seoPreviewUrl').textContent = values.url;

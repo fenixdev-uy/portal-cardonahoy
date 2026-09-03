@@ -299,6 +299,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 }
 
 $valoresSeoForm = valores_seo_noticia($noticia, $fotos);
+$seoImagenPreviewRuta = trim((string) ($noticia['seo_imagen'] ?? ''));
+if ($seoImagenPreviewRuta === '' && !empty($fotos[0]['ruta'])) {
+    $seoImagenPreviewRuta = (string) $fotos[0]['ruta'];
+}
+$seoImagenPreviewUrl = $seoImagenPreviewRuta !== '' ? url_recurso_portal($seoImagenPreviewRuta) : '';
 $seoTituloPersonalizadoForm = trim((string) ($noticia['seo_titulo'] ?? '')) !== '';
 $seoDescripcionPersonalizadaForm = trim((string) ($noticia['seo_descripcion'] ?? '')) !== '';
 $seoPersonalizadoForm = $seoTituloPersonalizadoForm
@@ -557,7 +562,6 @@ require __DIR__ . '/includes/header.php';
 
     <div class="media-fields-grid seo-preview-grid" data-seo-root
          data-public-base="<?= e(url_base_portal()) ?>"
-         data-default-image="<?= e(url_portal('imagenes/Logo2027v3.png')) ?>"
          data-csrf="<?= e(csrf_token()) ?>" data-editing="<?= $editando ? '1' : '0' ?>">
       <section class="media-fields-card seo-fields-card" aria-labelledby="seoHeading">
         <button class="media-fields-head media-fields-toggle" type="button" data-media-toggle aria-expanded="false" aria-controls="seoFields">
@@ -625,7 +629,10 @@ require __DIR__ . '/includes/header.php';
             <button type="button" role="tab" aria-selected="false" data-seo-tab="google">En Google</button>
           </div>
           <div class="seo-social-preview" data-seo-panel="social">
-            <div class="seo-social-image"><img id="seoPreviewImage" src="<?= e($valoresSeoForm['imagen']) ?>" alt="" /></div>
+            <div class="seo-social-image<?= $seoImagenPreviewUrl === '' ? ' is-empty' : '' ?>" id="seoPreviewImageFrame">
+              <img id="seoPreviewImage"<?= $seoImagenPreviewUrl !== '' ? ' src="' . e($seoImagenPreviewUrl) . '"' : '' ?> alt=""<?= $seoImagenPreviewUrl === '' ? ' hidden' : '' ?> />
+              <span class="seo-social-image-empty" id="seoPreviewImageEmpty">Sin imagen</span>
+            </div>
             <div class="seo-social-copy"><span id="seoPreviewDomain"><?= e((string) parse_url(url_base_portal(), PHP_URL_HOST)) ?></span><strong id="seoPreviewTitle"><?= e($valoresSeoForm['titulo']) ?></strong><p id="seoPreviewDescription"><?= e($valoresSeoForm['descripcion']) ?></p><small id="seoPreviewUrl"><?= e($valoresSeoForm['url']) ?></small></div>
           </div>
           <div class="seo-google-preview" data-seo-panel="google" hidden>
@@ -1013,8 +1020,28 @@ require __DIR__ . '/includes/header.php';
   const iaRegenerate = document.getElementById('iaRegenerate');
   const iaApply = document.getElementById('iaPreviewApply');
   const csrfTokenIa = <?= json_encode(csrf_token()) ?>;
+  const iaInstructionsStorageKey = <?= json_encode('portal_noticias_ia_instrucciones_' . PORTAL_INSTANCE_ID) ?>;
   let propuestaIa = '';
   let iaEnProceso = false;
+
+  try {
+    iaInstructionsInput.value = window.localStorage.getItem(iaInstructionsStorageKey) || '';
+  } catch (error) {
+    // El asistente sigue funcionando si el navegador bloquea el almacenamiento local.
+  }
+
+  iaInstructionsInput.addEventListener('input', () => {
+    try {
+      const instrucciones = iaInstructionsInput.value;
+      if (instrucciones) {
+        window.localStorage.setItem(iaInstructionsStorageKey, instrucciones);
+      } else {
+        window.localStorage.removeItem(iaInstructionsStorageKey);
+      }
+    } catch (error) {
+      // No interrumpir la edición si el almacenamiento local no está disponible.
+    }
+  });
 
   // Las imágenes se guardan con una ruta relativa a la raíz de landing/
   // (ej. "uploads/noticias/..."). Como el editor vive en landing/admin/,
@@ -1173,7 +1200,6 @@ require __DIR__ . '/includes/header.php';
     editor.commands.setContent(aRutaEditor(propuestaIa), { emitUpdate: true });
     cerrarPreviewIa();
     iaSourceInput.value = '';
-    iaInstructionsInput.value = '';
     mostrarEstadoIa('Noticia agregada. Podés deshacerla desde la barra del editor.', 'success');
     editor.commands.focus('end');
   });

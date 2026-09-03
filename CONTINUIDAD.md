@@ -1,6 +1,51 @@
 # Continuidad — Portal de Noticias
 
-> **Identidad de este checkout — 29 de agosto de 2026:** esta copia es `portal-cardonahoy`, ubicada en `/home/fenixdev/public_html/proyectos.fenixdev.uno/09portal-noticias/portal-cardonahoy`. Nació del commit aprobado `5ec3e42` y todavía no tiene remoto Git ni destino PROD. Las referencias operativas a RS Medios que siguen debajo documentan el origen funcional y no autorizan usar sus destinos o credenciales en esta copia.
+> **Identidad de este checkout — 30 de agosto de 2026:** esta copia es `portal-cardonahoy`, ubicada en `/home/fenixdev/public_html/proyectos.fenixdev.uno/09portal-noticias/portal-cardonahoy`. Nació del commit aprobado `5ec3e42`, tiene su remoto GitHub exclusivo y su PROD inicial en `https://cardonahoy.com/`. Las referencias operativas a RS Medios que siguen debajo documentan el origen funcional y no autorizan usar sus destinos o credenciales en esta copia.
+
+## Cierre aprobado — 3 de septiembre de 2026
+
+- El usuario aprobó el lote común completo y autorizó consolidarlo mediante un commit local en cada uno de los tres repositorios.
+- **Crear con IA** conserva las instrucciones en `localStorage`, con una clave separada mediante `PORTAL_INSTANCE_ID`; vaciar el campo elimina el valor y un bloqueo del almacenamiento no interrumpe el editor.
+- El cierre incluye además el acceso superior al Admin solo para usuarios autenticados, la etiqueta **Compartir** con ajuste responsive, la protección HTTP de archivos SQL, la carga correcta de Mantenimiento en los tres endpoints públicos y el placeholder **Sin imagen** de la vista previa SEO.
+- Los once archivos funcionales coinciden byte a byte entre `portal-base`, `portal-rsmedios` y `portal-cardonahoy`. Pasaron `php -l`, `node --check` y `git diff --check` en los tres checkouts.
+- No se hizo push, nuevo despliegue ni migración. Según confirmación del usuario, la persistencia de instrucciones ya está en Cardona Hoy PROD; Portal Base y RS Medios la conservan localmente.
+
+## Cierre documentado — 30 de agosto de 2026
+
+- El usuario aprobó el despliegue inicial de Cardona Hoy en Mantenimiento y el resultado de las correcciones posteriores. Mantenimiento continúa activo y no debe desactivarse sin autorización expresa.
+- Se cerró la sesión conservando todos los cambios locales existentes. El placeholder SEO y las correcciones comunes permanecen sin commit, push ni nuevo despliegue; no hubo nuevas migraciones de base de datos.
+- DeepSeek quedó operativo en **Cardona Hoy DEV**: `servicios.local.json` conserva el dato maestro privado y se generó `admin/servicios.runtime.local.json` con únicamente la sección `deepseek`, modo `600` e ignorado por Git. La comprobación oficial `GET /models` respondió HTTP `200`, autenticación correcta y modelo configurado disponible; la ruta pública del runtime respondió HTTP `403`.
+- Ninguna clave fue impresa ni incorporada a PHP, documentación o archivos versionados. El runtime DEV no debe confundirse con la configuración PROD ni copiarse a otros portales.
+- Al retomar: leer primero `AGENDA.md`, este archivo y `git status --short --branch`; elegir explícitamente el portal y no desplegar ni crear un checkpoint por inferencia.
+
+## Vista previa SEO sin imagen — 30 de agosto de 2026
+
+- En **Nueva noticia**, la vista previa social ya no usa `imagenes/Logo2027v3.png` cuando todavía no hay portada ni imagen SEO seleccionada. Muestra un bloque gris neutro con trama diagonal sutil y el texto **Sin imagen**.
+- El alcance es únicamente la vista previa del editor: no se modificó el fallback de metadatos SEO del portal público.
+- La implementación quedó idéntica en `portal-base`, `portal-rsmedios` y `portal-cardonahoy`. PHP, JavaScript y whitespace pasaron validación; el QA renderizado se ejecutó en Cardona Hoy DEV en `1440×950` y `390×844`, sin errores de consola, requests fallidos ni overflow.
+- La prueba no guardó ninguna noticia y la cuenta DEV temporal fue eliminada. Cambio local: no se desplegó, no se migró base de datos, no se creó commit y no se hizo push.
+
+## Despliegue inicial PROD en mantenimiento — 30 de agosto de 2026
+
+- El usuario autorizó expresamente publicar la aplicación completa, sus uploads y todos los datos de prueba de DEV en PROD, manteniendo el sitio cerrado al público.
+- El manifiesto privado `servicios.local.json` quedó en versión 2, modo `600`, ignorado por Git y con `deployment.database_environment=production`. FTPS usa el hostname canónico certificado `vps-4962765-x.dattaweb.com:21`; `ftp.cardonahoy.com` fue descartado porque no coincide con el SAN/CN del certificado.
+- Antes de la importación se verificó la base PROD real mediante un runner autenticado y efímero: huella `95fbe89f9bdc`, cero tablas y cero filas. Su respaldo previo privado tiene 133 bytes y SHA-256 `f2eb2bacfa2c840492ce0f145f709675fa6f2538bdcabe9d3656cbc2634a9e88`; no se aceptó ningún respaldo de 0 bytes.
+- El volcado consistente de DEV tiene 42.006 bytes, 18 tablas y SHA-256 `99aa403f0d7210aba3999ce2e7adf7f059165c77e1b3436176d1ae793a0de2ea`. PROD terminó con las mismas 18 tablas, 126 filas y conteos exactos por tabla.
+- `mantenimiento_activo=1`. Solamente un usuario activo —rol `admin`— posee `mantenimiento.gestionar`; la cuenta activa de Editor no puede atravesar el bloqueo. El usuario debe confirmar todavía su ingreso real con contraseña en PROD.
+- La primera comprobación previa a importar detectó que Apache entregaba el SQL temporal con HTTP `200`; la importación se abortó antes de tocar la base y el archivo fue eliminado inmediatamente. Se corrigió `.htaccess` para bloquear globalmente `*.sql`, un probe inocuo confirmó HTTP `403`, y recién entonces se repitió la transferencia, importación y eliminación verificadas. Esta protección quedó también en el archivo versionado local.
+- Se publicaron 144 rutas por FTPS explícito; 142 fueron transferidas en la tanda principal y verificadas una por una mediante descarga y SHA-256. El manifiesto incluye 29 rutas de uploads por 16.488.666 bytes. Se preservaron `old/` y `prueba-conexion-codex-20260830-024956.txt`.
+- La configuración PROD contiene únicamente el runtime de base y el runtime mínimo de DeepSeek; el manifiesto maestro y las credenciales FTPS no se publicaron. `admin/config.local.php`, `admin/servicios.runtime.local.json`, `servicios.local.json` e instaladores responden `403`; `tools/validar-servicios.php` responde `404` porque `tools/` no fue publicado.
+- El runner, SQL, probe, temporales y respaldos remotos del `.htaccess` fueron eliminados. El runner final responde `404`; el `.htaccess` original de cPanel y los respaldos de base permanecen solamente en `.deploy/` con modo `600`.
+- QA PROD con Chromium/Puppeteer —Browser plugin ausente y Playwright no instalado— pasó en `1440×900` y `390×844`: portada `503`, pantalla de mantenimiento y logo correctos, login `200`, interacción Mantenimiento → Login, recursos cargados y cero overflow. El único error de consola fue el `503` deliberado del documento principal.
+- El smoke test ampliado detectó que `noticia-compartir.php`, `noticia-vista.php` y `votar.php` llamaban `exigir_portal_disponible()` sin cargar `admin/includes/funciones.php`, por lo que devolvían `500`. Se agregó únicamente ese `require_once`, se respaldaron y reemplazaron las tres rutas con control de hash, y la repetición final dejó los 11 endpoints públicos dinámicos en `503`, portada `503` y login `200`.
+- Estado operativo: `.deploy/estado.json` está en `verified_pending_user_login_confirmation`. No se creó commit, no se hizo push y Mantenimiento no debe desactivarse por inferencia.
+
+## Cierre de etapa aprobado — 29 de agosto de 2026
+
+- El usuario aprobó integralmente el traslado de Modo Mantenimiento y los tamaños configurables de logos.
+- Checkpoint de este checkout: `91c4863` (`feat: agregar mantenimiento y tamanos de logos`), rama `main` sincronizada con `origin/main` al iniciar el cierre.
+- Se pausa el trabajo sin despliegue ni migración PROD. La eventual habilitación de Browser queda diferida y no bloquea futuras pruebas con Puppeteer.
+- Al retomar, leer `AGENDA.md`, este archivo y `git status --short --branch` antes de realizar cambios.
 
 ## Modo mantenimiento y tamaños de logos — 29 de agosto de 2026
 
@@ -11,7 +56,7 @@
 - Respaldo privado previo: `.deploy/respaldos-db/2026-08-29/dev-before-mantenimiento-logos.sql`, 41.281 bytes, SHA-256 `2297008498658f31b26fe1744a766ef8f3cedf3e618d9c19c8255dacdd43e950` y modo `600`.
 - La verificación dejó `mantenimiento_activo=0`, ambos tamaños de logo en `100`, seis valores efectivos de configuración, un permiso y asignación inicial únicamente al rol `admin`.
 - QA local por Puppeteer —Browser y Playwright no disponibles— pasó en `1440×900` y `390×844`: sliders y previews al `140%`, login, encabezado y menú, pantalla pública `503`, acceso autorizado, denegación `403`, logos propios cargados y cero overflow. Los únicos errores de consola correspondieron a los estados HTTP deliberados.
-- El usuario aprobó integralmente el resultado. El bloque queda cerrado en un checkpoint propio de Cardona Hoy y preparado para GitHub; no hubo migración ni despliegue PROD.
+- El usuario aprobó integralmente el resultado. El bloque quedó cerrado en `91c4863` y sincronizado con el remoto exclusivo de Cardona Hoy; no hubo migración ni despliegue PROD.
 
 ## Aislamiento de sesiones por instalación — 29 de agosto de 2026
 

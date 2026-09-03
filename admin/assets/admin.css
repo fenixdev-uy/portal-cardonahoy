@@ -2358,8 +2358,12 @@ body {
 .seo-preview-tabs button { padding: 7px 10px; color: #64748b; background: transparent; border: 0; border-radius: 7px; cursor: pointer; font: inherit; font-size: .7rem; font-weight: 750; }
 .seo-preview-tabs button[aria-selected="true"] { color: #0f172a; background: #fff; box-shadow: 0 1px 4px rgba(15, 23, 42, .12); }
 .seo-social-preview { overflow: hidden; background: #fff; border: 1px solid #dbe3ec; border-radius: 12px; box-shadow: 0 8px 24px rgba(15, 23, 42, .06); }
-.seo-social-image { aspect-ratio: 1.91 / 1; overflow: hidden; background: #e2e8f0; }
+.seo-social-image { position: relative; display: grid; aspect-ratio: 1.91 / 1; place-items: center; overflow: hidden; background: #e2e8f0; }
+.seo-social-image.is-empty { background-color: #e5e7eb; background-image: repeating-linear-gradient(135deg, rgba(148, 163, 184, .12) 0, rgba(148, 163, 184, .12) 10px, rgba(248, 250, 252, .3) 10px, rgba(248, 250, 252, .3) 20px); }
 .seo-social-image img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.seo-social-image img[hidden] { display: none; }
+.seo-social-image-empty { display: none; padding: 8px 13px; color: #64748b; background: rgba(248, 250, 252, .78); border: 1px solid rgba(148, 163, 184, .45); border-radius: 999px; font-size: .72rem; font-weight: 750; letter-spacing: .02em; }
+.seo-social-image.is-empty .seo-social-image-empty { display: inline-flex; }
 .seo-social-copy { display: grid; gap: 5px; padding: 13px 14px 14px; }
 .seo-social-copy > span { color: #64748b; font-size: .65rem; font-weight: 700; text-transform: uppercase; }
 .seo-social-copy strong { display: -webkit-box; overflow: hidden; color: #0f172a; font-size: .9rem; line-height: 1.3; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }

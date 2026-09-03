@@ -156,7 +156,9 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
         <img src="<?= e($logoPortalUrl) ?>" alt="Logo del portal" />
       </a>
 
-      <?php require __DIR__ . '/partials/acceso-admin.php'; ?>
+      <?php if ($usuarioPublico): ?>
+        <?php require __DIR__ . '/partials/acceso-admin.php'; ?>
+      <?php endif; ?>
     </nav>
 
     <div class="slider" id="slider">

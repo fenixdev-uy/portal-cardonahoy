@@ -10,13 +10,13 @@ Options -Indexes
 </IfModule>
 
 <IfModule mod_authz_core.c>
-  <FilesMatch "^(\.user\.ini|db|error_log|README\.md|subir\.txt|servicios\.local\.json|.*\.local\.(php|json))$">
+  <FilesMatch "^(\.user\.ini|db|error_log|README\.md|subir\.txt|servicios\.local\.json|.*\.local\.(php|json)|.*\.sql)$">
     Require all denied
   </FilesMatch>
 </IfModule>
 
 <IfModule !mod_authz_core.c>
-  <FilesMatch "^(\.user\.ini|db|error_log|README\.md|subir\.txt|servicios\.local\.json|.*\.local\.(php|json))$">
+  <FilesMatch "^(\.user\.ini|db|error_log|README\.md|subir\.txt|servicios\.local\.json|.*\.local\.(php|json)|.*\.sql)$">
     Order allow,deny
     Deny from all
   </FilesMatch>

@@ -7,6 +7,7 @@
  * responde el estado actual sin modificar nada.
  */
 
+require_once __DIR__ . '/admin/includes/funciones.php';
 require_once __DIR__ . '/admin/includes/votos.php';
 exigir_portal_disponible('json');
 

@@ -1,6 +1,7 @@
 <?php
 /** Registra una lectura local sin duplicarla durante el mismo dia. */
 
+require_once __DIR__ . '/admin/includes/funciones.php';
 require_once __DIR__ . '/admin/includes/metricas-noticias.php';
 exigir_portal_disponible('json');
 
