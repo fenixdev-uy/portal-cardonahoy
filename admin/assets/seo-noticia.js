@@ -18,6 +18,10 @@
   const previewImageFrame = document.getElementById('seoPreviewImageFrame');
   const publicBase = root.dataset.publicBase.replace(/\/$/, '');
   const editing = root.dataset.editing === '1';
+  const processedPreviews = new Map();
+  if (root.dataset.seoCurrentSource && root.dataset.seoCurrentPreview) {
+    processedPreviews.set(root.dataset.seoCurrentSource, root.dataset.seoCurrentPreview);
+  }
   let editorText = htmlToText(descriptionSource.value);
   let galleryItems = readGallery();
   let slugTouched = editing || (slug.value !== '' && slug.value !== normalizeSlug(titleSource.value));
@@ -49,6 +53,7 @@
     const selected = imageSelect.value;
     const route = selected || galleryItems[0]?.url || '';
     if (!route) return '';
+    if (processedPreviews.has(route)) return processedPreviews.get(route);
     if (/^https?:\/\//i.test(route)) return route;
     return publicBase + '/' + route.replace(/^\/+/, '');
   }
@@ -148,13 +153,21 @@
     uploadStatus.textContent = 'Subiendo ' + file.name + '…';
     const data = new FormData();
     data.append('imagen', file);
+    data.append('uso', 'seo');
     data.append('csrf_token', root.dataset.csrf);
     try {
       const response = await fetch('upload-imagen.php', { method: 'POST', body: data });
       const result = await response.json();
       if (!response.ok || result.error) throw new Error(result.error || 'No se pudo subir la imagen SEO.');
+      if (result.seo_preview_url) {
+        const previewUrl = /^https?:\/\//i.test(result.seo_preview_url)
+          ? result.seo_preview_url
+          : publicBase + '/' + result.seo_preview_url.replace(/^\/+/, '');
+        processedPreviews.set(result.url, previewUrl);
+      }
       imageSelect.add(new Option('Imagen SEO subida', result.url, true, true));
-      uploadStatus.textContent = 'Imagen SEO cargada';
+      const pesoKb = result.seo_peso ? Math.max(1, Math.round(result.seo_peso / 1024)) : null;
+      uploadStatus.textContent = 'Imagen SEO lista: 1200 × 630 px' + (pesoKb ? ' · ' + pesoKb + ' KB' : '');
       updatePreview();
     } catch (error) {
       uploadStatus.textContent = '';

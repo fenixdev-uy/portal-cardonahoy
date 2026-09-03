@@ -47,8 +47,22 @@ try {
     $subidas[] = $ahora;
     $_SESSION['subidas_recientes'] = $subidas;
     $_SESSION['archivos_subidos'][$ruta] = $ahora;
-    echo json_encode(['url' => $ruta], JSON_UNESCAPED_SLASHES);
-} catch (RuntimeException $e) {
+    $respuesta = ['url' => $ruta];
+    if (($_POST['uso'] ?? '') === 'seo') {
+        try {
+            $variantesSeo = generar_variantes_imagen_seo($ruta);
+            $respuesta['seo_preview_url'] = $variantesSeo['social']['ruta'];
+            $respuesta['seo_peso'] = $variantesSeo['social']['peso'];
+        } catch (Throwable $e) {
+            eliminar_imagen($ruta);
+            unset($_SESSION['archivos_subidos'][$ruta]);
+            throw $e;
+        }
+    }
+    echo json_encode($respuesta, JSON_UNESCAPED_SLASHES);
+} catch (Throwable $e) {
     http_response_code(400);
-    echo json_encode(['error' => $e->getMessage()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    echo json_encode([
+        'error' => $e instanceof RuntimeException ? $e->getMessage() : 'No se pudo procesar la imagen.',
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 }

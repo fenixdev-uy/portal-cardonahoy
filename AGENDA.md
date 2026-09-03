@@ -6,8 +6,19 @@ Este archivo es la **única agenda aplicable a `portal-cardonahoy`**. La aplicac
 
 ## Prioridad activa
 
-1. Confirmar con el usuario el primer ingreso autenticado a `https://cardonahoy.com/admin/login.php` y el acceso al Portal mientras Mantenimiento continúa activo.
+1. Evaluar en Cardona Hoy PROD el procesamiento automático de imágenes SEO y el nuevo máximo de cinco noticias en Portada.
 2. Configurar identidad, SEO, administradores y contenido definitivos del cliente sobre el despliegue inicial.
+
+## Implementación local actual — 3 de septiembre de 2026
+
+- Portada admite como máximo 5 noticias destacadas: el backend bloquea la sexta tanto desde la tabla como desde el formulario, muestra un mensaje claro y la consulta pública limita el slider a cinco.
+- Cardona Hoy PROD tenía 9 noticias seleccionadas al momento del preflight. Se conservaron las cinco más recientes —IDs 85, 84, 83, 82 y 81— y se desmarcaron exactamente 4 antiguas, sin eliminar ni editar contenido.
+- La tabla administrativa de Noticias muestra en PROD la fecha y hora exactas desde el `created_at` ya existente, con formato `DD/MM/AAAA · HH:MM hs.`; no requirió migración y conserva el orden cronológico actual.
+- El despliegue incremental de cinco archivos no tuvo conflictos. El respaldo de código está en `.deploy/respaldos/2026-09-03_portada-maximo-hora/` y el respaldo completo de PROD, de 1.038.339 bytes, en `.deploy/respaldos-db/2026-09-03-portada-maximo-prod/`.
+- Quedó implementado el procesamiento automático de la imagen SEO por noticia: genera derivados JPEG de `1200 × 630` y `1200 × 675`, recortados, orientados y optimizados a un máximo de 400 KB sin modificar la fuente.
+- El mismo código está trasladado a Portal Base, RS Medios y Cardona Hoy. El usuario validó la carga en DEV y autorizó publicar exclusivamente en Cardona Hoy PROD para evaluarlo con noticias reales.
+- El despliegue incremental de los cinco archivos funcionales quedó verificado por FTPS y HTTPS. Las versiones anteriores están en `.deploy/respaldos/2026-09-03_seo-imagen-prod/`; no hubo conflictos remotos, migración, borrados, commit ni push.
+- No se modificó el estado de Mantenimiento. Al finalizar, la portada respondió HTTP 200, el login 200, el formulario sin sesión 302 y las configuraciones privadas 403.
 
 ## Cierre aprobado — 3 de septiembre de 2026
 

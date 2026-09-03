@@ -16,32 +16,52 @@ if ($solicitudPortada) {
 
     $idPortada = (int) ($_POST['id'] ?? 0);
     $estadoPortada = (string) ($_POST['portada'] ?? '0') === '1' ? 1 : 0;
-    $stmtPortada = $pdo->prepare(
-        'SELECT COUNT(*)
-           FROM noticias n
-          WHERE n.id = ?
-            AND (? = 0 OR EXISTS (SELECT 1 FROM noticias_fotos f WHERE f.noticia_id = n.id))'
-    );
-    $stmtPortada->execute([$idPortada, $estadoPortada]);
-    if (!(int) $stmtPortada->fetchColumn()) {
+    try {
+        $pdo->beginTransaction();
+        $stmtPortada = $pdo->prepare(
+            'SELECT n.id,
+                    EXISTS (SELECT 1 FROM noticias_fotos f WHERE f.noticia_id = n.id) AS tiene_foto
+               FROM noticias n
+              WHERE n.id = ?
+              FOR UPDATE'
+        );
+        $stmtPortada->execute([$idPortada]);
+        $noticiaPortada = $stmtPortada->fetch();
+        if (!$noticiaPortada) {
+            throw new DomainException('La noticia ya no existe.');
+        }
+        if ($estadoPortada === 1 && !(int) $noticiaPortada['tiene_foto']) {
+            throw new DomainException('La noticia necesita al menos una foto para mostrarse en el slider.');
+        }
+        if ($estadoPortada === 1) {
+            exigir_cupo_noticia_portada($pdo, $idPortada);
+        }
+
+        $stmtPortada = $pdo->prepare('UPDATE noticias SET portada = ?, updated_at = updated_at WHERE id = ?');
+        $stmtPortada->execute([$estadoPortada, $idPortada]);
+        $totalPortada = (int) $pdo->query('SELECT COUNT(*) FROM noticias WHERE portada = 1')->fetchColumn();
+        $pdo->commit();
+    } catch (DomainException $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
         http_response_code(422);
         header('Content-Type: application/json; charset=utf-8');
-        echo json_encode([
-            'ok' => false,
-            'error' => $estadoPortada === 1
-                ? 'La noticia necesita al menos una foto para mostrarse en el slider.'
-                : 'La noticia ya no existe.',
-        ], JSON_UNESCAPED_UNICODE);
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        exit;
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        http_response_code(500);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['ok' => false, 'error' => 'No se pudo actualizar la portada.'], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
-    $stmtPortada = $pdo->prepare('UPDATE noticias SET portada = ?, updated_at = updated_at WHERE id = ?');
-    $stmtPortada->execute([$estadoPortada, $idPortada]);
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode([
         'ok' => true,
         'portada' => $estadoPortada,
         'label' => $estadoPortada === 1 ? 'En portada' : 'Fuera de portada',
+        'portada_total' => $totalPortada,
+        'portada_limite' => PORTADA_NOTICIAS_LIMITE,
     ], JSON_UNESCAPED_UNICODE);
     exit;
 }
@@ -62,6 +82,10 @@ $noticias = $pdo->query(
       ORDER BY n.created_at DESC, n.id DESC'
 )->fetchAll();
 cargar_categorias_noticias($noticias);
+$cantidadNoticiasPortada = count(array_filter(
+    $noticias,
+    static fn(array $noticia): bool => (int) ($noticia['portada_estado'] ?? 0) === 1
+));
 
 // Una sola consulta para calcular el peso de todas las galerías, sin N+1.
 $fotosPorNoticiaAdmin = [];
@@ -86,6 +110,11 @@ require __DIR__ . '/includes/header.php';
   <h1>Noticias</h1>
   <p>Creá, editá y organizá las noticias publicadas en el portal y administrá sus imágenes, audios y videos.</p>
 </div>
+
+<div class="alert warning news-cover-limit-alert" id="newsCoverLimitAlert" role="status"<?= $cantidadNoticiasPortada > PORTADA_NOTICIAS_LIMITE ? '' : ' hidden' ?>>
+  Hay <strong id="newsCoverLimitTotal"><?= $cantidadNoticiasPortada ?></strong> noticias seleccionadas para Portada. Desmarcá <strong id="newsCoverLimitExcess"><?= max(0, $cantidadNoticiasPortada - PORTADA_NOTICIAS_LIMITE) ?></strong> para respetar el máximo de <?= PORTADA_NOTICIAS_LIMITE ?>.
+</div>
+<div class="alert danger news-cover-notice" id="newsCoverNotice" role="alert" hidden></div>
 
 <div class="table-wrap noticias-table">
   <div class="noticias-table-toolbar<?= empty($noticias) ? ' is-empty' : '' ?>">
@@ -175,7 +204,7 @@ require __DIR__ . '/includes/header.php';
                 <span style="color:#94a3b8;">—</span>
               <?php endif; ?>
             </td>
-            <td class="td-date"><?= e(date('d/m/Y', strtotime($n['created_at']))) ?></td>
+            <td class="td-date"><time datetime="<?= e(date(DATE_ATOM, strtotime($n['created_at']))) ?>" title="Fecha y hora de publicación"><?= e(date('d/m/Y · H:i', strtotime($n['created_at']))) ?> hs.</time></td>
             <td class="td-weight">
               <span class="weight-value" title="Fotos: <?= e(formatear_megabytes((int) $n['_peso']['fotos'])) ?> · Audios: <?= e(formatear_megabytes((int) $n['_peso']['audios'])) ?> · Solo archivos alojados en este servidor">
                 <?= e(formatear_megabytes((int) $n['_peso']['total'])) ?>
@@ -361,6 +390,18 @@ require __DIR__ . '/includes/header.php';
 
 <script>
   (function () {
+    const notice = document.getElementById('newsCoverNotice');
+    const limitAlert = document.getElementById('newsCoverLimitAlert');
+    const limitTotal = document.getElementById('newsCoverLimitTotal');
+    const limitExcess = document.getElementById('newsCoverLimitExcess');
+
+    function updateLimitAlert(total, limit) {
+      if (!limitAlert || !limitTotal || !limitExcess) return;
+      limitTotal.textContent = String(total);
+      limitExcess.textContent = String(Math.max(0, total - limit));
+      limitAlert.hidden = total <= limit;
+    }
+
     document.querySelectorAll('.js-news-cover-form').forEach((form) => {
       const input = form.querySelector('input[name="portada"]');
       const text = form.querySelector('.news-cover-switch-text');
@@ -371,6 +412,7 @@ require __DIR__ . '/includes/header.php';
         const requestedState = input.checked;
         input.disabled = true;
         feedback.textContent = 'Guardando…';
+        if (notice) notice.hidden = true;
 
         const payload = new FormData(form);
         payload.set('portada', requestedState ? '1' : '0');
@@ -390,13 +432,18 @@ require __DIR__ . '/includes/header.php';
           input.setAttribute('aria-label', (input.checked ? 'Quitar de portada: ' : 'Mostrar en portada: ')
             + (form.closest('tr')?.querySelector('.cell-title')?.textContent || 'noticia'));
           feedback.textContent = 'Guardado';
+          updateLimitAlert(Number(result.portada_total || 0), Number(result.portada_limite || 5));
           window.setTimeout(() => {
             if (feedback.textContent === 'Guardado') feedback.textContent = '';
           }, 1800);
         } catch (error) {
           input.checked = !requestedState;
           text.textContent = input.checked ? 'Sí' : 'No';
-          feedback.textContent = error.message || 'No se pudo guardar.';
+          feedback.textContent = 'No se guardó';
+          if (notice) {
+            notice.textContent = error.message || 'No se pudo guardar.';
+            notice.hidden = false;
+          }
         } finally {
           input.disabled = false;
         }

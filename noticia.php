@@ -58,7 +58,7 @@ $categoriasNoticia = $noticia['categorias'] ?? [];
 $fecha = $noticia ? fecha_larga($noticia['created_at']) : '';
 $jsonLd = $noticia ? [
     '@context' => 'https://schema.org', '@type' => 'NewsArticle',
-    'headline' => $seo['titulo'], 'description' => $seo['descripcion'], 'image' => [$seo['imagen']],
+    'headline' => $seo['titulo'], 'description' => $seo['descripcion'], 'image' => $seo['imagenes'],
     'datePublished' => date(DATE_ATOM, strtotime($noticia['created_at'])),
     'dateModified' => date(DATE_ATOM, strtotime($noticia['updated_at'])),
     'mainEntityOfPage' => ['@type' => 'WebPage', '@id' => $seo['url']],
@@ -79,10 +79,16 @@ $misVotos = $noticia ? votos_del_visitante($pdo, visitante_id()) : [];
   <meta name="description" content="<?= e($seo['descripcion']) ?>" />
   <link rel="canonical" href="<?= e($seo['url']) ?>" />
 <?php if ($noticia): ?>
+  <meta name="robots" content="index,follow,max-image-preview:large" />
   <meta property="og:type" content="article" />
   <meta property="og:title" content="<?= e($seo['titulo']) ?>" />
   <meta property="og:description" content="<?= e($seo['descripcion']) ?>" />
   <meta property="og:image" content="<?= e($seo['imagen']) ?>" />
+<?php if ($seo['imagen_procesada']): ?>
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+<?php endif; ?>
   <meta property="og:image:alt" content="<?= e($seo['titulo']) ?>" />
   <meta property="og:url" content="<?= e($seo['url']) ?>" />
   <meta property="og:site_name" content="Radio Sur" />

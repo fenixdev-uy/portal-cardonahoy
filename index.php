@@ -106,7 +106,8 @@ $noticiasPortada = $pdo->query(
        LEFT JOIN usuarios u ON u.id = n.usuario_id
       WHERE n.portada = 1
         AND EXISTS (SELECT 1 FROM noticias_fotos nf WHERE nf.noticia_id = n.id)
-      ORDER BY n.created_at DESC, n.id DESC'
+      ORDER BY n.created_at DESC, n.id DESC
+      LIMIT ' . PORTADA_NOTICIAS_LIMITE
 )->fetchAll();
 cargar_categorias_noticias($noticiasPortada);
 $fotosPorNoticia = fotos_noticias_portada($pdo, array_column($noticiasPortada, 'id')) + $fotosPorNoticia;

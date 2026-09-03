@@ -5,6 +5,31 @@
 
 require_once __DIR__ . '/auth.php';
 
+const PORTADA_NOTICIAS_LIMITE = 5;
+
+/**
+ * Bloquea la selección actual de Portada y evita agregar una sexta noticia.
+ * Debe ejecutarse dentro de la misma transacción que guarda el cambio.
+ */
+function exigir_cupo_noticia_portada(PDO $pdo, int $noticiaId): void
+{
+    if (!$pdo->inTransaction()) {
+        throw new LogicException('El cupo de Portada debe validarse dentro de una transacción.');
+    }
+
+    $ids = array_map(
+        'intval',
+        $pdo->query('SELECT id FROM noticias WHERE portada = 1 ORDER BY id FOR UPDATE')->fetchAll(PDO::FETCH_COLUMN)
+    );
+
+    if (!in_array($noticiaId, $ids, true) && count($ids) >= PORTADA_NOTICIAS_LIMITE) {
+        throw new DomainException(
+            'La portada admite un máximo de ' . PORTADA_NOTICIAS_LIMITE
+            . ' noticias destacadas. Desmarcá una antes de agregar otra.'
+        );
+    }
+}
+
 /**
  * Arranca la sesión si aún no está iniciada.
  */
@@ -507,6 +532,265 @@ function subir_imagen(array $archivo): ?string
 }
 
 /**
+ * Rutas deterministas de las copias optimizadas usadas por metadatos sociales.
+ * La imagen original continúa siendo la fuente y nunca se modifica.
+ *
+ * @return array{social:string,discover:string}|array{}
+ */
+function rutas_variantes_imagen_seo(string $rutaFuente): array
+{
+    if (!ruta_imagen_subida_valida($rutaFuente)) return [];
+    $nombreFuente = pathinfo(basename($rutaFuente), PATHINFO_FILENAME);
+    return [
+        'social' => 'uploads/noticias/seo_' . $nombreFuente . '_1200x630.jpg',
+        'discover' => 'uploads/noticias/seo_' . $nombreFuente . '_1200x675.jpg',
+    ];
+}
+
+/** @return array{social:string,discover:string}|array{} */
+function variantes_imagen_seo_existentes(string $rutaFuente): array
+{
+    $variantes = rutas_variantes_imagen_seo($rutaFuente);
+    if ($variantes === []) return [];
+    $raiz = dirname(__DIR__, 2);
+    return array_filter(
+        $variantes,
+        static fn(string $ruta): bool => is_file($raiz . '/' . $ruta) && filesize($raiz . '/' . $ruta) > 0
+    );
+}
+
+/**
+ * Lee Orientation desde APP1/EXIF sin depender de la extensión PHP exif.
+ * Solo recorre los primeros 256 KB y valida todos los límites del bloque TIFF.
+ */
+function leer_orientacion_exif_jpeg(string $archivo): int
+{
+    $datos = @file_get_contents($archivo, false, null, 0, 262144);
+    if (!is_string($datos) || strlen($datos) < 12 || substr($datos, 0, 2) !== "\xFF\xD8") return 1;
+    $largo = strlen($datos);
+    $posicion = 2;
+    while ($posicion + 4 <= $largo) {
+        if (ord($datos[$posicion]) !== 0xFF) break;
+        while ($posicion < $largo && ord($datos[$posicion]) === 0xFF) $posicion++;
+        if ($posicion >= $largo) break;
+        $marcador = ord($datos[$posicion++]);
+        if ($marcador === 0xD9 || $marcador === 0xDA) break;
+        if ($marcador === 0x01 || ($marcador >= 0xD0 && $marcador <= 0xD8)) continue;
+        if ($posicion + 2 > $largo) break;
+        $largoSegmento = unpack('n', substr($datos, $posicion, 2))[1];
+        if ($largoSegmento < 2 || $posicion + $largoSegmento > $largo) break;
+        $inicio = $posicion + 2;
+        if ($marcador === 0xE1 && $largoSegmento >= 16 && substr($datos, $inicio, 6) === "Exif\0\0") {
+            $tiff = $inicio + 6;
+            $orden = substr($datos, $tiff, 2);
+            if ($orden !== 'II' && $orden !== 'MM') return 1;
+            $littleEndian = $orden === 'II';
+            $leer16 = static function (int $offset) use ($datos, $largo, $littleEndian): ?int {
+                if ($offset < 0 || $offset + 2 > $largo) return null;
+                $a = ord($datos[$offset]);
+                $b = ord($datos[$offset + 1]);
+                return $littleEndian ? ($a | ($b << 8)) : (($a << 8) | $b);
+            };
+            $leer32 = static function (int $offset) use ($datos, $largo, $littleEndian): ?int {
+                if ($offset < 0 || $offset + 4 > $largo) return null;
+                $b = [ord($datos[$offset]), ord($datos[$offset + 1]), ord($datos[$offset + 2]), ord($datos[$offset + 3])];
+                return $littleEndian
+                    ? ($b[0] | ($b[1] << 8) | ($b[2] << 16) | ($b[3] << 24))
+                    : (($b[0] << 24) | ($b[1] << 16) | ($b[2] << 8) | $b[3]);
+            };
+            if ($leer16($tiff + 2) !== 42) return 1;
+            $offsetIfd = $leer32($tiff + 4);
+            if ($offsetIfd === null || $offsetIfd < 8) return 1;
+            $ifd = $tiff + $offsetIfd;
+            $cantidad = $leer16($ifd);
+            if ($cantidad === null || $cantidad > 512) return 1;
+            for ($i = 0; $i < $cantidad; $i++) {
+                $entrada = $ifd + 2 + ($i * 12);
+                if ($entrada + 12 > $largo) return 1;
+                if ($leer16($entrada) !== 0x0112) continue;
+                $orientacion = $leer16($entrada + 8);
+                return $orientacion !== null && $orientacion >= 1 && $orientacion <= 8 ? $orientacion : 1;
+            }
+            return 1;
+        }
+        $posicion += $largoSegmento;
+    }
+    return 1;
+}
+
+/**
+ * Aplica la orientación EXIF antes del recorte, incluso cuando PHP no tiene
+ * habilitada la extensión exif.
+ *
+ * @param resource|GdImage $imagen
+ * @return resource|GdImage
+ */
+function orientar_imagen_jpeg($imagen, string $archivo, string $mime)
+{
+    if ($mime !== 'image/jpeg') return $imagen;
+    $orientacion = 1;
+    if (function_exists('exif_read_data')) {
+        $exif = @exif_read_data($archivo, 'IFD0', true, false);
+        $orientacion = (int) ($exif['IFD0']['Orientation'] ?? $exif['Orientation'] ?? 1);
+    }
+    if ($orientacion < 2 || $orientacion > 8) $orientacion = leer_orientacion_exif_jpeg($archivo);
+    if ($orientacion === 2 && function_exists('imageflip')) {
+        imageflip($imagen, IMG_FLIP_HORIZONTAL);
+        return $imagen;
+    }
+    if ($orientacion === 4 && function_exists('imageflip')) {
+        imageflip($imagen, IMG_FLIP_VERTICAL);
+        return $imagen;
+    }
+    $angulo = match ($orientacion) {
+        3 => 180,
+        5, 6 => -90,
+        7, 8 => 90,
+        default => 0,
+    };
+    if ($angulo === 0) return $imagen;
+    $rotada = @imagerotate($imagen, $angulo, 0);
+    if ($rotada === false) return $imagen;
+    imagedestroy($imagen);
+    if (in_array($orientacion, [5, 7], true) && function_exists('imageflip')) {
+        imageflip($rotada, IMG_FLIP_HORIZONTAL);
+    }
+    return $rotada;
+}
+
+/**
+ * Recorta al centro, escala y guarda un JPEG progresivo con peso controlado.
+ *
+ * @return array{ancho:int,alto:int,peso:int,calidad:int}
+ */
+function procesar_imagen_seo(string $archivoFuente, string $archivoDestino, int $anchoDestino, int $altoDestino): array
+{
+    if (!extension_loaded('gd')) throw new RuntimeException('El servidor no puede procesar imágenes SEO en este momento.');
+    $info = @getimagesize($archivoFuente);
+    $mime = (string) ($info['mime'] ?? '');
+    $creadores = [
+        'image/jpeg' => 'imagecreatefromjpeg',
+        'image/png' => 'imagecreatefrompng',
+        'image/webp' => 'imagecreatefromwebp',
+    ];
+    if ($info === false || !isset($creadores[$mime]) || !function_exists($creadores[$mime])) {
+        throw new RuntimeException('La imagen SEO debe ser JPG, PNG o WEBP.');
+    }
+    $pixeles = (int) ($info[0] ?? 0) * (int) ($info[1] ?? 0);
+    if ($pixeles <= 0 || $pixeles > 40_000_000) {
+        throw new RuntimeException('La imagen SEO tiene dimensiones demasiado grandes.');
+    }
+
+    $origen = @$creadores[$mime]($archivoFuente);
+    if ($origen === false) throw new RuntimeException('No se pudo leer la imagen SEO.');
+    $destino = null;
+    $temporal = $archivoDestino . '.tmp-' . bin2hex(random_bytes(4));
+    try {
+        $origen = orientar_imagen_jpeg($origen, $archivoFuente, $mime);
+        $anchoOrigen = imagesx($origen);
+        $altoOrigen = imagesy($origen);
+        if ($anchoOrigen <= 0 || $altoOrigen <= 0) throw new RuntimeException('La imagen SEO no tiene dimensiones válidas.');
+
+        $proporcionDestino = $anchoDestino / $altoDestino;
+        $proporcionOrigen = $anchoOrigen / $altoOrigen;
+        $xOrigen = 0;
+        $yOrigen = 0;
+        $anchoRecorte = $anchoOrigen;
+        $altoRecorte = $altoOrigen;
+        if ($proporcionOrigen > $proporcionDestino) {
+            $anchoRecorte = max(1, (int) round($altoOrigen * $proporcionDestino));
+            $xOrigen = max(0, (int) floor(($anchoOrigen - $anchoRecorte) / 2));
+        } elseif ($proporcionOrigen < $proporcionDestino) {
+            $altoRecorte = max(1, (int) round($anchoOrigen / $proporcionDestino));
+            $yOrigen = max(0, (int) floor(($altoOrigen - $altoRecorte) / 2));
+        }
+
+        $destino = imagecreatetruecolor($anchoDestino, $altoDestino);
+        if ($destino === false) throw new RuntimeException('No se pudo preparar la imagen SEO.');
+        $blanco = imagecolorallocate($destino, 255, 255, 255);
+        imagefill($destino, 0, 0, $blanco);
+        imagealphablending($destino, true);
+        if (!imagecopyresampled(
+            $destino,
+            $origen,
+            0,
+            0,
+            $xOrigen,
+            $yOrigen,
+            $anchoDestino,
+            $altoDestino,
+            $anchoRecorte,
+            $altoRecorte
+        )) {
+            throw new RuntimeException('No se pudo recortar la imagen SEO.');
+        }
+        imageinterlace($destino, true);
+
+        $pesoMaximo = 400 * 1024;
+        $calidadUsada = 86;
+        $guardada = false;
+        foreach ([86, 82, 78, 74, 70, 66, 62, 58, 54, 50, 46] as $calidad) {
+            $guardada = imagejpeg($destino, $temporal, $calidad);
+            if (!$guardada || !is_file($temporal)) continue;
+            $calidadUsada = $calidad;
+            clearstatcache(true, $temporal);
+            if ((int) filesize($temporal) <= $pesoMaximo) break;
+        }
+        if (!$guardada || !is_file($temporal) || (int) filesize($temporal) <= 0
+            || (int) filesize($temporal) > $pesoMaximo) {
+            throw new RuntimeException('No se pudo optimizar la imagen SEO al peso requerido.');
+        }
+        if (!rename($temporal, $archivoDestino)) throw new RuntimeException('No se pudo guardar la imagen SEO optimizada.');
+        @chmod($archivoDestino, 0644);
+        clearstatcache(true, $archivoDestino);
+        return [
+            'ancho' => $anchoDestino,
+            'alto' => $altoDestino,
+            'peso' => (int) filesize($archivoDestino),
+            'calidad' => $calidadUsada,
+        ];
+    } finally {
+        if (is_file($temporal)) @unlink($temporal);
+        if ($destino !== null && $destino !== false) imagedestroy($destino);
+        imagedestroy($origen);
+    }
+}
+
+/**
+ * Genera las variantes social (1.91:1) y Discover (16:9) desde una imagen local.
+ *
+ * @return array{social:array{ruta:string,ancho:int,alto:int,peso:int,calidad:int},discover:array{ruta:string,ancho:int,alto:int,peso:int,calidad:int}}
+ */
+function generar_variantes_imagen_seo(string $rutaFuente): array
+{
+    $variantes = rutas_variantes_imagen_seo($rutaFuente);
+    if ($variantes === []) throw new RuntimeException('La fuente de la imagen SEO no es válida.');
+    $raiz = realpath(dirname(__DIR__, 2));
+    $directorio = realpath(dirname(__DIR__, 2) . '/uploads/noticias');
+    $fuente = realpath(dirname(__DIR__, 2) . '/' . $rutaFuente);
+    if ($raiz === false || $directorio === false || $fuente === false
+        || !str_starts_with($fuente, $directorio . DIRECTORY_SEPARATOR)
+        || !is_file($fuente)) {
+        throw new RuntimeException('No se encontró la imagen elegida para SEO.');
+    }
+    $social = procesar_imagen_seo($fuente, $raiz . '/' . $variantes['social'], 1200, 630);
+    $discover = procesar_imagen_seo($fuente, $raiz . '/' . $variantes['discover'], 1200, 675);
+    return [
+        'social' => ['ruta' => $variantes['social']] + $social,
+        'discover' => ['ruta' => $variantes['discover']] + $discover,
+    ];
+}
+
+function eliminar_variantes_imagen_seo(string $rutaFuente): void
+{
+    $raiz = dirname(__DIR__, 2);
+    foreach (rutas_variantes_imagen_seo($rutaFuente) as $ruta) {
+        $archivo = $raiz . '/' . $ruta;
+        if (is_file($archivo)) @unlink($archivo);
+    }
+}
+
+/**
  * Guarda una pieza publicitaria sin aplicar la marca de agua editorial.
  */
 function subir_imagen_publicidad(array $archivo): ?string
@@ -705,6 +989,8 @@ function aplicar_marca_agua_centrada(string $rutaCompleta, string $mime): void
         throw new RuntimeException('No se pudo procesar la imagen o el logo.');
     }
 
+    $imagen = orientar_imagen_jpeg($imagen, $rutaCompleta, $mime);
+
     $marca = null;
     $rutaTemporal = $rutaCompleta . '.marca_' . bin2hex(random_bytes(4));
 
@@ -777,6 +1063,8 @@ function eliminar_imagen(?string $rutaRelativa): void
         return;
     }
 
+    eliminar_variantes_imagen_seo($rutaRelativa);
+
     $directorio = realpath(dirname(__DIR__, 2) . '/uploads/noticias');
     $rutaCompleta = realpath(dirname(__DIR__, 2) . '/' . $rutaRelativa);
     if ($directorio !== false && $rutaCompleta !== false
@@ -789,6 +1077,11 @@ function eliminar_imagen(?string $rutaRelativa): void
 function ruta_imagen_subida_valida(string $ruta): bool
 {
     return (bool) preg_match('#^uploads/noticias/noticia_[A-Za-z0-9_-]+\.(?:jpe?g|png|webp)$#i', $ruta);
+}
+
+function ruta_imagen_seo_generada_valida(string $ruta): bool
+{
+    return (bool) preg_match('#^uploads/noticias/seo_[A-Za-z0-9_-]+_1200x(?:630|675)\.jpg$#', $ruta);
 }
 
 function ruta_audio_subido_valida(string $ruta): bool
@@ -877,7 +1170,7 @@ function imagenes_locales_en_html(?string $html): array
 /** Devuelve el tamaño real de una ruta local generada por el portal. */
 function tamano_archivo_portal(string $ruta): int
 {
-    if (!ruta_imagen_subida_valida($ruta) && !ruta_audio_subido_valida($ruta)) return 0;
+    if (!ruta_imagen_subida_valida($ruta) && !ruta_imagen_seo_generada_valida($ruta) && !ruta_audio_subido_valida($ruta)) return 0;
     $raiz = realpath(dirname(__DIR__, 2));
     $archivo = realpath(dirname(__DIR__, 2) . '/' . $ruta);
     if ($raiz === false || $archivo === false
@@ -909,6 +1202,8 @@ function peso_archivos_noticia(array $noticia, array $fotos): array
     }
     $imagenSeo = (string) ($noticia['seo_imagen'] ?? '');
     if (ruta_imagen_subida_valida($imagenSeo)) $rutasFotos[$imagenSeo] = true;
+    $fuenteSeo = $imagenSeo !== '' ? $imagenSeo : (string) ($fotos[0]['ruta'] ?? '');
+    foreach (variantes_imagen_seo_existentes($fuenteSeo) as $ruta) $rutasFotos[$ruta] = true;
 
     $rutasAudios = [];
     foreach (['audio_1', 'audio_2', 'audio_3'] as $campo) {
@@ -1424,19 +1719,28 @@ function descripcion_seo_automatica(?string $html, int $limite = 160): string
     return rtrim($corte, " .,;:-") . '…';
 }
 
-/** @return array{titulo:string,descripcion:string,imagen:string,url:string,slug:string} */
+/** @return array{titulo:string,descripcion:string,imagen:string,imagenes:array<int,string>,imagen_procesada:bool,imagen_fuente:string,url:string,slug:string} */
 function valores_seo_noticia(array $noticia, array $fotos = []): array
 {
     $slug = normalizar_slug_noticia((string) ($noticia['slug'] ?? $noticia['titulo'] ?? 'noticia'));
     $titulo = trim((string) ($noticia['seo_titulo'] ?? '')) ?: trim((string) ($noticia['titulo'] ?? ''));
     $descripcion = trim((string) ($noticia['seo_descripcion'] ?? '')) ?: descripcion_seo_automatica($noticia['descripcion'] ?? '');
-    $imagen = trim((string) ($noticia['seo_imagen'] ?? ''));
-    if ($imagen === '' && !empty($fotos[0]['ruta'])) $imagen = (string) $fotos[0]['ruta'];
-    if ($imagen === '') $imagen = 'imagenes/Logo2027v3.png';
+    $fuenteImagen = trim((string) ($noticia['seo_imagen'] ?? ''));
+    if ($fuenteImagen === '' && !empty($fotos[0]['ruta'])) $fuenteImagen = (string) $fotos[0]['ruta'];
+    $variantes = variantes_imagen_seo_existentes($fuenteImagen);
+    $imagenSocial = $variantes['social'] ?? $fuenteImagen;
+    if ($imagenSocial === '') $imagenSocial = 'imagenes/Logo2027v3.png';
+    $imagenesEstructuradas = [];
+    foreach ([$variantes['discover'] ?? '', $variantes['social'] ?? '', $imagenSocial] as $rutaImagen) {
+        if ($rutaImagen !== '') $imagenesEstructuradas[$rutaImagen] = url_recurso_portal($rutaImagen);
+    }
     return [
         'titulo' => $titulo,
         'descripcion' => $descripcion,
-        'imagen' => url_recurso_portal($imagen),
+        'imagen' => url_recurso_portal($imagenSocial),
+        'imagenes' => array_values($imagenesEstructuradas),
+        'imagen_procesada' => isset($variantes['social']),
+        'imagen_fuente' => $fuenteImagen,
         'url' => url_noticia($slug),
         'slug' => $slug,
     ];

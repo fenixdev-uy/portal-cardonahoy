@@ -37,6 +37,7 @@ $fotos = [];
 $audiosOriginales = [];
 $slugOriginal = '';
 $seoImagenOriginal = '';
+$seoFuenteOriginal = '';
 $categoriaIds = [];
 
 if ($editando) {
@@ -57,6 +58,7 @@ if ($editando) {
         $categoriaIds = [(int) $existente['categoria_id']];
     }
     $fotos = obtener_fotos_noticia($id);
+    $seoFuenteOriginal = $seoImagenOriginal !== '' ? $seoImagenOriginal : (string) ($fotos[0]['ruta'] ?? '');
     $audiosOriginales = array_filter([
         (string) ($existente['audio_1'] ?? ''),
         (string) ($existente['audio_2'] ?? ''),
@@ -178,9 +180,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
     if (empty($errores)) {
       $archivosAEliminar = [];
+      $errorImagenSeo = '';
       try {
         $pdo->beginTransaction();
         if ($editando) {
+            if ($portada === 1) {
+                exigir_cupo_noticia_portada($pdo, $id);
+            }
             $stmt = $pdo->prepare(
                 'UPDATE noticias
                     SET categoria_id=?, usuario_id=?, titulo=?, slug=?, descripcion=?,
@@ -257,6 +263,17 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             }
         }
 
+        $fotosFinales = obtener_fotos_noticia($id);
+        $seoFuenteNueva = $seoImagen !== '' ? $seoImagen : (string) ($fotosFinales[0]['ruta'] ?? '');
+        if ($seoFuenteNueva !== '') {
+            try {
+                generar_variantes_imagen_seo($seoFuenteNueva);
+            } catch (RuntimeException $e) {
+                $errorImagenSeo = $e->getMessage();
+                throw $e;
+            }
+        }
+
         $pdo->commit();
         foreach ($archivosAEliminar as $ruta) eliminar_imagen($ruta);
         $audiosVigentes = array_filter(array_values($audios));
@@ -270,12 +287,20 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             && !imagen_subida_referenciada($seoImagenOriginal)) {
             eliminar_imagen($seoImagenOriginal);
         }
+        if ($seoFuenteOriginal !== '' && $seoFuenteOriginal !== $seoFuenteNueva) {
+            eliminar_variantes_imagen_seo($seoFuenteOriginal);
+        }
 
         flash('success', $editando ? 'Noticia actualizada correctamente.' : 'Noticia creada correctamente.');
         redirigir('index.php');
+      } catch (DomainException $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        $errores[] = $e->getMessage();
       } catch (Throwable $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
-        $errores[] = 'No se pudo guardar la noticia. No se aplicaron cambios parciales.';
+        $errores[] = $errorImagenSeo !== ''
+            ? 'No se pudo preparar la imagen SEO: ' . $errorImagenSeo
+            : 'No se pudo guardar la noticia. No se aplicaron cambios parciales.';
       }
     }
 }
@@ -303,7 +328,7 @@ $seoImagenPreviewRuta = trim((string) ($noticia['seo_imagen'] ?? ''));
 if ($seoImagenPreviewRuta === '' && !empty($fotos[0]['ruta'])) {
     $seoImagenPreviewRuta = (string) $fotos[0]['ruta'];
 }
-$seoImagenPreviewUrl = $seoImagenPreviewRuta !== '' ? url_recurso_portal($seoImagenPreviewRuta) : '';
+$seoImagenPreviewUrl = $seoImagenPreviewRuta !== '' ? $valoresSeoForm['imagen'] : '';
 $seoTituloPersonalizadoForm = trim((string) ($noticia['seo_titulo'] ?? '')) !== '';
 $seoDescripcionPersonalizadaForm = trim((string) ($noticia['seo_descripcion'] ?? '')) !== '';
 $seoPersonalizadoForm = $seoTituloPersonalizadoForm
@@ -398,7 +423,7 @@ require __DIR__ . '/includes/header.php';
           <span class="news-cover-switch-track" aria-hidden="true"><span></span></span>
           <span>
             <strong>Mostrar en el slider</strong>
-            <small>Al activarla, esta noticia aparecerá en el encabezado de la portada.</small>
+            <small>Al activarla, esta noticia aparecerá en el encabezado. Máximo 5 noticias.</small>
           </span>
         </label>
       </div>
@@ -562,6 +587,8 @@ require __DIR__ . '/includes/header.php';
 
     <div class="media-fields-grid seo-preview-grid" data-seo-root
          data-public-base="<?= e(url_base_portal()) ?>"
+         data-seo-current-source="<?= e($seoImagenPreviewRuta) ?>"
+         data-seo-current-preview="<?= e($seoImagenPreviewUrl) ?>"
          data-csrf="<?= e(csrf_token()) ?>" data-editing="<?= $editando ? '1' : '0' ?>">
       <section class="media-fields-card seo-fields-card" aria-labelledby="seoHeading">
         <button class="media-fields-head media-fields-toggle" type="button" data-media-toggle aria-expanded="false" aria-controls="seoFields">
@@ -594,7 +621,7 @@ require __DIR__ . '/includes/header.php';
           </div>
 
           <div class="seo-field-group">
-            <div class="seo-field-heading"><label for="seo_imagen">Imagen SEO/social</label><span>Recomendado 1200 × 630 px</span></div>
+            <div class="seo-field-heading"><label for="seo_imagen">Imagen SEO/social</label><span>Se genera a 1200 × 630 px</span></div>
             <div class="seo-image-controls">
               <select class="form-control" id="seo_imagen" name="seo_imagen" data-current-value="<?= e((string) ($noticia['seo_imagen'] ?? '')) ?>">
                 <option value="">Automática — usar portada</option>
@@ -611,6 +638,7 @@ require __DIR__ . '/includes/header.php';
               <input type="file" id="seoImageInput" accept="image/jpeg,image/png,image/webp" hidden />
             </div>
             <span class="media-upload-status" id="seoImageStatus" aria-live="polite"></span>
+            <p class="seo-field-help">La imagen se recorta al centro y se optimiza automáticamente sin modificar la foto original.</p>
           </div>
         </div>
       </section>

@@ -1,5 +1,36 @@
 # Continuidad — Portal de Noticias
 
+## Máximo de cinco noticias en Portada — 3 de septiembre de 2026
+
+- `PORTADA_NOTICIAS_LIMITE=5` centraliza la regla. El switch AJAX de `admin/index.php` y el guardado de `admin/noticia-form.php` validan el cupo dentro de la transacción; una noticia que ya estaba seleccionada puede seguir editándose.
+- Intentar agregar una sexta devuelve HTTP 422, revierte el switch y muestra: `La portada admite un máximo de 5 noticias destacadas. Desmarcá una antes de agregar otra.` Si existen más de cinco selecciones históricas, el panel informa el total y cuántas deben desmarcarse.
+- La consulta pública de `index.php` aplica `LIMIT 5`, por lo que el slider nunca renderiza más de cinco aun antes de sanear selecciones históricas. No se desmarca ni elimina ninguna noticia automáticamente.
+- Prueba transaccional DEV: cinco selecciones aceptadas, sexta rechazada, caso histórico de seis limitado a cinco públicamente y rollback con estado exacto. Puppeteer pasó en `1440×950` y `390×844`, sin overflow ni errores de consola. El código permanece idéntico en los tres portales.
+- Cardona Hoy PROD fue actualizado por autorización expresa. El preflight autenticado confirmó 18 tablas, 74 noticias, 9 marcadas para Portada y las 9 con foto. Se conservaron por `created_at DESC, id DESC` las IDs 85, 84, 83, 82 y 81; una transacción desmarcó las otras 4 y el postflight confirmó exactamente 5 seleccionadas.
+- Antes de escribir se generó el respaldo PROD `.deploy/respaldos-db/2026-09-03-portada-maximo-prod/cardonahoy-production-before-portada.sql`: 1.038.339 bytes, 18 tablas, 74 filas de noticias y SHA-256 `4677fac6be575199349c3c19fea8b6d9228fd8113ef5893532bc2b6b756fdff2`. El ejecutor autenticado y su token fueron retirados; su URL final respondió HTTP 404.
+- Se publicaron con preflight, respaldo, temporal más renombrado y descarga SHA-256 los cinco archivos `admin/assets/admin.css`, `admin/includes/funciones.php`, `admin/index.php`, `admin/noticia-form.php` e `index.php`. HTTP final: portada 200 con exactamente 5 slides, login 200, formulario sin sesión 302 y configuraciones privadas 403. No hubo borrados de noticias, cambios de contenido, migración de esquema, commit ni push.
+
+## Fecha y hora en la tabla de Noticias — 3 de septiembre de 2026
+
+- `noticias.created_at` ya conserva automáticamente el momento en que se crea y publica cada noticia; no se agregó ninguna columna ni migración.
+- `admin/index.php` muestra ahora `DD/MM/AAAA · HH:MM hs.` dentro de un elemento `<time>` semántico. La ordenación existente continúa usando el timestamp completo y editar una noticia no modifica su fecha de creación.
+- El cambio común quedó aplicado en Portal Base, RS Medios y Cardona Hoy. PHP, whitespace y QA renderizada con Puppeteer pasaron en `1440×950` y `390×844`: fecha y hora visibles, orden ascendente funcional, sin overflow ni errores de consola. Cardona Hoy PROD ya recibió este archivo junto con el límite de Portada; Base y RS Medios permanecen locales.
+
+## Procesamiento automático de imágenes SEO — 3 de septiembre de 2026
+
+- La fuente continúa guardándose con la semántica existente: `seo_imagen` vacía usa automáticamente la portada y un valor explícito representa una foto elegida o subida para SEO. No se agregó ninguna columna ni migración.
+- Al guardar una noticia se generan dos copias independientes dentro de `uploads/noticias/`: JPEG progresivo de `1200 × 630` para Open Graph, WhatsApp, Facebook y Twitter, y JPEG de `1200 × 675` para Google Discover y el arreglo `NewsArticle.image`.
+- El procesador valida el contenido real JPG/PNG/WEBP, corrige orientación EXIF aun cuando la extensión PHP `exif` no está disponible, recorta al centro con proporción `cover`, escala, elimina metadatos y reduce calidad gradualmente hasta un máximo de 400 KB.
+- Nunca modifica la fotografía fuente por generar SEO. Las variantes usan nombres deterministas, se regeneran cuando cambia la fuente y se eliminan junto con ella o cuando deja de ser la fuente SEO efectiva.
+- La subida exclusiva desde la card SEO solicita el procesamiento en el mismo endpoint autenticado y muestra `Imagen SEO lista: 1200 × 630 px · N KB`; la vista previa utiliza la copia resultante. Un fallo elimina la subida incompleta y devuelve un error controlado.
+- La página pública informa ancho, alto y MIME de `og:image`, usa la variante social también en Twitter, publica ambas variantes en `NewsArticle` y habilita `max-image-preview:large`. Si una noticia histórica todavía no tiene derivados, conserva el fallback seguro a su imagen original.
+- QA de backend: JPG horizontal, PNG vertical, WEBP pequeño, imagen de alto detalle y JPEG con Orientation 6; todos produjeron las medidas exactas, MIME JPEG y peso menor o igual a 400 KB. La prueba se repitió en los tres checkouts.
+- QA pública reversible en Portal Base DEV: una noticia existente sirvió la variante social con HTTP 200, `image/jpeg`, 1200×630 y 96.389 bytes; la variante Discover respondió HTTP 200, 1200×675 y 102.238 bytes. Open Graph, Twitter y JSON-LD apuntaron a las copias correctas. Los dos archivos temporales fueron retirados y la base no se modificó.
+- QA visual con Puppeteer —Browser plugin no disponible— pasó en `1440×950` y `390×844`: imagen visible, estado con medidas/peso, proporción exacta, sin overflow y sin errores de consola. No se creó una cuenta administrativa temporal; la interacción autenticada real queda para validación manual del usuario.
+- La implementación está idéntica en Portal Base, RS Medios y Cardona Hoy. El usuario confirmó la carga en DEV y autorizó desplegarla solamente en Cardona Hoy PROD.
+- El despliegue incremental de `admin/assets/seo-noticia.js`, `admin/includes/funciones.php`, `admin/noticia-form.php`, `admin/upload-imagen.php` y `noticia.php` terminó sin conflictos: se comparó cada remoto con `.deploy/estado.json`, se respaldó la versión anterior en `.deploy/respaldos/2026-09-03_seo-imagen-prod/`, se usó temporal más renombrado y la descarga final coincidió en SHA-256 para los cinco archivos.
+- QA posterior: portada HTTP 200, login 200, formulario administrativo sin sesión 302, runtimes privados 403 y JavaScript servido por HTTPS con hash `ac7675d527d835abca122eeb2a568805defa75d90961b84daf6bff1b6f99cc76`. No hubo migración, cambios de datos, borrados, commit ni push, y no se alteró el estado de Mantenimiento. La prueba autenticada con imágenes reales queda a cargo del usuario.
+
 > **Identidad de este checkout — 30 de agosto de 2026:** esta copia es `portal-cardonahoy`, ubicada en `/home/fenixdev/public_html/proyectos.fenixdev.uno/09portal-noticias/portal-cardonahoy`. Nació del commit aprobado `5ec3e42`, tiene su remoto GitHub exclusivo y su PROD inicial en `https://cardonahoy.com/`. Las referencias operativas a RS Medios que siguen debajo documentan el origen funcional y no autorizan usar sus destinos o credenciales en esta copia.
 
 ## Cierre aprobado — 3 de septiembre de 2026
