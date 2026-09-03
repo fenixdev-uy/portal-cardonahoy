@@ -1,5 +1,15 @@
 # Continuidad — Portal de Noticias
 
+## Copiar link editorial desde la noticia — 3 de septiembre de 2026
+
+- `partials/acciones-noticia.php` incorpora debajo de la fila de votos y Compartir una herramienta compacta con icono y texto **Copiar link de noticia**. Se reutiliza en la página canónica y en la nota completa abierta desde la portada.
+- El servidor solo incluye el control cuando existe una sesión válida y su rol posee `noticias.editar`; para visitantes y roles sin esa capacidad no queda marcado oculto en el HTML.
+- La copia usa la misma URL canónica generada por `url_noticia()` que Facebook y WhatsApp, ofrece fallback para navegadores sin la API moderna del portapapeles y confirma **Link copiado** durante 1,8 segundos.
+- Implementación funcional idéntica en Portal Base, RS Medios y Cardona Hoy. Pasaron PHP, JavaScript, whitespace, render autorizado/anónimo y Puppeteer en `1440×900` y `390×844`, sin overflow ni errores de consola.
+- Por autorización expresa, Cardona Hoy PROD recibió únicamente `partials/acciones-noticia.php`, `assets/css/noticia.css`, `assets/css/portal.css`, `assets/js/noticia.js` y `assets/js/portal.js`. El preflight FTPS verificó TLS, destino y cero conflictos; las versiones anteriores quedaron en `.deploy/respaldos/2026-09-03_203354/` y cada descarga posterior coincidió en SHA-256 con el archivo local.
+- Smoke test PROD: portada, login y una noticia real respondieron HTTP 200; los dos JavaScript publicados contienen el controlador de copia, y tanto portada como noticia omiten correctamente el control para visitantes anónimos. `servicios.local.json` y `admin/config.local.php` continúan en HTTP 403. No hubo migración, modificación de datos ni borrados.
+- Checkpoint funcional `837ee57` (`feat: agregar copia de enlace para editores`), publicado en `origin/main`. La documentación del despliegue se consolidó en un commit posterior; la prueba con una sesión editorial real queda a cargo del usuario.
+
 ## Checkpoint GitHub aprobado — 3 de septiembre de 2026
 
 - El lote funcional de imágenes SEO, fecha y hora administrativa y máximo de cinco noticias en Portada quedó consolidado en `4c3f01c` (`feat: optimizar SEO y limitar noticias de portada`) y publicado en `origin/main`.

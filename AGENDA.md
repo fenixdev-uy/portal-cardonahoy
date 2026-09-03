@@ -11,6 +11,8 @@ Este archivo es la **única agenda aplicable a `portal-cardonahoy`**. La aplicac
 
 ## Implementación local actual — 3 de septiembre de 2026
 
+- Las vistas públicas de una noticia muestran debajo de votos y Compartir la herramienta **Copiar link de noticia** únicamente a sesiones cuyo rol posee `noticias.editar`; copia la URL canónica y confirma **Link copiado**. Cardona Hoy PROD ya recibió la mejora y queda pendiente la validación autenticada del usuario.
+- La mejora quedó consolidada en el checkpoint funcional `837ee57`; no requirió migración ni modificación de datos.
 - Portada admite como máximo 5 noticias destacadas: el backend bloquea la sexta tanto desde la tabla como desde el formulario, muestra un mensaje claro y la consulta pública limita el slider a cinco.
 - Cardona Hoy PROD tenía 9 noticias seleccionadas al momento del preflight. Se conservaron las cinco más recientes —IDs 85, 84, 83, 82 y 81— y se desmarcaron exactamente 4 antiguas, sin eliminar ni editar contenido.
 - La tabla administrativa de Noticias muestra en PROD la fecha y hora exactas desde el `created_at` ya existente, con formato `DD/MM/AAAA · HH:MM hs.`; no requirió migración y conserva el orden cronológico actual.
