@@ -1,5 +1,33 @@
 # Continuidad — Portal de Noticias
 
+## Exportación PNG del análisis para WhatsApp — 4 de septiembre de 2026
+
+- **Análisis → Vistas** incorpora un botón de cámara pegado a **Ver tabla**. Genera mediante Canvas —sin capturar ni pixelar el DOM— una composición blanca de alta resolución `3200×1960`, lista para compartir.
+- El PNG refleja el estado actual: período Desde/Hasta, modo Área o Columnas, series visibles, noticias con actividad, vistas, compartidas, gráfico principal y la serie independiente de KPI mensuales del año con su referencia histórica del 5%.
+- En contexto seguro usa `ClipboardItem` y `navigator.clipboard.write` para copiar `image/png` y confirma **Imagen copiada**. Si la API no existe o el navegador deniega el permiso, descarga automáticamente `cardonahoy-vistas-<desde>-a-<hasta>.png` y explica el motivo junto al botón.
+- `analisis-refresh.js` mantiene sincronizado el resumen embebido para que una actualización silenciosa no exporte filtros o totales anteriores.
+- QA autenticada DEV con Chromium/Puppeteer: copia PNG real de 412.369 bytes, firma PNG válida, dimensiones exactas `3200×1960`, modo Columnas, ambas series y rango de agosto. También pasó la descarga alternativa con nombre correcto, botón adyacente a 6 px, escritorio `1440×1000`, móvil `390×844`, consola limpia, cero requests fallidos y sin overflow.
+- Cardona Hoy PROD recibió `admin/vistas.php`, `admin/assets/admin.css`, `admin/assets/analisis-refresh.js` y el nuevo `admin/assets/vistas-exportar.js`. El preflight confirmó cero conflictos; los originales quedaron en `.deploy/respaldos/2026-09-04_vistas-mensuales-png-prod/` y los cuatro archivos remotos coincidieron posteriormente en SHA-256.
+- Smoke test PROD: portada y login HTTP 200, Vistas sin sesión 302 hacia login, los tres assets HTTP 200 y `servicios.local.json` HTTP 403. No hubo cambios de datos, migración ni cambio de Mantenimiento; el bloque funcional quedó consolidado en `cc7737e` (`feat: ampliar portada y análisis de vistas`) y resta la validación con la sesión real del usuario.
+
+## Tasas mensuales de distribución en Análisis → Vistas — 4 de septiembre de 2026
+
+- La card principal se organiza en `70/30` en escritorio: el gráfico existente conserva el 70% izquierdo y la evolución mensual de la tasa ocupa el 30% derecho. Por debajo de `900px` ambos bloques se apilan en una sola columna.
+- El bloque derecho consulta siempre desde el 1.º de enero hasta el inicio del mes siguiente del año en curso. Construye todos los meses transcurridos, incluidos los que no tienen actividad, y calcula cada KPI como `compartidas del mes / vistas del mes × 100`; no usa ni hereda los parámetros Desde/Hasta del gráfico principal.
+- La comparación usa barras horizontales con porcentaje exacto, escala común y una marca vertical para la **Media histórica mensual 5%**. Un mes sin vistas muestra `—`; un mes con vistas y cero compartidas muestra `0,0%`.
+- Aunque el rango filtrado no tenga actividad, el panel anual permanece visible junto al estado vacío de la izquierda. `analisis-refresh.js` actualiza silenciosamente ambos conjuntos sin reiniciar el modo Área/Columnas.
+- QA autenticada DEV: enero–septiembre aparecen como nueve filas; agosto conserva `16 vistas / 2 compartidas = 12,5%` y septiembre `5 / 0 = 0,0%`. Cambiar Desde/Hasta de agosto a un día sin actividad en enero alteró los totales filtrados a cero pero dejó idénticos los nueve KPI. Chromium/Puppeteer pasó en `1440×1000` y `390×844`, con consola limpia, cero requests fallidos y sin overflow.
+- El mismo lote fue publicado y verificado en Cardona Hoy PROD junto con la exportación PNG. No hubo cambios de datos, migración ni cambio de Mantenimiento; resta la validación visual con la sesión real del usuario.
+
+## Slider de Portada ampliado a diez noticias en DEV y PROD — 4 de septiembre de 2026
+
+- `PORTADA_NOTICIAS_LIMITE` pasó de 5 a 10 en `admin/includes/funciones.php`; la misma constante gobierna la validación transaccional administrativa y el `LIMIT` de la consulta pública.
+- `admin/noticia-form.php` y el fallback JavaScript de `admin/index.php` dejaron de repetir el valor numérico y muestran/consumen el cupo centralizado.
+- Una prueba sobre tabla temporal aceptó exactamente 10 selecciones, rechazó la número 11 y ejecutó rollback. No se modificaron datos persistentes.
+- Puppeteer validó la portada HTTP 200, cambio de slide, diez indicadores y ausencia de overflow o errores de consola en `1440×900` y `390×844`.
+- Por autorización expresa, Cardona Hoy PROD recibió `admin/includes/funciones.php`, `admin/index.php` y `admin/noticia-form.php`. El preflight FTPS confirmó cero conflictos; las versiones anteriores quedaron en `.deploy/respaldos/2026-09-04_slider-10-prod/` y las descargas posteriores coincidieron en SHA-256.
+- Smoke test PROD: portada y login HTTP 200, cinco slides actualmente seleccionados y configuraciones privadas HTTP 403. No hubo migración, modificación de datos ni borrados; el código quedó incluido en `cc7737e` y queda pendiente la validación autenticada al seleccionar noticias adicionales.
+
 ## Copiar link editorial desde la noticia — 3 de septiembre de 2026
 
 - `partials/acciones-noticia.php` incorpora debajo de la fila de votos y Compartir una herramienta compacta con icono y texto **Copiar link de noticia**. Se reutiliza en la página canónica y en la nota completa abierta desde la portada.
