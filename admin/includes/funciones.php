@@ -5,10 +5,10 @@
 
 require_once __DIR__ . '/auth.php';
 
-const PORTADA_NOTICIAS_LIMITE = 5;
+const PORTADA_NOTICIAS_LIMITE = 10;
 
 /**
- * Bloquea la selección actual de Portada y evita agregar una sexta noticia.
+ * Bloquea la selección actual de Portada al alcanzar el cupo configurado.
  * Debe ejecutarse dentro de la misma transacción que guarda el cambio.
  */
 function exigir_cupo_noticia_portada(PDO $pdo, int $noticiaId): void

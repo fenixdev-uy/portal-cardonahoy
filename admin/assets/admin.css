@@ -3710,7 +3710,214 @@ body.ia-preview-open { overflow: hidden; }
   border-color: #cbd5e1;
 }
 
+.viz-acciones {
+  display: flex;
+  min-height: 38px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.viz-acciones-botones {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.viz-exportar-btn {
+  display: inline-flex;
+  width: 38px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text-muted);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.viz-exportar-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.viz-exportar-btn:hover:not(:disabled),
+.viz-exportar-btn:focus-visible {
+  border-color: #f08a24;
+  color: #c96d16;
+  outline: none;
+}
+
+.viz-exportar-btn:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.viz-exportar-btn.is-copiado {
+  border-color: #f08a24;
+  background: #fff8f1;
+  color: #a9540b;
+}
+
+.viz-exportar-estado {
+  min-height: 15px;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .viz-panel { padding: 0; }
+
+/* Vistas: lectura 70/30. La serie principal responde al filtro y la columna
+   derecha mantiene la comparación mensual del año en curso. */
+.viz-actividad-distribucion {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(230px, 3fr);
+  min-width: 0;
+}
+
+.viz-actividad-principal {
+  min-width: 0;
+}
+
+.viz-tasa-compartidos {
+  display: flex;
+  min-width: 0;
+  padding: 24px 22px 20px;
+  border-left: 1px solid var(--border);
+  background: #fbfcfe;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.viz-tasa-encabezado h3 {
+  margin: 5px 0 6px;
+  color: var(--text);
+  font-size: 1.05rem;
+}
+
+.viz-tasa-encabezado p {
+  max-width: 260px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.viz-tasa-kicker {
+  color: #c96d16;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.viz-tasa-meses {
+  display: grid;
+  width: 100%;
+  margin-top: 19px;
+  gap: 10px;
+}
+
+.viz-tasa-mes {
+  display: grid;
+  grid-template-columns: 30px minmax(70px, 1fr) 48px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  text-align: left;
+}
+
+.viz-tasa-mes > span {
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.viz-tasa-mes > strong {
+  color: var(--text);
+  font-size: 0.76rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.viz-tasa-barra {
+  position: relative;
+  height: 9px;
+  border-radius: 3px;
+  background: #e5eaf0;
+  overflow: visible;
+}
+
+.viz-tasa-barra i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: #f08a24;
+}
+
+.viz-tasa-barra b {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: var(--viz-tasa-referencia);
+  width: 2px;
+  border-radius: 1px;
+  background: #9a4e0c;
+  transform: translateX(-1px);
+}
+
+.viz-tasa-referencia {
+  display: flex;
+  width: 100%;
+  margin-top: 16px;
+  padding: 10px 12px;
+  border: 1px solid #f4d5b5;
+  border-radius: 10px;
+  background: #fff8f1;
+  align-items: center;
+  gap: 10px;
+  color: #8a4a10;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+.viz-tasa-referencia strong {
+  margin-left: auto;
+  color: #a9540b;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.viz-tasa-periodo,
+.viz-tasa-nota {
+  margin: 11px 0 0;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.viz-tasa-nota {
+  width: 100%;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.viz-vacio-actividad {
+  display: flex;
+  min-height: 540px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
 
 /* Separación clara respecto de la card del gráfico, no pegada debajo. */
 .viz-tabla-panel { margin-top: 24px; }
@@ -3953,4 +4160,17 @@ body.ia-preview-open { overflow: hidden; }
   .viz-fechas label { grid-column: 1 / -1; grid-template-columns: 44px minmax(0, 1fr); }
   .viz-fechas input { width: 100%; }
   .viz-fechas-btn { grid-column: 2; }
+  .viz-acciones { width: 100%; align-items: flex-start; }
+}
+
+@media (max-width: 900px) {
+  .viz-actividad-distribucion { grid-template-columns: minmax(0, 1fr); }
+  .viz-tasa-compartidos {
+    border-top: 1px solid var(--border);
+    border-left: 0;
+  }
+  .viz-tasa-meses,
+  .viz-tasa-referencia { max-width: 320px; }
+
+  .viz-vacio-actividad { min-height: 360px; }
 }

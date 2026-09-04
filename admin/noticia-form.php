@@ -423,7 +423,7 @@ require __DIR__ . '/includes/header.php';
           <span class="news-cover-switch-track" aria-hidden="true"><span></span></span>
           <span>
             <strong>Mostrar en el slider</strong>
-            <small>Al activarla, esta noticia aparecerá en el encabezado. Máximo 5 noticias.</small>
+            <small>Al activarla, esta noticia aparecerá en el encabezado. Máximo <?= PORTADA_NOTICIAS_LIMITE ?> noticias.</small>
           </span>
         </label>
       </div>

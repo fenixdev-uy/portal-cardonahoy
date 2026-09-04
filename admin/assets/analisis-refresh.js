@@ -23,7 +23,12 @@
   function copiarContenido(selector, documentoNuevo) {
     const actual = document.querySelector(selector);
     const nuevo = documentoNuevo.querySelector(selector);
-    if (actual && nuevo) actual.innerHTML = nuevo.innerHTML;
+    if (actual && nuevo) {
+      actual.innerHTML = nuevo.innerHTML;
+      if (nuevo.hasAttribute('aria-label')) {
+        actual.setAttribute('aria-label', nuevo.getAttribute('aria-label'));
+      }
+    }
   }
 
   function requiereRecarga(documentoNuevo) {
@@ -38,6 +43,7 @@
 
     copiarContenido('.viz-resumen', documentoNuevo);
     copiarContenido('.viz-panel:not(.viz-tabla-panel) .viz-panel-head > div:first-child', documentoNuevo);
+    copiarContenido('.viz-tasa-compartidos', documentoNuevo);
 
     const tablaActual = document.getElementById('vizTabla');
     const tablaNueva = documentoNuevo.getElementById('vizTabla');
@@ -45,6 +51,11 @@
 
     if (datosActuales && datosNuevos) {
       datosActuales.textContent = datosNuevos.textContent;
+      const resumenExportarActual = document.getElementById('vizExportarResumen');
+      const resumenExportarNuevo = documentoNuevo.getElementById('vizExportarResumen');
+      if (resumenExportarActual && resumenExportarNuevo) {
+        resumenExportarActual.textContent = resumenExportarNuevo.textContent;
+      }
       const datos = JSON.parse(datosNuevos.textContent);
       document.dispatchEvent(new CustomEvent('analisis:datos-actualizados', { detail: { datos } }));
     }

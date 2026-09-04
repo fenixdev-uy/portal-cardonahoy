@@ -432,7 +432,7 @@ require __DIR__ . '/includes/header.php';
           input.setAttribute('aria-label', (input.checked ? 'Quitar de portada: ' : 'Mostrar en portada: ')
             + (form.closest('tr')?.querySelector('.cell-title')?.textContent || 'noticia'));
           feedback.textContent = 'Guardado';
-          updateLimitAlert(Number(result.portada_total || 0), Number(result.portada_limite || 5));
+          updateLimitAlert(Number(result.portada_total || 0), Number(result.portada_limite || <?= PORTADA_NOTICIAS_LIMITE ?>));
           window.setTimeout(() => {
             if (feedback.textContent === 'Guardado') feedback.textContent = '';
           }, 1800);
