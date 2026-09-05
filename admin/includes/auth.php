@@ -53,9 +53,11 @@ function usuario_actual(): ?array
         return $cache[$id];
     }
 
+    $sesionReemplazada = false;
     try {
         $stmt = db()->prepare(
             'SELECT u.id, u.nombre, u.email, u.foto, u.activo, u.debe_cambiar_password,
+                    u.sesion_token_hash,
                     r.id AS rol_id, r.nombre AS rol_nombre, r.slug AS rol_slug
                FROM usuarios u
                JOIN roles r ON r.id = u.rol_id
@@ -63,12 +65,26 @@ function usuario_actual(): ?array
         );
         $stmt->execute([$id]);
         $usuario = $stmt->fetch() ?: null;
+
+        $tokenSesion = (string) ($_SESSION['sesion_token'] ?? '');
+        $tokenHash = (string) ($usuario['sesion_token_hash'] ?? '');
+        $sesionReemplazada = $usuario && $tokenSesion !== '' && $tokenHash !== ''
+            && !hash_equals($tokenHash, hash('sha256', $tokenSesion));
+        if ($usuario && ($tokenSesion === '' || $tokenHash === '' || $sesionReemplazada)) {
+            $usuario = null;
+        }
+        if ($usuario) {
+            unset($usuario['sesion_token_hash']);
+        }
     } catch (PDOException $e) {
         $usuario = null;
     }
 
     if (!$usuario) {
         cerrar_sesion();
+        if ($sesionReemplazada) {
+            $GLOBALS['portal_sesion_reemplazada'] = true;
+        }
     }
 
     $cache[$id] = $usuario;
@@ -122,14 +138,19 @@ function exigir_login(bool $json = false): array
         return $usuario;
     }
 
+    $sesionReemplazada = !empty($GLOBALS['portal_sesion_reemplazada']);
     if ($json) {
         http_response_code(401);
         header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['error' => 'Sesion vencida. Volve a ingresar.'], JSON_UNESCAPED_UNICODE);
+        echo json_encode([
+            'error' => $sesionReemplazada
+                ? 'Tu sesión se cerró porque se inició sesión con este usuario en otro dispositivo.'
+                : 'Sesion vencida. Volve a ingresar.',
+        ], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
-    header('Location: ' . ruta_login());
+    header('Location: ' . ruta_login() . ($sesionReemplazada ? '?motivo=sesion-reemplazada' : ''));
     exit;
 }
 
@@ -237,8 +258,15 @@ function iniciar_sesion_usuario(int $usuarioId): void
 {
     iniciar_sesion_segura();
     session_regenerate_id(true);
+    $tokenSesion = bin2hex(random_bytes(32));
+    $stmt = db()->prepare('UPDATE usuarios SET sesion_token_hash = ? WHERE id = ? AND activo = 1');
+    $stmt->execute([hash('sha256', $tokenSesion), $usuarioId]);
+    if ($stmt->rowCount() !== 1) {
+        throw new RuntimeException('No se pudo iniciar la sesión del usuario.');
+    }
     $_SESSION = [
         'usuario_id' => $usuarioId,
+        'sesion_token' => $tokenSesion,
         'csrf_token' => bin2hex(random_bytes(32)),
         'iniciada_en' => time(),
         'ultima_actividad' => time(),
@@ -249,6 +277,19 @@ function cerrar_sesion(): void
 {
     if (session_status() !== PHP_SESSION_ACTIVE) {
         iniciar_sesion_segura();
+    }
+    $usuarioId = (int) ($_SESSION['usuario_id'] ?? 0);
+    $tokenSesion = (string) ($_SESSION['sesion_token'] ?? '');
+    if ($usuarioId > 0 && $tokenSesion !== '') {
+        try {
+            $stmt = db()->prepare(
+                'UPDATE usuarios SET sesion_token_hash = NULL
+                  WHERE id = ? AND sesion_token_hash = ?'
+            );
+            $stmt->execute([$usuarioId, hash('sha256', $tokenSesion)]);
+        } catch (PDOException $e) {
+            // La sesión local igualmente debe destruirse si la base no responde.
+        }
     }
     $_SESSION = [];
     if (ini_get('session.use_cookies')) {

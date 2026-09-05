@@ -7,7 +7,9 @@ if (usuario_actual()) {
     redirigir('index.php');
 }
 
-$error = '';
+$error = (($_GET['motivo'] ?? '') === 'sesion-reemplazada')
+    ? 'Tu sesión se cerró porque se inició sesión con este usuario en otro dispositivo.'
+    : '';
 $email = '';
 $logoLoginRuta = configuracion_logo_login();
 $logoLoginArchivo = dirname(__DIR__) . '/' . $logoLoginRuta;

@@ -23,15 +23,17 @@ $identidadAdmin = configuracion_logo_admin();
 $faviconPortalArchivo = $identidadAdmin['favicon_ruta'] !== null ? __DIR__ . '/' . $identidadAdmin['favicon_ruta'] : __DIR__ . '/imagenes/Logo2027v2.png';
 $faviconPortalVersion = is_file($faviconPortalArchivo) ? (string) filemtime($faviconPortalArchivo) : '1';
 $seoPortada = configuracion_seo_portada();
+$nombreSitio = configuracion_nombre_sitio();
 $jsonLdPortada = [
     '@context' => 'https://schema.org',
     '@type' => 'WebSite',
-    'name' => 'Radio Sur',
+    'name' => $nombreSitio,
     'url' => $seoPortada['url'],
     'description' => $seoPortada['descripcion'],
     'publisher' => [
-        '@type' => 'Organization',
-        'name' => 'Radio Sur',
+        '@type' => 'NewsMediaOrganization',
+        'name' => $nombreSitio,
+        'url' => $seoPortada['url'],
         'logo' => ['@type' => 'ImageObject', 'url' => url_portal($logoPortalRuta)],
     ],
 ];
@@ -130,7 +132,7 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
   <meta property="og:image" content="<?= e($seoPortada['imagen_url']) ?>" />
   <meta property="og:image:alt" content="<?= e($seoPortada['titulo']) ?>" />
   <meta property="og:url" content="<?= e($seoPortada['url']) ?>" />
-  <meta property="og:site_name" content="Radio Sur" />
+  <meta property="og:site_name" content="<?= e($nombreSitio) ?>" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="<?= e($seoPortada['titulo']) ?>" />
   <meta name="twitter:description" content="<?= e($seoPortada['descripcion']) ?>" />

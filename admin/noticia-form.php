@@ -685,25 +685,38 @@ require __DIR__ . '/includes/header.php';
     <header class="ia-preview-header">
       <div>
         <span class="ia-preview-eyebrow">Asistente editorial</span>
-        <h2 id="iaPreviewTitle">Crear noticia con IA</h2>
+        <h2 id="iaPreviewTitle" aria-label="Crear noticia con IA ✨">
+          <span>Crear noticia con IA</span>
+          <svg class="ia-title-sparkles" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l1.35 4.65L18 8l-4.65 1.35L12 14l-1.35-4.65L6 8l4.65-1.35L12 2z"></path><path d="M19 14l.75 2.25L22 17l-2.25.75L19 20l-.75-2.25L16 17l2.25-.75L19 14z"></path></svg>
+        </h2>
         <p id="iaPreviewDescription">Sumá información e indicaciones y revisá el resultado.</p>
       </div>
       <button type="button" class="ia-preview-close" id="iaPreviewClose" aria-label="Cerrar vista previa">×</button>
     </header>
     <div class="ia-preview-grid">
       <section class="ia-preview-column ia-source-column">
+        <div class="ia-content-mode">
+          <label for="iaContentMode">Contenido</label>
+          <select id="iaContentMode" class="form-control">
+            <option value="url">Extraer de URL</option>
+            <option value="texto" selected>Pegar contenido</option>
+          </select>
+        </div>
         <div class="ia-section-heading">
           <div>
-            <h3>Información base</h3>
-            <p>Pegá texto crudo, apuntes o fragmentos de otras fuentes.</p>
+            <h3 id="iaSourceTitle">Información base</h3>
+            <p id="iaSourceHelp">Pegá texto crudo, apuntes o fragmentos de otras fuentes.</p>
           </div>
         </div>
-        <textarea class="ia-source-input" id="iaSourceInput" maxlength="50000" placeholder="Pegá acá toda la información disponible para construir la noticia…"></textarea>
+        <textarea class="ia-source-input" id="iaSourceInput" maxlength="50000" aria-describedby="iaSourceHelp" placeholder="Pegá acá toda la información disponible para construir la noticia…"></textarea>
         <label class="ia-instructions-label" for="iaInstructionsInput">Indicaciones opcionales</label>
         <textarea class="ia-instructions-input" id="iaInstructionsInput" maxlength="2000" placeholder="Ej.: priorizar el impacto local, usar un tono institucional o destacar determinado aspecto."></textarea>
         <div class="ia-source-actions">
           <span class="ia-generation-status" id="iaGenerationStatus" aria-live="polite"></span>
-          <button type="button" class="btn btn-primary" id="iaGenerate">Crear noticia</button>
+          <button type="button" class="btn btn-primary ia-action-btn" id="iaGenerate">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l1.35 4.65L18 8l-4.65 1.35L12 14l-1.35-4.65L6 8l4.65-1.35L12 2z"></path><path d="M19 14l.75 2.25L22 17l-2.25.75L19 20l-.75-2.25L16 17l2.25-.75L19 14z"></path></svg>
+            <span id="iaGenerateLabel">Crear noticia</span>
+          </button>
         </div>
       </section>
       <section class="ia-preview-column ia-preview-column-proposal" id="iaProposalSection" hidden>
@@ -713,14 +726,28 @@ require __DIR__ . '/includes/header.php';
             <p>Revisala antes de agregarla al editor.</p>
           </div>
         </div>
+        <div class="ia-ideal-title" id="iaIdealTitleBox" hidden>
+          <label for="iaIdealTitle">Título ideal</label>
+          <div class="ia-ideal-title-row">
+            <textarea class="form-control" id="iaIdealTitle" maxlength="255" rows="2"></textarea>
+            <button type="button" class="btn btn-outline" id="iaUseIdealTitle">Usar este título</button>
+          </div>
+          <span class="ia-ideal-title-status" id="iaIdealTitleStatus" aria-live="polite"></span>
+        </div>
         <div class="ia-preview-content" id="iaPreviewProposal"></div>
       </section>
     </div>
     <footer class="ia-preview-actions">
       <button type="button" class="btn btn-outline" id="iaPreviewCancel">Cancelar</button>
       <div class="ia-preview-actions-main">
-        <button type="button" class="btn btn-outline" id="iaRegenerate" hidden>Crear otra versión</button>
-        <button type="button" class="btn btn-primary" id="iaPreviewApply" disabled>Agregar al editor</button>
+        <button type="button" class="btn btn-outline ia-action-btn" id="iaRegenerate" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l1.35 4.65L18 8l-4.65 1.35L12 14l-1.35-4.65L6 8l4.65-1.35L12 2z"></path><path d="M19 14l.75 2.25L22 17l-2.25.75L19 20l-.75-2.25L16 17l2.25-.75L19 14z"></path></svg>
+          <span>Crear otra versión</span>
+        </button>
+        <button type="button" class="btn btn-primary ia-action-btn" id="iaPreviewApply" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l1.35 4.65L18 8l-4.65 1.35L12 14l-1.35-4.65L6 8l4.65-1.35L12 2z"></path><path d="M19 14l.75 2.25L22 17l-2.25.75L19 20l-.75-2.25L16 17l2.25-.75L19 14z"></path></svg>
+          <span>Agregar al editor</span>
+        </button>
       </div>
     </footer>
   </section>
@@ -1037,12 +1064,21 @@ require __DIR__ . '/includes/header.php';
   const btnMejorarIa = document.getElementById('btnMejorarIa');
   const iaStatus = document.getElementById('iaEditorStatus');
   const iaOverlay = document.getElementById('iaPreviewOverlay');
+  const iaContentMode = document.getElementById('iaContentMode');
   const iaSourceInput = document.getElementById('iaSourceInput');
+  const iaSourceTitle = document.getElementById('iaSourceTitle');
+  const iaSourceHelp = document.getElementById('iaSourceHelp');
   const iaInstructionsInput = document.getElementById('iaInstructionsInput');
   const iaGenerate = document.getElementById('iaGenerate');
+  const iaGenerateLabel = document.getElementById('iaGenerateLabel');
   const iaGenerationStatus = document.getElementById('iaGenerationStatus');
   const iaProposalSection = document.getElementById('iaProposalSection');
   const iaProposal = document.getElementById('iaPreviewProposal');
+  const iaIdealTitleBox = document.getElementById('iaIdealTitleBox');
+  const iaIdealTitle = document.getElementById('iaIdealTitle');
+  const iaUseIdealTitle = document.getElementById('iaUseIdealTitle');
+  const iaIdealTitleStatus = document.getElementById('iaIdealTitleStatus');
+  const titleInput = document.getElementById('titulo');
   const iaClose = document.getElementById('iaPreviewClose');
   const iaCancel = document.getElementById('iaPreviewCancel');
   const iaRegenerate = document.getElementById('iaRegenerate');
@@ -1051,6 +1087,8 @@ require __DIR__ . '/includes/header.php';
   const iaInstructionsStorageKey = <?= json_encode('portal_noticias_ia_instrucciones_' . PORTAL_INSTANCE_ID) ?>;
   let propuestaIa = '';
   let iaEnProceso = false;
+  let modoContenidoAnterior = iaContentMode.value;
+  const contenidoPorModo = { texto: '', url: '' };
 
   try {
     iaInstructionsInput.value = window.localStorage.getItem(iaInstructionsStorageKey) || '';
@@ -1137,11 +1175,32 @@ require __DIR__ . '/includes/header.php';
     iaGenerationStatus.className = 'ia-generation-status' + (tipo ? ' is-' + tipo : '');
   }
 
+  function sincronizarModoContenido() {
+    contenidoPorModo[modoContenidoAnterior] = iaSourceInput.value;
+    const esUrl = iaContentMode.value === 'url';
+    iaSourceInput.value = contenidoPorModo[iaContentMode.value] || '';
+    modoContenidoAnterior = iaContentMode.value;
+    iaSourceTitle.textContent = esUrl ? 'URL de la noticia' : 'Información base';
+    iaSourceHelp.textContent = esUrl
+      ? 'Ingresá el enlace completo. Algunos sitios pueden impedir la extracción automática.'
+      : 'Pegá texto crudo, apuntes o fragmentos de otras fuentes.';
+    iaSourceInput.placeholder = esUrl
+      ? 'https://sitio.com/noticia…'
+      : 'Pegá acá toda la información disponible para construir la noticia…';
+    iaSourceInput.maxLength = esUrl ? 2048 : 50000;
+    iaSourceInput.inputMode = esUrl ? 'url' : 'text';
+    iaSourceInput.classList.toggle('is-url', esUrl);
+    cambiarEstadoGeneracion('');
+  }
+
   function cerrarPreviewIa() {
     iaOverlay.hidden = true;
     document.body.classList.remove('ia-preview-open');
     propuestaIa = '';
     iaProposal.innerHTML = '';
+    iaIdealTitle.value = '';
+    iaIdealTitleStatus.textContent = '';
+    iaIdealTitleBox.hidden = true;
     iaProposalSection.hidden = true;
     iaRegenerate.hidden = true;
     iaApply.disabled = true;
@@ -1150,7 +1209,7 @@ require __DIR__ . '/includes/header.php';
   }
 
   function abrirAsistenteIa() {
-    if (textoVisibleEditor()) {
+    if (iaContentMode.value === 'texto' && textoVisibleEditor()) {
       iaSourceInput.value = editor.getText();
     }
     iaOverlay.hidden = false;
@@ -1162,13 +1221,23 @@ require __DIR__ . '/includes/header.php';
     if (iaEnProceso) return;
     const contenido = iaSourceInput.value.trim();
     const instrucciones = iaInstructionsInput.value.trim();
+    const modoContenido = iaContentMode.value;
     const contieneUrl = /(?:https?:\/\/|www\.)\S+/i.test(contenido + '\n' + instrucciones);
-    if (contieneUrl) {
+    if (modoContenido === 'texto' && contieneUrl) {
       cambiarEstadoGeneracion('Para garantizar exactitud, copiá y pegá el contenido relevante del enlace en Información base.', 'error');
       iaSourceInput.focus();
       return;
     }
-    if (contenido.length < 30) {
+    if (modoContenido === 'url') {
+      try {
+        const url = new URL(contenido);
+        if (!['http:', 'https:'].includes(url.protocol)) throw new Error();
+      } catch (error) {
+        cambiarEstadoGeneracion('Ingresá una URL válida y completa, por ejemplo https://sitio.com/noticia.', 'error');
+        iaSourceInput.focus();
+        return;
+      }
+    } else if (contenido.length < 30) {
       cambiarEstadoGeneracion('Pegá información suficiente para comenzar.', 'error');
       iaSourceInput.focus();
       return;
@@ -1178,11 +1247,14 @@ require __DIR__ . '/includes/header.php';
     iaGenerate.disabled = true;
     iaRegenerate.disabled = true;
     iaApply.disabled = true;
-    iaGenerate.textContent = otraVersion ? 'Creando otra…' : 'Creando…';
-    cambiarEstadoGeneracion('Redactando una noticia profesional…', 'loading');
+    iaGenerateLabel.textContent = otraVersion ? 'Creando otra…' : 'Creando…';
+    cambiarEstadoGeneracion(modoContenido === 'url'
+      ? 'Extrayendo el contenido y redactando la noticia…'
+      : 'Redactando una noticia profesional…', 'loading');
 
     const body = new URLSearchParams({
       contenido,
+      modo_contenido: modoContenido,
       instrucciones,
       version_anterior: otraVersion ? propuestaIa : '',
       csrf_token: csrfTokenIa
@@ -1195,15 +1267,18 @@ require __DIR__ . '/includes/header.php';
         body: body.toString()
       });
       const result = await response.json().catch(() => ({}));
-      if (!response.ok || !result.html) {
+      if (!response.ok || !result.html || !result.titulo) {
         throw new Error(result.error || 'No se pudo generar la propuesta.');
       }
       propuestaIa = result.html;
+      iaIdealTitle.value = String(result.titulo).trim();
+      iaIdealTitleStatus.textContent = '';
+      iaIdealTitleBox.hidden = false;
       iaProposal.innerHTML = aRutaEditor(result.html);
       iaProposalSection.hidden = false;
       iaRegenerate.hidden = false;
       iaApply.disabled = false;
-      cambiarEstadoGeneracion('Noticia creada.', 'success');
+      cambiarEstadoGeneracion(modoContenido === 'url' ? 'Contenido extraído y noticia creada.' : 'Noticia creada.', 'success');
       iaProposalSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
       cambiarEstadoGeneracion(error.message || 'No se pudo conectar con DeepSeek. Intentá nuevamente.', 'error');
@@ -1212,13 +1287,27 @@ require __DIR__ . '/includes/header.php';
       iaGenerate.disabled = false;
       iaRegenerate.disabled = false;
       iaApply.disabled = !propuestaIa;
-      iaGenerate.textContent = 'Crear noticia';
+      iaGenerateLabel.textContent = 'Crear noticia';
     }
   }
 
   btnMejorarIa.addEventListener('click', abrirAsistenteIa);
+  iaContentMode.addEventListener('change', sincronizarModoContenido);
+  sincronizarModoContenido();
   iaGenerate.addEventListener('click', () => generarConIa(false));
   iaRegenerate.addEventListener('click', () => generarConIa(true));
+  iaUseIdealTitle.addEventListener('click', () => {
+    const titulo = iaIdealTitle.value.trim();
+    if (!titulo) {
+      iaIdealTitleStatus.textContent = 'Escribí un título antes de usarlo.';
+      iaIdealTitle.focus();
+      return;
+    }
+    titleInput.value = titulo;
+    titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+    titleInput.dispatchEvent(new Event('change', { bubbles: true }));
+    iaIdealTitleStatus.textContent = 'Título agregado al formulario.';
+  });
   iaClose.addEventListener('click', cerrarPreviewIa);
   iaCancel.addEventListener('click', () => {
     cerrarPreviewIa();
@@ -1228,6 +1317,7 @@ require __DIR__ . '/includes/header.php';
     editor.commands.setContent(aRutaEditor(propuestaIa), { emitUpdate: true });
     cerrarPreviewIa();
     iaSourceInput.value = '';
+    contenidoPorModo[iaContentMode.value] = '';
     mostrarEstadoIa('Noticia agregada. Podés deshacerla desde la barra del editor.', 'success');
     editor.commands.focus('end');
   });

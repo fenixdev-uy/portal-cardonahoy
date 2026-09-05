@@ -1,14 +1,31 @@
 # Agenda — Portal Cardona Hoy
 
-Última actualización: **4 de septiembre de 2026**.
+Última actualización: **5 de septiembre de 2026**.
 
 Este archivo es la **única agenda aplicable a `portal-cardonahoy`**. La aplicación nace del baseline aprobado `5ec3e42`, pero no comparte configuración privada, base de datos, uploads, despliegue ni remoto con RS Medios.
 
 ## Prioridad activa
 
-1. Validar con una sesión administradora de Cardona Hoy PROD la selección de hasta diez noticias en Portada.
-2. Validar con una sesión administradora de Cardona Hoy PROD las tasas mensuales y la copia PNG ya publicadas.
-3. Configurar identidad, SEO, administradores y contenido definitivos del cliente sobre el despliegue inicial.
+1. Validar con una sesión editorial real de Cardona Hoy PROD el nuevo **Título ideal**, los destellos y una generación DeepSeek completa desde URL y desde contenido pegado.
+2. Validar con dos navegadores o dispositivos reales que el segundo login cierre la primera sesión del mismo usuario y conserve la nueva.
+3. Validar con una sesión administradora de Cardona Hoy PROD la selección de hasta diez noticias en Portada.
+4. Validar con una sesión administradora de Cardona Hoy PROD las tasas mensuales y la copia PNG ya publicadas.
+5. Configurar SEO, administradores y contenido definitivos del cliente sobre el despliegue inicial.
+
+## Implementación local actual — 5 de septiembre de 2026
+
+- La nueva card **Identidad del sitio** administra `nombre_sitio`; Cardona Hoy DEV quedó en `CardonaHoy`. Portada, noticia, Open Graph, `WebSite` y `NewsArticle.publisher` consumen esa fuente única, eliminando la identidad heredada de Radio Sur.
+- La migración DEV fue respaldada, aplicada dos veces de forma idempotente y validada en escritorio/móvil. Cardona Hoy PROD recibió después la misma identidad mediante una migración respaldada y siete archivos publicados con hashes coincidentes.
+- **Crear noticia con IA** incorpora arriba el selector **Contenido**, con los modos **Extraer de URL** y **Pegar contenido**. Cada modo conserva temporalmente su propio valor al alternar y mantiene las indicaciones editoriales como entrada adicional.
+- Cada generación propone además un **Título ideal** basado exclusivamente en la noticia. Se muestra completo en una caja editable y sólo reemplaza el título principal cuando el periodista pulsa **Usar este título**; agregar el cuerpo al editor sigue siendo una decisión independiente.
+- El encabezado del asistente se presenta como **Crear noticia con IA ✨** y los botones **Crear noticia**, **Crear otra versión** y **Agregar al editor** comparten destellos vectoriales dorados, visibles de forma consistente aunque el dispositivo no tenga fuente de emojis.
+- La extracción remota admite páginas públicas HTTP/HTTPS, sigue hasta tres redirecciones validadas, limita tiempo y respuesta, acepta solamente HTML/texto, elimina navegación/scripts/publicidad estructural y entrega mensajes claros cuando un sitio bloquea o no expone suficiente contenido.
+- La conexión fija el DNS validado y bloquea redes privadas, locales, reservadas, metadata, CGNAT, IPv4 encapsulada en IPv6 y protocolos no web. QA de extracción pública y navegador pasó en DEV; no se invocó DeepSeek con una noticia real.
+- Cada usuario admite una sola sesión activa. Un nuevo login reemplaza el token anterior y la otra máquina vuelve al acceso con un aviso explícito.
+- Se mantienen los cierres existentes tras 2 horas de inactividad o 12 horas totales. El logout condicionado de una sesión antigua no puede cerrar la sesión nueva.
+- Cardona Hoy PROD recibió ambos cambios el 5 de septiembre: respaldo completo de base, migración verificada sin alterar filas, cinco reemplazos y un alta con hashes remotos coincidentes. El ejecutor temporal fue eliminado y respondió HTTP 404.
+- Cardona Hoy PROD recibió después **Título ideal** y los destellos IA mediante tres reemplazos atómicos sin conflictos, migración, cambios de datos ni borrados. El respaldo anterior quedó en `.deploy/respaldos/2026-09-05_123904-titulo-ideal-estrellas-prod/`; FTPS y HTTP confirmaron tamaños y SHA-256.
+- Cardona Hoy PROD publica ahora `CardonaHoy` desde la fuente única: Open Graph, `WebSite` y `NewsArticle.publisher` quedaron verificados en portada y una noticia real, sin apariciones de `Radio Sur`. Se conservaron Mantenimiento desactivado y todos los demás datos.
 
 ## Implementación local actual — 4 de septiembre de 2026
 

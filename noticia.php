@@ -52,7 +52,8 @@ $seo = $noticia ? valores_seo_noticia($noticia, $fotos) : [
     'titulo' => 'Noticia no encontrada', 'descripcion' => 'La noticia solicitada no está disponible.',
     'imagen' => url_portal('imagenes/Logo2027v3.png'), 'url' => url_noticia($slugSolicitado), 'slug' => $slugSolicitado,
 ];
-$autor = trim((string) ($noticia['autor_nombre'] ?? '')) ?: 'Radio Sur';
+$nombreSitio = configuracion_nombre_sitio();
+$autor = trim((string) ($noticia['autor_nombre'] ?? '')) ?: $nombreSitio;
 $categoria = trim((string) ($noticia['categoria_nombre'] ?? ''));
 $categoriasNoticia = $noticia['categorias'] ?? [];
 $fecha = $noticia ? fecha_larga($noticia['created_at']) : '';
@@ -63,7 +64,7 @@ $jsonLd = $noticia ? [
     'dateModified' => date(DATE_ATOM, strtotime($noticia['updated_at'])),
     'mainEntityOfPage' => ['@type' => 'WebPage', '@id' => $seo['url']],
     'author' => ['@type' => 'Person', 'name' => $autor],
-    'publisher' => ['@type' => 'Organization', 'name' => 'Radio Sur', 'logo' => ['@type' => 'ImageObject', 'url' => url_portal($logoPortalRuta)]],
+    'publisher' => ['@type' => 'NewsMediaOrganization', 'name' => $nombreSitio, 'url' => url_base_portal(), 'logo' => ['@type' => 'ImageObject', 'url' => url_portal($logoPortalRuta)]],
 ] : null;
 if ($jsonLd && $categoriasNoticia) $jsonLd['articleSection'] = array_column($categoriasNoticia, 'nombre');
 $misVotos = $noticia ? votos_del_visitante($pdo, visitante_id()) : [];
@@ -91,7 +92,7 @@ $misVotos = $noticia ? votos_del_visitante($pdo, visitante_id()) : [];
 <?php endif; ?>
   <meta property="og:image:alt" content="<?= e($seo['titulo']) ?>" />
   <meta property="og:url" content="<?= e($seo['url']) ?>" />
-  <meta property="og:site_name" content="Radio Sur" />
+  <meta property="og:site_name" content="<?= e($nombreSitio) ?>" />
   <meta property="article:published_time" content="<?= e(date(DATE_ATOM, strtotime($noticia['created_at']))) ?>" />
   <meta property="article:modified_time" content="<?= e(date(DATE_ATOM, strtotime($noticia['updated_at']))) ?>" />
 <?php foreach ($categoriasNoticia as $categoriaNoticia): ?>  <meta property="article:section" content="<?= e($categoriaNoticia['nombre']) ?>" />
@@ -112,12 +113,12 @@ $misVotos = $noticia ? votos_del_visitante($pdo, visitante_id()) : [];
 <body style="<?= e($logoPortalEstilo) ?>">
   <nav class="navbar" aria-label="Menú principal">
     <button class="hamburger" id="hamburger" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="menuOverlay"><span></span><span></span><span></span></button>
-    <a href="<?= e(url_base_portal()) ?>" class="logo" aria-label="Radio Sur - Inicio"><img src="<?= e($logoPortalUrl) ?>" alt="Radio Sur" /></a>
+    <a href="<?= e(url_base_portal()) ?>" class="logo" aria-label="<?= e($nombreSitio) ?> - Inicio"><img src="<?= e($logoPortalUrl) ?>" alt="<?= e($nombreSitio) ?>" /></a>
     <?php require __DIR__ . '/partials/acceso-admin.php'; ?>
   </nav>
   <div class="menu-overlay" id="menuOverlay" aria-hidden="true">
     <button class="close-btn" id="closeMenu" type="button" aria-label="Cerrar menú"><span></span><span></span></button>
-    <a href="<?= e(url_base_portal()) ?>" class="menu-logo" aria-label="Radio Sur - Inicio"><img src="<?= e($logoPortalUrl) ?>" alt="Radio Sur" /></a>
+    <a href="<?= e(url_base_portal()) ?>" class="menu-logo" aria-label="<?= e($nombreSitio) ?> - Inicio"><img src="<?= e($logoPortalUrl) ?>" alt="<?= e($nombreSitio) ?>" /></a>
     <div class="menu-news-search" role="search" data-menu-news-search data-search-url="<?= e(url_portal('buscar-noticias.php')) ?>">
       <label class="menu-news-search-field" for="articleMenuNewsSearchInput">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>

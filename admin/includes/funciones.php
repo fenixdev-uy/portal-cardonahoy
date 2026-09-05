@@ -330,6 +330,35 @@ function configuracion_logo_admin(): array
     return ['ruta' => $ruta, 'favicon_ruta' => $faviconRuta];
 }
 
+/** Nombre editorial público usado por buscadores, asistentes y lectores. */
+function configuracion_nombre_sitio(): string
+{
+    $nombre = 'Portal de Noticias';
+
+    try {
+        $stmt = db()->prepare("SELECT valor FROM configuracion WHERE clave = 'nombre_sitio' LIMIT 1");
+        $stmt->execute();
+        $valor = trim((string) $stmt->fetchColumn());
+        if ($valor !== '' && mb_strlen($valor, 'UTF-8') <= 120) {
+            $nombre = $valor;
+        }
+    } catch (PDOException $e) {
+        // El valor puede estar pendiente durante un despliegue incremental.
+    }
+
+    return $nombre;
+}
+
+/** @return array{titulo:string,descripcion:string} */
+function valores_seo_portada_automaticos(?string $nombreSitio = null): array
+{
+    $nombreSitio = $nombreSitio ?? configuracion_nombre_sitio();
+    return [
+        'titulo' => $nombreSitio . ' | Noticias y actualidad',
+        'descripcion' => 'Últimas noticias y actualidad publicadas por ' . $nombreSitio . '.',
+    ];
+}
+
 /**
  * SEO efectivo de la página principal.
  * Las claves ausentes mantienen valores automáticos seguros.
@@ -338,8 +367,9 @@ function configuracion_logo_admin(): array
  */
 function configuracion_seo_portada(): array
 {
-    $tituloAutomatico = 'Radio Sur | Noticias de Colonia y la región';
-    $descripcionAutomatica = 'Últimas noticias de Colonia, Uruguay y la región. Información local, actualidad, deportes, cultura y comunidad en Radio Sur.';
+    $automaticos = valores_seo_portada_automaticos();
+    $tituloAutomatico = $automaticos['titulo'];
+    $descripcionAutomatica = $automaticos['descripcion'];
     $titulo = $tituloAutomatico;
     $descripcion = $descripcionAutomatica;
     $imagenRuta = 'imagenes/Logo2027v3.png';

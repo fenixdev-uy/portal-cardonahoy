@@ -35,7 +35,9 @@ $marcaAguaPanel = null;
 $logoLoginPanel = null;
 $logoPortalPanel = null;
 $logoAdminPanel = null;
+$nombreSitioPanel = null;
 $seoPortadaPanel = null;
+$seoAutomaticoPanel = null;
 $codigoHeaderPanel = null;
 $mantenimientoPanel = null;
 $logoPortalRuta = configuracion_logo_portal();
@@ -83,6 +85,8 @@ if ($puedeConfigurarPanel) {
         'url' => $identidadLogoAdmin['ruta'] !== null ? url_imagen($identidadLogoAdmin['ruta']) . '?v=' . rawurlencode($versionLogoAdmin) : null,
         'favicon_url' => '../favicon.php?v=' . rawurlencode($versionFaviconPortal),
     ];
+    $nombreSitioPanel = configuracion_nombre_sitio();
+    $seoAutomaticoPanel = valores_seo_portada_automaticos($nombreSitioPanel);
     $seoPortadaPanel = configuracion_seo_portada();
     $archivoSeoPortada = dirname(__DIR__, 2) . '/' . $seoPortadaPanel['imagen_ruta'];
     $versionSeoPortada = is_file($archivoSeoPortada) ? (string) filemtime($archivoSeoPortada) : '1';
@@ -382,6 +386,43 @@ header('Cache-Control: no-store, private');
       </form>
 <?php endif; ?>
 
+      <?php if ($nombreSitioPanel !== null): ?>
+      <form class="settings-card site-identity-card" id="siteIdentitySettingsForm">
+        <?= csrf_input() ?>
+        <div class="settings-card-heading">
+          <span class="settings-card-icon settings-card-icon-site" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 10h.01M15 10h.01M9 14h.01M15 14h.01M9 18h6"></path></svg>
+          </span>
+          <div class="settings-card-heading-copy">
+            <h3>Identidad del sitio</h3>
+            <p>Definí el nombre público y editorial de esta instalación.</p>
+          </div>
+          <button type="button" class="settings-card-toggle" id="siteIdentityCardToggle" aria-expanded="true" aria-controls="siteIdentityCardContent" aria-label="Contraer identidad del sitio">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"></path></svg>
+          </button>
+        </div>
+
+        <div class="settings-card-content" id="siteIdentityCardContent">
+          <div class="form-group">
+            <label for="siteIdentityName">Nombre público del sitio</label>
+            <input class="form-control" type="text" id="siteIdentityName" name="nombre_sitio" minlength="2" maxlength="120" value="<?= e($nombreSitioPanel) ?>" required autocomplete="organization">
+            <div class="form-hint">Se usa como nombre de fuente en Google, asistentes, Open Graph y datos estructurados.</div>
+          </div>
+
+          <div class="settings-card-notice">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>
+            <span>El título, la descripción y la imagen de la portada continúan administrándose en la card SEO.</span>
+          </div>
+
+          <span class="settings-save-status" id="siteIdentitySaveStatus" aria-live="polite"></span>
+          <div class="settings-form-actions">
+            <button type="button" class="btn btn-outline" id="siteIdentityCancel">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="siteIdentitySaveButton">Guardar identidad</button>
+          </div>
+        </div>
+      </form>
+      <?php endif; ?>
+
       <form class="settings-card" id="watermarkSettingsForm" enctype="multipart/form-data">
         <?= csrf_input() ?>
         <div class="settings-card-heading">
@@ -614,8 +655,8 @@ header('Cache-Control: no-store, private');
 
       <?php if ($seoPortadaPanel !== null): ?>
       <form class="settings-card settings-seo-card" id="homeSeoSettingsForm" enctype="multipart/form-data"
-            data-default-title="Radio Sur | Noticias de Colonia y la región"
-            data-default-description="Últimas noticias de Colonia, Uruguay y la región. Información local, actualidad, deportes, cultura y comunidad en Radio Sur."
+            data-default-title="<?= e($seoAutomaticoPanel['titulo']) ?>"
+            data-default-description="<?= e($seoAutomaticoPanel['descripcion']) ?>"
             data-default-image="<?= e(url_portal('imagenes/Logo2027v3.png')) ?>"
             data-public-url="<?= e($seoPortadaPanel['url']) ?>">
         <?= csrf_input() ?>

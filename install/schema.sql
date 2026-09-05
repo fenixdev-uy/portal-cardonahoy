@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   activo TINYINT(1) NOT NULL DEFAULT 1,
   debe_cambiar_password TINYINT(1) NOT NULL DEFAULT 1,
   ultimo_acceso_at DATETIME NULL,
+  sesion_token_hash CHAR(64) NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id), UNIQUE KEY uq_usuarios_email (email), KEY idx_usuarios_rol (rol_id),
@@ -172,6 +173,7 @@ CREATE TABLE IF NOT EXISTS configuracion (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO configuracion (clave, valor) VALUES
+  ('nombre_sitio', 'Portal de Noticias'),
   ('logo_login_tamano', '100'),
   ('logo_portal_tamano', '100'),
   ('mantenimiento_activo', '0'),

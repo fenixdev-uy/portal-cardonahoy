@@ -822,6 +822,83 @@
 
 <script>
   (function () {
+    const form = document.getElementById('siteIdentitySettingsForm');
+    if (!form) return;
+    const input = document.getElementById('siteIdentityName');
+    const status = document.getElementById('siteIdentitySaveStatus');
+    const saveButton = document.getElementById('siteIdentitySaveButton');
+    const cancelButton = document.getElementById('siteIdentityCancel');
+    const cardToggle = document.getElementById('siteIdentityCardToggle');
+    const cardContent = document.getElementById('siteIdentityCardContent');
+    const drawerClose = document.getElementById('settingsDrawerClose');
+    const drawerBackdrop = document.getElementById('settingsDrawerBackdrop');
+    if (!input || !status || !saveButton || !cancelButton || !cardToggle || !cardContent || !drawerClose || !drawerBackdrop) return;
+
+    let savedName = input.value;
+
+    function resetUnsaved() {
+      input.value = savedName;
+      status.textContent = '';
+      status.className = 'settings-save-status';
+    }
+
+    function setCardExpanded(expanded) {
+      cardToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      cardToggle.setAttribute('aria-label', expanded ? 'Contraer identidad del sitio' : 'Expandir identidad del sitio');
+      cardContent.hidden = !expanded;
+      form.classList.toggle('is-collapsed', !expanded);
+    }
+
+    cardToggle.addEventListener('click', () => setCardExpanded(cardToggle.getAttribute('aria-expanded') !== 'true'));
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const name = input.value.trim().replace(/\s+/g, ' ');
+      if (name.length < 2 || name.length > 120) {
+        status.textContent = 'Ingresá un nombre de 2 a 120 caracteres.';
+        status.className = 'settings-save-status is-error';
+        input.focus();
+        return;
+      }
+
+      saveButton.disabled = true;
+      saveButton.textContent = 'Guardando…';
+      status.textContent = 'Guardando identidad del sitio…';
+      status.className = 'settings-save-status';
+      try {
+        const response = await fetch('configuracion-identidad-sitio.php', { method: 'POST', body: new FormData(form) });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.ok) throw new Error(result.error || 'No se pudo guardar la identidad del sitio.');
+        savedName = result.nombre_sitio || name;
+        input.value = savedName;
+        const seoForm = document.getElementById('homeSeoSettingsForm');
+        if (seoForm) {
+          seoForm.dataset.defaultTitle = result.seo_titulo_automatico || seoForm.dataset.defaultTitle;
+          seoForm.dataset.defaultDescription = result.seo_descripcion_automatica || seoForm.dataset.defaultDescription;
+          const seoTitle = document.getElementById('homeSeoTitle');
+          const seoDescription = document.getElementById('homeSeoDescription');
+          if (seoTitle && document.getElementById('homeSeoTitleMode')?.value !== '1') seoTitle.value = seoForm.dataset.defaultTitle;
+          if (seoDescription && document.getElementById('homeSeoDescriptionMode')?.value !== '1') seoDescription.value = seoForm.dataset.defaultDescription;
+          seoTitle?.dispatchEvent(new Event('input', { bubbles: true }));
+          seoDescription?.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        status.textContent = result.mensaje || 'Identidad del sitio guardada.';
+      } catch (error) {
+        status.textContent = error.message || 'No se pudo guardar la identidad del sitio.';
+        status.className = 'settings-save-status is-error';
+      } finally {
+        saveButton.disabled = false;
+        saveButton.textContent = 'Guardar identidad';
+      }
+    });
+
+    cancelButton.addEventListener('click', () => { resetUnsaved(); drawerClose.click(); });
+    drawerClose.addEventListener('click', resetUnsaved);
+    drawerBackdrop.addEventListener('click', resetUnsaved);
+  })();
+</script>
+
+<script>
+  (function () {
     const form = document.getElementById('homeSeoSettingsForm');
     if (!form) return;
     const title = document.getElementById('homeSeoTitle');
@@ -845,8 +922,8 @@
     if (!title || !description || !titleMode || !descriptionMode || !imageAutomatic || !imageInput || !imagePreview || !socialImage || !imageAutoButton || !imageStatus || !badge || !status || !saveButton || !cancelButton || !cardToggle || !cardContent || !drawerClose || !drawerBackdrop) return;
 
     const defaults = {
-      title: form.dataset.defaultTitle,
-      description: form.dataset.defaultDescription,
+      get title() { return form.dataset.defaultTitle || ''; },
+      get description() { return form.dataset.defaultDescription || ''; },
       image: form.dataset.defaultImage,
     };
     let saved = readState();

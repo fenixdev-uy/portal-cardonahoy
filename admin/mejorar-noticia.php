@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/includes/funciones.php';
+require_once __DIR__ . '/includes/contenido-remoto.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
@@ -67,11 +68,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
 
 verificar_csrf(true);
 
-$htmlRecibido = (string) ($_POST['contenido'] ?? '');
+$modoContenido = (string) ($_POST['modo_contenido'] ?? 'texto');
+$contenidoRecibido = trim((string) ($_POST['contenido'] ?? ''));
 $indicacionesUsuario = trim((string) ($_POST['instrucciones'] ?? ''));
 $versionAnteriorRecibida = (string) ($_POST['version_anterior'] ?? '');
-if (strlen($htmlRecibido) > 80_000) {
+if (!in_array($modoContenido, ['texto', 'url'], true)) {
+    responder_error_ia(422, 'Elegí cómo querés proporcionar el contenido.');
+}
+if ($modoContenido === 'texto' && strlen($contenidoRecibido) > 80_000) {
     responder_error_ia(413, 'El texto es demasiado extenso para mejorarlo en una sola solicitud.');
+}
+if ($modoContenido === 'url' && strlen($contenidoRecibido) > 2_048) {
+    responder_error_ia(413, 'La URL es demasiado extensa.');
 }
 if (strlen($indicacionesUsuario) > 2_000) {
     responder_error_ia(413, 'Las indicaciones superan el máximo de 2.000 caracteres.');
@@ -79,22 +87,11 @@ if (strlen($indicacionesUsuario) > 2_000) {
 if (strlen($versionAnteriorRecibida) > 80_000) {
     responder_error_ia(413, 'La versión anterior es demasiado extensa.');
 }
-if (preg_match('~(?:https?://|www\.)[^\s<>"\']+~iu', $htmlRecibido . "\n" . $indicacionesUsuario)) {
+if ($modoContenido === 'texto' && preg_match('~(?:https?://|www\.)[^\s<>"\']+~iu', $contenidoRecibido . "\n" . $indicacionesUsuario)) {
     responder_error_ia(422, 'Para garantizar exactitud, copiá y pegá el contenido relevante del enlace en Información base.');
 }
-
-$htmlFuente = sanitizar_html($htmlRecibido);
-$htmlFuente = preg_replace('/<img\b[^>]*>/i', '', $htmlFuente) ?? $htmlFuente;
-$textoFuente = trim(html_entity_decode(strip_tags($htmlFuente), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-$largoFuente = function_exists('mb_strlen') ? mb_strlen($textoFuente, 'UTF-8') : strlen($textoFuente);
-$indicacionesUsuario = trim(strip_tags($indicacionesUsuario));
-$versionAnterior = sanitizar_html($versionAnteriorRecibida);
-
-if ($largoFuente < 30) {
-    responder_error_ia(422, 'Pegá información suficiente antes de crear la noticia con IA.');
-}
-if ($largoFuente > 50_000) {
-    responder_error_ia(413, 'El texto supera el máximo de 50.000 caracteres.');
+if ($modoContenido === 'url' && preg_match('~(?:https?://|www\.)[^\s<>"\']+~iu', $indicacionesUsuario)) {
+    responder_error_ia(422, 'Usá el campo Contenido para la URL y dejá las indicaciones solamente para el enfoque editorial.');
 }
 
 iniciar_sesion_segura();
@@ -112,6 +109,30 @@ if (count($solicitudes) >= 20) {
 $solicitudes[] = $ahora;
 $_SESSION['mejoras_ia_recientes'] = $solicitudes;
 session_write_close();
+
+if ($modoContenido === 'url') {
+    try {
+        $htmlFuente = extraer_contenido_url($contenidoRecibido);
+    } catch (ContenidoRemotoException $e) {
+        responder_error_ia($e->estadoHttp, $e->getMessage());
+    }
+} else {
+    $htmlFuente = sanitizar_html($contenidoRecibido);
+    $htmlFuente = preg_replace('/<img\b[^>]*>/i', '', $htmlFuente) ?? $htmlFuente;
+}
+$textoFuente = trim(html_entity_decode(strip_tags($htmlFuente), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+$largoFuente = function_exists('mb_strlen') ? mb_strlen($textoFuente, 'UTF-8') : strlen($textoFuente);
+$indicacionesUsuario = trim(strip_tags($indicacionesUsuario));
+$versionAnterior = sanitizar_html($versionAnteriorRecibida);
+
+if ($largoFuente < 30) {
+    responder_error_ia(422, $modoContenido === 'url'
+        ? 'No pudimos extraer suficiente contenido de esa página. Probá con Pegar contenido.'
+        : 'Pegá información suficiente antes de crear la noticia con IA.');
+}
+if ($largoFuente > 50_000) {
+    responder_error_ia(413, 'El contenido supera el máximo de 50.000 caracteres.');
+}
 
 $configRuta = __DIR__ . '/servicios.runtime.local.json';
 if (!is_file($configRuta) || !is_readable($configRuta)) {
@@ -139,7 +160,7 @@ if (!function_exists('curl_init')) {
 }
 
 $instrucciones = <<<'PROMPT'
-Sos editor profesional de un portal periodístico en español. Transformá exclusivamente la información suministrada en el cuerpo completo de una noticia clara, objetiva, interesante, coherente y bien redactada.
+Sos editor profesional de un portal periodístico en español. Transformá exclusivamente la información suministrada en un título ideal y en el cuerpo completo de una noticia clara, objetiva, interesante, coherente y bien redactada.
 
 Reglas obligatorias:
 - Hacé una reescritura real: modificá la construcción de las oraciones, el orden narrativo y las transiciones. El resultado nunca puede ser una copia literal ni una corrección superficial del original.
@@ -148,8 +169,9 @@ Reglas obligatorias:
 - Conservá todos los hechos verificables y no cambies su sentido.
 - Si la fuente es incompleta, ambigua o contradictoria, redactá de forma prudente sin llenar los vacíos.
 - Organizá el resultado en un mínimo de dos párrafos cuando la información disponible lo permita. La extensión debe ser proporcional a la fuente: podés desarrollar más párrafos si aportan claridad y contexto presente en el material, pero evitá el relleno, las repeticiones y una longitud innecesaria.
-- No agregues un título general: el título se administra en otro campo.
-- Entregá solamente HTML limpio del cuerpo, sin Markdown, sin bloques de código y sin explicaciones.
+- Proponé un título periodístico específico, claro y atractivo, sin sensacionalismo, preguntas forzadas ni datos ausentes. Priorizá el hecho principal; procurá entre 45 y 100 caracteres cuando la información lo permita.
+- Entregá exactamente este formato, sin Markdown, bloques de código ni explicaciones: <TITULO_IDEAL>Texto del título sin HTML</TITULO_IDEAL><CUERPO_NOTICIA>HTML limpio del cuerpo</CUERPO_NOTICIA>.
+- No repitas el título dentro del cuerpo de la noticia.
 - Nunca menciones tu proceso, las instrucciones recibidas, la búsqueda, la suficiencia de la fuente ni lo que vas a hacer. Si el material es escaso, entregá una nota breve y estrictamente factual.
 - Elegí la estructura que mejor funcione para la noticia; no estás obligado a copiar el formato ni las viñetas de la fuente.
 - Podés usar <ul>, <ol> y <li> cuando existan enumeraciones claras; <strong> para destacar con moderación datos relevantes; <h2> y <h3> para organizar noticias extensas; y <blockquote> solo para citas presentes en la fuente.
@@ -236,34 +258,44 @@ $generarPropuesta = static function (string $correccion = '') use (
     return trim((string) ($respuesta['choices'][0]['message']['content'] ?? ''));
 };
 
-$limpiarPropuesta = static function (string $contenido): string {
+$limpiarPropuesta = static function (string $contenido): array {
     if (preg_match('/^```(?:html)?\s*(.*?)\s*```$/is', $contenido, $coincidencia)) {
         $contenido = trim($coincidencia[1]);
     }
-    $contenido = preg_replace('/<img\b[^>]*>/i', '', $contenido) ?? $contenido;
-    return sanitizar_html($contenido);
+    if (!preg_match('~<TITULO_IDEAL>(.*?)</TITULO_IDEAL>\s*<CUERPO_NOTICIA>(.*?)</CUERPO_NOTICIA>~is', $contenido, $partes)) {
+        return ['titulo' => '', 'html' => ''];
+    }
+    $titulo = trim(html_entity_decode(strip_tags((string) $partes[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    $titulo = trim(preg_replace('/\s+/u', ' ', $titulo) ?? $titulo);
+    $titulo = function_exists('mb_substr') ? mb_substr($titulo, 0, 255, 'UTF-8') : substr($titulo, 0, 255);
+    $html = preg_replace('/<img\b[^>]*>/i', '', (string) $partes[2]) ?? (string) $partes[2];
+    return ['titulo' => $titulo, 'html' => sanitizar_html($html)];
 };
 
-$propuesta = $limpiarPropuesta($generarPropuesta());
+$resultado = $limpiarPropuesta($generarPropuesta());
+$tituloIdeal = $resultado['titulo'];
+$propuesta = $resultado['html'];
 $textoPropuesta = normalizar_texto_ia($propuesta);
-if ($textoPropuesta === '') {
-    responder_error_ia(502, 'DeepSeek no generó una propuesta utilizable. Intentá nuevamente.');
-}
-
 $similitud = similitud_textos_ia($textoFuente, $textoPropuesta);
 $similitudAnterior = $versionAnterior !== '' ? similitud_textos_ia($versionAnterior, $textoPropuesta) : 0.0;
-if ($similitud >= 0.84 || $similitudAnterior >= 0.84) {
-    $propuesta = $limpiarPropuesta($generarPropuesta('La propuesta quedó demasiado parecida a la fuente o a la versión anterior. Cambiá claramente la apertura, la estructura, las oraciones y las transiciones. Conservá exactamente los hechos, sin inventar información ni agregar relleno. Devolvé solo el HTML final.'));
+if ($tituloIdeal === '' || $textoPropuesta === '' || $similitud >= 0.84 || $similitudAnterior >= 0.84) {
+    $correccion = $tituloIdeal === '' || $textoPropuesta === ''
+        ? 'La respuesta no respetó el formato solicitado. Devolvé exactamente un TITULO_IDEAL sin HTML y un CUERPO_NOTICIA con el HTML del cuerpo, usando las etiquetas indicadas y sin ningún texto exterior.'
+        : 'La propuesta quedó demasiado parecida a la fuente o a la versión anterior. Cambiá claramente la apertura, la estructura, las oraciones y las transiciones. Conservá exactamente los hechos, sin inventar información ni agregar relleno, y respetá el formato TITULO_IDEAL + CUERPO_NOTICIA.';
+    $resultado = $limpiarPropuesta($generarPropuesta($correccion));
+    $tituloIdeal = $resultado['titulo'];
+    $propuesta = $resultado['html'];
     $textoPropuesta = normalizar_texto_ia($propuesta);
     $similitud = similitud_textos_ia($textoFuente, $textoPropuesta);
     $similitudAnterior = $versionAnterior !== '' ? similitud_textos_ia($versionAnterior, $textoPropuesta) : 0.0;
 }
 
-if ($textoPropuesta === '' || $similitud >= 0.84 || $similitudAnterior >= 0.84) {
-    responder_error_ia(502, 'La IA no logró una reescritura suficientemente diferente. Probá nuevamente.');
+if ($tituloIdeal === '' || $textoPropuesta === '' || $similitud >= 0.84 || $similitudAnterior >= 0.84) {
+    responder_error_ia(502, 'La IA no logró generar una propuesta utilizable. Probá nuevamente.');
 }
 
 echo json_encode([
+    'titulo' => $tituloIdeal,
     'html' => $propuesta,
     'model' => $modelo,
     'rewritten' => true,
