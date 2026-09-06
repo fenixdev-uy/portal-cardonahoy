@@ -117,14 +117,22 @@ $noticiasParaTemplates = array_values($noticiasParaTemplates ?? $noticiasTemplat
 <?php endif; ?>
         </div>
 
-        <div class="story-reading-tools" role="group" aria-label="Tamaño del texto">
-          <button class="story-reading-button" type="button" data-reading-adjust="-0.1" aria-label="Achicar texto" title="Achicar texto">
-            <span>A</span><span class="story-reading-symbol" aria-hidden="true">−</span>
-          </button>
-          <button class="story-reading-button" type="button" data-reading-adjust="0.1" aria-label="Agrandar texto" title="Agrandar texto">
-            <span>A</span><span class="story-reading-symbol" aria-hidden="true">+</span>
-          </button>
-          <span class="story-reading-status" aria-live="polite">Tamaño de texto 100%</span>
+        <div class="story-reading-tools" role="group" aria-label="Lectura y valoración de la noticia">
+<?php
+    $prefijo = 'story-sheet';
+    $modoAccionesNoticia = 'votos';
+    include __DIR__ . '/acciones-noticia.php';
+    unset($modoAccionesNoticia);
+?>
+          <div class="story-reading-controls" role="group" aria-label="Tamaño del texto">
+            <button class="story-reading-button" type="button" data-reading-adjust="-0.1" aria-label="Achicar texto" title="Achicar texto">
+              <span>A</span><span class="story-reading-symbol" aria-hidden="true">−</span>
+            </button>
+            <button class="story-reading-button" type="button" data-reading-adjust="0.1" aria-label="Agrandar texto" title="Agrandar texto">
+              <span>A</span><span class="story-reading-symbol" aria-hidden="true">+</span>
+            </button>
+            <span class="story-reading-status" aria-live="polite">Tamaño de texto 100%</span>
+          </div>
         </div>
 
         <div class="story-sheet-body" data-reading-scale="1">
@@ -135,7 +143,9 @@ $noticiasParaTemplates = array_values($noticiasParaTemplates ?? $noticiasTemplat
 
 <?php
     $prefijo = 'story-sheet';
+    $modoAccionesNoticia = 'compartir';
     include __DIR__ . '/acciones-noticia.php';
+    unset($modoAccionesNoticia);
 ?>
 
         <section class="story-sheet-placement-ad-wrap story-sheet-placement-ad-footer" data-ad-placement="pie" aria-label="Publicidad al pie de la noticia"<?= $anuncioPublicidadPie === null ? ' hidden' : '' ?>>

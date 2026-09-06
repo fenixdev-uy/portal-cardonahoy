@@ -114,7 +114,9 @@ $misVotos = $noticia ? votos_del_visitante($pdo, visitante_id()) : [];
   <nav class="navbar" aria-label="Menú principal">
     <button class="hamburger" id="hamburger" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="menuOverlay"><span></span><span></span><span></span></button>
     <a href="<?= e(url_base_portal()) ?>" class="logo" aria-label="<?= e($nombreSitio) ?> - Inicio"><img src="<?= e($logoPortalUrl) ?>" alt="<?= e($nombreSitio) ?>" /></a>
-    <?php require __DIR__ . '/partials/acceso-admin.php'; ?>
+    <?php if ($usuarioPublico): ?>
+      <?php require __DIR__ . '/partials/acceso-admin.php'; ?>
+    <?php endif; ?>
   </nav>
   <div class="menu-overlay" id="menuOverlay" aria-hidden="true">
     <button class="close-btn" id="closeMenu" type="button" aria-label="Cerrar menú"><span></span><span></span></button>
@@ -158,9 +160,31 @@ $misVotos = $noticia ? votos_del_visitante($pdo, visitante_id()) : [];
 <?php $publicidad = $anuncioPublicidadEncabezado; $claseTarjetaPublicidad = 'story-sheet-placement-ad article-ad-card'; require __DIR__ . '/partials/anuncio-card.php'; ?>
 <?php endif; ?>
         </div>
-        <div class="article-body"><?= $noticia['descripcion'] ?></div>
-<?php $n=$noticia; include __DIR__ . '/partials/medios-noticia.php'; ?>
-<?php $prefijo='article'; include __DIR__ . '/partials/acciones-noticia.php'; ?>
+        <div class="article-reading-tools" role="group" aria-label="Lectura y valoración de la noticia">
+<?php
+    $n = $noticia;
+    $prefijo = 'article';
+    $modoAccionesNoticia = 'votos';
+    include __DIR__ . '/partials/acciones-noticia.php';
+    unset($modoAccionesNoticia);
+?>
+          <div class="article-reading-controls" role="group" aria-label="Tamaño del texto">
+            <button class="article-reading-button" type="button" data-reading-adjust="-0.1" aria-label="Achicar texto" title="Achicar texto">
+              <span>A</span><span class="article-reading-symbol" aria-hidden="true">−</span>
+            </button>
+            <button class="article-reading-button" type="button" data-reading-adjust="0.1" aria-label="Agrandar texto" title="Agrandar texto">
+              <span>A</span><span class="article-reading-symbol" aria-hidden="true">+</span>
+            </button>
+            <span class="article-reading-status" aria-live="polite">Tamaño de texto 100%</span>
+          </div>
+        </div>
+        <div class="article-body" data-reading-scale="1"><?= $noticia['descripcion'] ?></div>
+<?php include __DIR__ . '/partials/medios-noticia.php'; ?>
+<?php
+    $modoAccionesNoticia = 'compartir';
+    include __DIR__ . '/partials/acciones-noticia.php';
+    unset($modoAccionesNoticia);
+?>
         <div class="article-placement-ad article-placement-ad-footer" data-ad-placement="pie"<?= $anuncioPublicidadPie === null ? ' hidden' : '' ?>>
 <?php if ($anuncioPublicidadPie !== null): ?>
 <?php $publicidad = $anuncioPublicidadPie; $claseTarjetaPublicidad = 'story-sheet-placement-ad article-ad-card'; require __DIR__ . '/partials/anuncio-card.php'; ?>

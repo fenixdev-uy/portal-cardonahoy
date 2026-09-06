@@ -170,12 +170,18 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
           $fotoPortada = url_imagen_front((string) $fotosPorNoticia[(int) $noticiaPortada['id']][0]['ruta']);
           $fotoPortadaCss = json_encode($fotoPortada, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
           $resumenPortada = html_a_texto($noticiaPortada['descripcion'] ?? '', 220);
+          $urlNoticiaPortada = url_noticia((string) $noticiaPortada['slug']);
         ?>
         <div class="slide<?= $indicePortada === 0 ? ' active' : '' ?>" style="background-image: url(<?= e($fotoPortadaCss) ?>);">
         <div class="slide-content">
           <span class="slide-tag"><?= e($noticiaPortada['categoria_nombre'] ?? 'Noticias') ?></span>
           <h2 class="slide-title"><?= e($noticiaPortada['titulo']) ?></h2>
-          <?php if ($resumenPortada !== ''): ?><p class="slide-subtitle"><?= e($resumenPortada) ?></p><?php endif; ?>
+          <?php if ($resumenPortada !== ''): ?>
+            <p class="slide-subtitle">
+              <?= e($resumenPortada) ?>
+              <a class="slide-more" href="<?= e($urlNoticiaPortada) ?>" aria-label="Ver nota completa: <?= e($noticiaPortada['titulo']) ?>"><span aria-hidden="true">→</span> Ver nota completa</a>
+            </p>
+          <?php endif; ?>
         </div>
         </div>
       <?php endforeach; ?>

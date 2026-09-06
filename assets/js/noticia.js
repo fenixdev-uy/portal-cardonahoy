@@ -66,6 +66,30 @@
         }, 1800);
       }
     });
+    // Accesibilidad de lectura en la noticia individual: escala únicamente el
+    // cuerpo periodístico y mantiene los controles entre 90% y 140%.
+    document.addEventListener('click', (event) => {
+      const button = event.target.closest('.article-reading-button[data-reading-adjust]');
+      if (!button || button.disabled) return;
+
+      const tools = button.closest('.article-reading-tools');
+      const content = document.querySelector('.article-body');
+      if (!tools || !content) return;
+
+      const current = Number(content.dataset.readingScale || 1);
+      const adjustment = Number(button.dataset.readingAdjust || 0);
+      const next = Math.min(1.4, Math.max(0.9, Math.round((current + adjustment) * 10) / 10));
+      content.dataset.readingScale = String(next);
+      content.style.setProperty('--reading-scale', String(next));
+
+      tools.querySelectorAll('.article-reading-button').forEach((control) => {
+        const delta = Number(control.dataset.readingAdjust || 0);
+        control.disabled = (delta < 0 && next <= 0.9) || (delta > 0 && next >= 1.4);
+      });
+
+      const status = tools.querySelector('.article-reading-status');
+      if (status) status.textContent = `Tamaño de texto ${Math.round(next * 100)}%`;
+    });
     let adPlacementsRequest = null;
     async function syncAdPlacements() {
       if (adPlacementsRequest) return adPlacementsRequest;
