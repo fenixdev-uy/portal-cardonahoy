@@ -1,6 +1,6 @@
 # Agenda — Portal Cardona Hoy
 
-Última actualización: **5 de septiembre de 2026**.
+Última actualización: **6 de septiembre de 2026**.
 
 Este archivo es la **única agenda aplicable a `portal-cardonahoy`**. La aplicación nace del baseline aprobado `5ec3e42`, pero no comparte configuración privada, base de datos, uploads, despliegue ni remoto con RS Medios.
 
@@ -12,7 +12,13 @@ Este archivo es la **única agenda aplicable a `portal-cardonahoy`**. La aplicac
 4. Validar con una sesión administradora de Cardona Hoy PROD las tasas mensuales y la copia PNG ya publicadas.
 5. Configurar SEO, administradores y contenido definitivos del cliente sobre el despliegue inicial.
 
-## Implementación local actual — 5 de septiembre de 2026
+## Cierre Git actual — 6 de septiembre de 2026
+
+- La experiencia de lectura y las acciones de noticia quedaron mejoradas en portada, nota completa móvil y página individual: acceso **Ver nota completa** desde el slider, votos junto a los controles de tamaño de texto y acciones de Facebook/WhatsApp más claras.
+- El lote común está consolidado y publicado en `origin/main` mediante `a8ab659` (`feat: mejorar lectura y acciones de noticias`).
+- Antes de esta actualización documental, la rama `main` estaba limpia y sincronizada con `origin/main`. El checkpoint Git no permite afirmar por sí solo que este lote del 6 de septiembre esté en Cardona Hoy PROD; esa correspondencia debe verificarse antes de considerarlo desplegado.
+
+## Implementación aprobada — 5 de septiembre de 2026
 
 - La nueva card **Identidad del sitio** administra `nombre_sitio`; Cardona Hoy DEV quedó en `CardonaHoy`. Portada, noticia, Open Graph, `WebSite` y `NewsArticle.publisher` consumen esa fuente única, eliminando la identidad heredada de Radio Sur.
 - La migración DEV fue respaldada, aplicada dos veces de forma idempotente y validada en escritorio/móvil. Cardona Hoy PROD recibió después la misma identidad mediante una migración respaldada y siete archivos publicados con hashes coincidentes.
@@ -26,6 +32,7 @@ Este archivo es la **única agenda aplicable a `portal-cardonahoy`**. La aplicac
 - Cardona Hoy PROD recibió ambos cambios el 5 de septiembre: respaldo completo de base, migración verificada sin alterar filas, cinco reemplazos y un alta con hashes remotos coincidentes. El ejecutor temporal fue eliminado y respondió HTTP 404.
 - Cardona Hoy PROD recibió después **Título ideal** y los destellos IA mediante tres reemplazos atómicos sin conflictos, migración, cambios de datos ni borrados. El respaldo anterior quedó en `.deploy/respaldos/2026-09-05_123904-titulo-ideal-estrellas-prod/`; FTPS y HTTP confirmaron tamaños y SHA-256.
 - Cardona Hoy PROD publica ahora `CardonaHoy` desde la fuente única: Open Graph, `WebSite` y `NewsArticle.publisher` quedaron verificados en portada y una noticia real, sin apariciones de `Radio Sur`. Se conservaron Mantenimiento desactivado y todos los demás datos.
+- El código de identidad, sesión única, extracción segura y mejoras editoriales quedó consolidado y publicado en `origin/main` dentro de `5d7f1e1` (`feat: consolidar identidad y mejoras editoriales`).
 
 ## Implementación local actual — 4 de septiembre de 2026
 
@@ -53,15 +60,15 @@ Este archivo es la **única agenda aplicable a `portal-cardonahoy`**. La aplicac
 
 ## Cierre aprobado — 3 de septiembre de 2026
 
-- El usuario aprobó el despliegue inicial en Mantenimiento y el resultado de las correcciones posteriores. Mantenimiento continúa activo hasta autorización expresa para abrir el Portal.
+- El usuario aprobó el despliegue inicial en Mantenimiento y el resultado de las correcciones posteriores. Este punto conserva el estado histórico del 3 de septiembre; desde el cierre del 5 de septiembre, Cardona Hoy PROD tiene Mantenimiento desactivado.
 - El usuario aprobó el lote común completo, incluida la persistencia por portal de las instrucciones de **Crear con IA**, y autorizó su checkpoint local en los tres repositorios.
 - DeepSeek quedó operativo en DEV mediante el runtime privado `admin/servicios.runtime.local.json`; no forma parte de Git y no debe reemplazarse por una configuración pública.
 - El checkpoint funcional aprobado `4c3f01c` fue publicado en `origin/main`. Al retomar, leer `CONTINUIDAD.md` y ejecutar `git status --short --branch` antes de decidir una publicación nueva.
 
 ## Pendientes posteriores
 
-1. Desactivar Mantenimiento únicamente cuando el usuario autorice abrir públicamente el Portal.
-2. Promover el despliegue inicial a confirmado después de la validación autenticada del usuario.
+1. Promover el despliegue inicial a confirmado después de completar las validaciones autenticadas pendientes con usuarios reales.
+2. Verificar si el lote común del checkpoint `a8ab659` coincide con Cardona Hoy PROD antes de registrar cualquier despliegue adicional.
 
 ## Mejoras futuras sin etapa activa
 
