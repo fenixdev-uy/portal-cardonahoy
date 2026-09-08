@@ -1,6 +1,6 @@
 # Agenda — Portal Cardona Hoy
 
-Última actualización: **6 de septiembre de 2026**.
+Última actualización: **8 de septiembre de 2026**.
 
 Este archivo es la **única agenda aplicable a `portal-cardonahoy`**. La aplicación nace del baseline aprobado `5ec3e42`, pero no comparte configuración privada, base de datos, uploads, despliegue ni remoto con RS Medios.
 
@@ -17,6 +17,14 @@ Este archivo es la **única agenda aplicable a `portal-cardonahoy`**. La aplicac
 - La experiencia de lectura y las acciones de noticia quedaron mejoradas en portada, nota completa móvil y página individual: acceso **Ver nota completa** desde el slider, votos junto a los controles de tamaño de texto y acciones de Facebook/WhatsApp más claras.
 - El lote común está consolidado y publicado en `origin/main` mediante `a8ab659` (`feat: mejorar lectura y acciones de noticias`).
 - Antes de esta actualización documental, la rama `main` estaba limpia y sincronizada con `origin/main`. El checkpoint Git no permite afirmar por sí solo que este lote del 6 de septiembre esté en Cardona Hoy PROD; esa correspondencia debe verificarse antes de considerarlo desplegado.
+
+## Páginas Home y firmas activas — publicado el 8 de septiembre de 2026
+
+- El panel incorpora **Páginas → Home** debajo de Noticias, con vista previa segura de la portada y edición de título, descripción e imagen SEO. La misma card continúa disponible en Configuración sin duplicar su lógica.
+- El acceso depende del permiso independiente `paginas.gestionar`, configurable por rol y asignado inicialmente al Administrador.
+- El selector **Firma de la noticia** muestra únicamente usuarios activos y el backend rechaza una firma inactiva enviada manualmente.
+- El checkpoint funcional `c16025f` quedó publicado en `origin/main` y desplegado en Cardona Hoy PROD con respaldo de código, respaldo completo de base, migración idempotente y verificación SHA-256.
+- No se agregaron páginas Radio ni Televisión, no se borraron archivos ni contenidos y Mantenimiento permaneció sin cambios. Queda pendiente solamente la validación visual autenticada con un usuario real.
 
 ## Implementación aprobada — 5 de septiembre de 2026
 

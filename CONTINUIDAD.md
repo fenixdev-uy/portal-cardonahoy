@@ -1,5 +1,18 @@
 # Continuidad — Portal de Noticias
 
+## Páginas Home y firmas activas — DEV, GitHub y PROD del 8 de septiembre de 2026
+
+- Cardona Hoy incorpora exclusivamente **Páginas → Home** debajo de Noticias. `admin/paginas.php` divide el área principal en una vista previa navegable sin scripts ni interacciones publicitarias y una card SEO editable con título, descripción, imagen y previsualizaciones social/Google.
+- La card común `admin/includes/seo-portada-form.php` también conserva el SEO de la Página Principal dentro de Configuración. `admin/configuracion-seo-portada.php` exige sesión, CSRF y `paginas.gestionar`; solo acepta la página `home`.
+- `paginas.gestionar` aparece en Roles, fue creado idempotentemente en PROD y quedó asignado al rol Administrador. No se añadieron Radio ni Televisión.
+- El selector de firma consulta únicamente `usuarios.activo=1`; el guardado valida la misma condición en backend para impedir asignaciones manipuladas de usuarios desactivados.
+- Checkpoint funcional `c16025f` (`feat: gestionar SEO de Home y firmas activas`) publicado en `origin/main` antes del despliegue.
+- Preflight FTPS contra `vps-4962765-x.dattaweb.com:21`: 7 reemplazos, 2 altas, cero conflictos y cero temporales. Respaldo de código: `.deploy/respaldos/2026-09-08_020710-paginas-firmas-prod/`.
+- Antes de migrar se descargó el respaldo completo `.deploy/respaldos-db/2026-09-08_021144-paginas-prod/cardonahoy-production-before-paginas.sql`, modo `600`, 18 tablas, 1.892.041 bytes y SHA-256 `116f1a41e1c1e8cb400a88dbf6b26f07663bf0e4cde68a1d2f654b9cefae8230`.
+- La migración autenticada confirmó la huella PROD `b83ead0fb903`, creó o actualizó el permiso y verificó su asignación administrativa. El ejecutor efímero fue eliminado y su URL respondió HTTP 404.
+- Se publicaron `.htaccess`, `admin/assets/admin.css`, `admin/configuracion-seo-portada.php`, `admin/includes/footer.php`, `admin/includes/funciones.php`, `admin/includes/header.php`, `admin/noticia-form.php` y los nuevos `admin/includes/seo-portada-form.php` y `admin/paginas.php`. Cada descarga final coincidió por SHA-256; no hubo borrados.
+- Smoke PROD: portada y login `200`, `admin/paginas.php` sin sesión `302` a login, CSS `200`, POST SEO anónimo `401` con JSON controlado y `servicios.local.json` `403`. Falta únicamente la comprobación visual y de guardado con una sesión administradora real.
+
 ## Identidad editorial configurable y SEO estructurado — 5 de septiembre de 2026
 
 - La causa de las citas “Radio Sur” en enlaces de CardonaHoy era código heredado: `og:site_name`, `WebSite.name` y `NewsArticle.publisher.name` permanecían fijos aunque el título/descripción SEO de portada ya dijeran CardonaHoy.
