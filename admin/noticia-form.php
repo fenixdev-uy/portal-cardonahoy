@@ -163,9 +163,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         }
     }
     if ($usuarioId !== null) {
-        $stmt = $pdo->prepare('SELECT COUNT(*) FROM usuarios WHERE id=?');
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM usuarios WHERE id=? AND activo=1');
         $stmt->execute([$usuarioId]);
-        if (!(int) $stmt->fetchColumn()) $errores[] = 'El usuario seleccionado no existe.';
+        if (!(int) $stmt->fetchColumn()) $errores[] = 'La firma seleccionada no corresponde a un usuario activo.';
     }
 
     // La galería llega como JSON ordenado: [{ "id": N } | { "url": "..." }].
@@ -403,7 +403,7 @@ require __DIR__ . '/includes/header.php';
           <option value="">— Sin firma —</option>
           <?php foreach ($usuariosFirma as $a): ?>
             <option value="<?= (int) $a['id'] ?>" <?= $noticia['usuario_id'] == $a['id'] ? 'selected' : '' ?>>
-              <?= e($a['nombre']) ?> · <?= e($a['rol_nombre']) ?><?= (int)$a['activo']===0 ? ' (inactivo)' : '' ?>
+              <?= e($a['nombre']) ?> · <?= e($a['rol_nombre']) ?>
             </option>
           <?php endforeach; ?>
         </select>

@@ -919,7 +919,9 @@
     const cardContent = document.getElementById('homeSeoCardContent');
     const drawerClose = document.getElementById('settingsDrawerClose');
     const drawerBackdrop = document.getElementById('settingsDrawerBackdrop');
-    if (!title || !description || !titleMode || !descriptionMode || !imageAutomatic || !imageInput || !imagePreview || !socialImage || !imageAutoButton || !imageStatus || !badge || !status || !saveButton || !cancelButton || !cardToggle || !cardContent || !drawerClose || !drawerBackdrop) return;
+    const embeddedInPage = form.dataset.context === 'pagina';
+    const pageName = form.dataset.pageName || 'la página principal';
+    if (!title || !description || !titleMode || !descriptionMode || !imageAutomatic || !imageInput || !imagePreview || !socialImage || !imageAutoButton || !imageStatus || !badge || !status || !saveButton || !cancelButton || !cardToggle || !cardContent) return;
 
     const defaults = {
       get title() { return form.dataset.defaultTitle || ''; },
@@ -948,13 +950,13 @@
       document.getElementById('homeSeoGoogleTitle').textContent = title.value.trim() || defaults.title;
       document.getElementById('homeSeoGoogleDescription').textContent = description.value.trim() || defaults.description;
       const custom = titleMode.value === '1' || descriptionMode.value === '1' || imageAutomatic.value !== '1' && !imageAutoButton.hidden;
-      badge.textContent = custom ? 'Personalizado' : 'Automático';
+      badge.textContent = embeddedInPage ? 'Editable' : (custom ? 'Personalizado' : 'Automático');
       badge.classList.toggle('is-custom', custom);
     }
 
     function setCardExpanded(expanded) {
       cardToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-      cardToggle.setAttribute('aria-label', expanded ? 'Contraer ajustes SEO de la página principal' : 'Expandir ajustes SEO de la página principal');
+      cardToggle.setAttribute('aria-label', (expanded ? 'Contraer ajustes SEO de ' : 'Expandir ajustes SEO de ') + pageName);
       cardContent.hidden = !expanded;
       form.classList.toggle('is-collapsed', !expanded);
     }
@@ -966,8 +968,10 @@
       descriptionMode.value = saved.descriptionMode;
       title.readOnly = saved.titleMode !== '1';
       description.readOnly = saved.descriptionMode !== '1';
-      document.querySelector('[data-home-seo-auto="title"]').textContent = saved.titleMode === '1' ? 'Volver a automático' : 'Personalizar';
-      document.querySelector('[data-home-seo-auto="description"]').textContent = saved.descriptionMode === '1' ? 'Volver a automático' : 'Personalizar';
+      const titleModeButton = document.querySelector('[data-home-seo-auto="title"]');
+      const descriptionModeButton = document.querySelector('[data-home-seo-auto="description"]');
+      if (titleModeButton) titleModeButton.textContent = saved.titleMode === '1' ? 'Volver a automático' : 'Personalizar';
+      if (descriptionModeButton) descriptionModeButton.textContent = saved.descriptionMode === '1' ? 'Volver a automático' : 'Personalizar';
       imagePreview.src = saved.image;
       socialImage.src = saved.image;
       imageAutoButton.hidden = !saved.imageCustom;
@@ -1059,15 +1063,15 @@
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
-      if (saveButton.disabled) return;
+      if (!form.reportValidity() || saveButton.disabled) return;
       saveButton.disabled = true;
       saveButton.textContent = 'Guardando…';
-      status.textContent = 'Guardando SEO de la página principal…';
+      status.textContent = 'Guardando SEO de ' + pageName + '…';
       status.className = 'settings-save-status';
       try {
         const response = await fetch('configuracion-seo-portada.php', { method: 'POST', body: new FormData(form) });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok || !result.ok) throw new Error(result.error || 'No se pudo guardar el SEO de la página principal.');
+        if (!response.ok || !result.ok) throw new Error(result.error || 'No se pudo guardar el SEO de ' + pageName + '.');
         title.value = result.titulo || title.value;
         description.value = result.descripcion || description.value;
         imagePreview.src = result.imagen_url || imagePreview.src;
@@ -1078,9 +1082,9 @@
         imageAutomatic.value = '0';
         saved = readState();
         update();
-        status.textContent = result.mensaje || 'SEO de la página principal guardado.';
+        status.textContent = result.mensaje || 'SEO de ' + pageName + ' guardado.';
       } catch (error) {
-        status.textContent = error.message || 'No se pudo guardar el SEO de la página principal.';
+        status.textContent = error.message || 'No se pudo guardar el SEO de ' + pageName + '.';
         status.className = 'settings-save-status is-error';
       } finally {
         saveButton.disabled = false;
@@ -1088,9 +1092,12 @@
       }
     });
 
-    cancelButton.addEventListener('click', () => { resetUnsaved(); drawerClose.click(); });
-    drawerClose.addEventListener('click', resetUnsaved);
-    drawerBackdrop.addEventListener('click', resetUnsaved);
+    cancelButton.addEventListener('click', () => {
+      resetUnsaved();
+      if (!embeddedInPage && drawerClose) drawerClose.click();
+    });
+    drawerClose?.addEventListener('click', resetUnsaved);
+    drawerBackdrop?.addEventListener('click', resetUnsaved);
     update();
   })();
 </script>

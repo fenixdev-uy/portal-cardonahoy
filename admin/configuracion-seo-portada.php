@@ -7,13 +7,25 @@ header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
 header('Cache-Control: no-store');
 
-exigir_permiso('configuracion.gestionar', true);
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     http_response_code(405);
     echo json_encode(['error' => 'Método no permitido.'], JSON_UNESCAPED_UNICODE);
     exit;
 }
+exigir_login(true);
 verificar_csrf(true);
+
+$pagina = (string) ($_POST['pagina'] ?? 'home');
+if ($pagina !== 'home') {
+    http_response_code(422);
+    echo json_encode(['error' => 'La página seleccionada no es válida.'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+if (!tiene_permiso('paginas.gestionar')) {
+    http_response_code(403);
+    echo json_encode(['error' => 'No tenés permiso para gestionar esta página.'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
 
 $tituloPersonalizado = ($_POST['titulo_personalizado'] ?? '') === '1';
 $descripcionPersonalizada = ($_POST['descripcion_personalizada'] ?? '') === '1';

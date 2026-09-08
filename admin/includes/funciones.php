@@ -1405,10 +1405,11 @@ function guardar_categorias_noticia(PDO $pdo, int $noticiaId, array $categoriaId
 function obtener_usuarios_para_noticias(): array
 {
     return db()->query(
-        'SELECT u.id, u.nombre, u.email, u.bio, u.activo, r.nombre AS rol_nombre
+        'SELECT u.id, u.nombre, u.email, u.bio, r.nombre AS rol_nombre
            FROM usuarios u
            JOIN roles r ON r.id = u.rol_id
-          ORDER BY u.activo DESC, u.nombre ASC'
+          WHERE u.activo = 1
+          ORDER BY u.nombre ASC'
     )->fetchAll();
 }
 

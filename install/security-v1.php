@@ -102,6 +102,7 @@ $permisos = [
     ['roles.gestionar', 'Gestionar roles', 'Configurar permisos de roles.'],
     ['archivos.subir', 'Subir archivos', 'Subir y retirar imagenes del portal.'],
     ['configuracion.gestionar', 'Gestionar configuracion', 'Cambiar ajustes generales y la marca de agua del portal.'],
+    ['paginas.gestionar', 'Gestionar páginas', 'Ver y editar el SEO de la Home.'],
     ['mantenimiento.gestionar', 'Gestionar mantenimiento', 'Activar, desactivar y configurar el modo mantenimiento; permite ingresar durante el bloqueo.'],
     ['publicidad.gestionar', 'Gestionar publicidad', 'Crear, editar y eliminar anuncios y popups.'],
 ];

@@ -22,12 +22,14 @@ $fotoUsuarioPanelValida = $fotoUsuarioPanel !== '' && imagen_usuario_disponible(
 $BASE = '';
 $adminCssVersion = (string) (filemtime(__DIR__ . '/../assets/admin.css') ?: '1');
 $puedeConfigurarPanel = tiene_permiso('configuracion.gestionar');
+$puedeGestionarPaginas = tiene_permiso('paginas.gestionar');
 $puedeGestionarMantenimiento = tiene_permiso('mantenimiento.gestionar');
 $puedeGestionarUsuarios = tiene_permiso('usuarios.gestionar');
 $puedeGestionarRoles = tiene_permiso('roles.gestionar');
 $puedeGestionarPublicidad = tiene_permiso('publicidad.gestionar');
 $grupoUsuariosVisible = $puedeGestionarUsuarios || $puedeGestionarRoles;
 $grupoNoticiasActivo = in_array($activo, ['noticias', 'categorias'], true);
+$grupoPaginasActivo = $activo === 'paginas-home';
 $grupoUsuariosActivo = in_array($activo, ['usuarios', 'roles'], true);
 $grupoPublicidadActivo = in_array($activo, ['publicidad-anuncios', 'publicidad-popups'], true);
 $grupoAnalisisActivo = in_array($activo, ['publicaciones', 'votaciones', 'vistas'], true);
@@ -142,6 +144,19 @@ header('Cache-Control: no-store, private');
 <?php endif; ?>
         </div>
       </div>
+
+<?php if ($puedeGestionarPaginas): ?>
+      <div class="nav-group<?= $grupoPaginasActivo ? ' has-active' : '' ?>">
+        <button type="button" class="nav-link nav-group-toggle" data-nav-group-toggle aria-expanded="<?= $grupoPaginasActivo ? 'true' : 'false' ?>" aria-controls="pagesNavSubmenu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2h9l5 5v15H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z"></path><path d="M14 2v6h6M8 13h8M8 17h6"></path></svg>
+          <span>Páginas</span>
+          <svg class="nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+        </button>
+        <div class="nav-submenu" id="pagesNavSubmenu"<?= $grupoPaginasActivo ? '' : ' hidden' ?>>
+          <a href="<?= $BASE ?>paginas.php" class="nav-sub-link <?= $activo === 'paginas-home' ? 'active' : '' ?>">Home</a>
+        </div>
+      </div>
+<?php endif; ?>
 
       <span class="nav-label">Administración</span>
 
@@ -653,81 +668,8 @@ header('Cache-Control: no-store, private');
       </form>
       <?php endif; ?>
 
-      <?php if ($seoPortadaPanel !== null): ?>
-      <form class="settings-card settings-seo-card" id="homeSeoSettingsForm" enctype="multipart/form-data"
-            data-default-title="<?= e($seoAutomaticoPanel['titulo']) ?>"
-            data-default-description="<?= e($seoAutomaticoPanel['descripcion']) ?>"
-            data-default-image="<?= e(url_portal('imagenes/Logo2027v3.png')) ?>"
-            data-public-url="<?= e($seoPortadaPanel['url']) ?>">
-        <?= csrf_input() ?>
-        <input type="hidden" id="homeSeoTitleMode" name="titulo_personalizado" value="<?= $seoPortadaPanel['titulo_personalizado'] ? '1' : '0' ?>">
-        <input type="hidden" id="homeSeoDescriptionMode" name="descripcion_personalizada" value="<?= $seoPortadaPanel['descripcion_personalizada'] ? '1' : '0' ?>">
-        <input type="hidden" id="homeSeoImageAutomatic" name="imagen_automatica" value="0">
-
-        <div class="settings-card-heading">
-          <span class="settings-card-icon settings-card-icon-seo" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path><path d="M8 11h6M11 8v6"></path></svg>
-          </span>
-          <div class="settings-card-heading-copy">
-            <h3>SEO de la Página Principal</h3>
-            <p>Configurá cómo aparece la portada en Google y al compartir.</p>
-          </div>
-          <span class="seo-mode-badge<?= ($seoPortadaPanel['titulo_personalizado'] || $seoPortadaPanel['descripcion_personalizada'] || $seoPortadaPanel['imagen_personalizada']) ? ' is-custom' : '' ?>" id="homeSeoModeBadge"><?= ($seoPortadaPanel['titulo_personalizado'] || $seoPortadaPanel['descripcion_personalizada'] || $seoPortadaPanel['imagen_personalizada']) ? 'Personalizado' : 'Automático' ?></span>
-          <button type="button" class="settings-card-toggle" id="homeSeoCardToggle" aria-expanded="true" aria-controls="homeSeoCardContent" aria-label="Contraer ajustes SEO de la página principal">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"></path></svg>
-          </button>
-        </div>
-
-        <div class="settings-card-content settings-seo-content" id="homeSeoCardContent">
-          <div class="seo-field-group" data-home-seo-field="title">
-            <div class="seo-field-heading"><label for="homeSeoTitle">Título SEO</label><button type="button" class="seo-auto-action" data-home-seo-auto="title"><?= $seoPortadaPanel['titulo_personalizado'] ? 'Volver a automático' : 'Personalizar' ?></button></div>
-            <input class="form-control" type="text" id="homeSeoTitle" name="titulo" value="<?= e($seoPortadaPanel['titulo']) ?>" maxlength="255"<?= $seoPortadaPanel['titulo_personalizado'] ? '' : ' readonly' ?>>
-            <span class="seo-counter" id="homeSeoTitleCounter"><?= mb_strlen($seoPortadaPanel['titulo']) ?> caracteres</span>
-          </div>
-
-          <div class="seo-field-group" data-home-seo-field="description">
-            <div class="seo-field-heading"><label for="homeSeoDescription">Descripción SEO</label><button type="button" class="seo-auto-action" data-home-seo-auto="description"><?= $seoPortadaPanel['descripcion_personalizada'] ? 'Volver a automático' : 'Personalizar' ?></button></div>
-            <textarea class="form-control seo-description-input" id="homeSeoDescription" name="descripcion" maxlength="500"<?= $seoPortadaPanel['descripcion_personalizada'] ? '' : ' readonly' ?>><?= e($seoPortadaPanel['descripcion']) ?></textarea>
-            <span class="seo-counter" id="homeSeoDescriptionCounter"><?= mb_strlen($seoPortadaPanel['descripcion']) ?> caracteres</span>
-          </div>
-
-          <div class="seo-field-group">
-            <div class="seo-field-heading"><label for="homeSeoImage">Imagen SEO/social</label><span>Recomendado 1200 × 630 px</span></div>
-            <div class="home-seo-image-row">
-              <div class="home-seo-image-preview"><img id="homeSeoImagePreview" src="<?= e($seoPortadaPanel['imagen_url_versionada']) ?>" alt="Imagen SEO actual de la portada"></div>
-              <div class="home-seo-image-actions">
-                <label class="btn btn-outline" for="homeSeoImage">Cambiar imagen</label>
-                <button type="button" class="seo-auto-action" id="homeSeoImageAuto"<?= $seoPortadaPanel['imagen_personalizada'] ? '' : ' hidden' ?>>Volver a automática</button>
-              </div>
-              <input type="file" id="homeSeoImage" name="imagen" accept="image/jpeg,image/png,image/webp" hidden>
-            </div>
-            <span class="media-upload-status" id="homeSeoImageStatus" aria-live="polite"><?= $seoPortadaPanel['imagen_personalizada'] ? 'Imagen personalizada' : 'Imagen automática del portal' ?></span>
-          </div>
-
-          <div class="home-seo-preview-block">
-            <div class="seo-preview-tabs" role="tablist" aria-label="Tipo de vista previa SEO de portada">
-              <button type="button" role="tab" aria-selected="true" data-home-seo-tab="social">Al compartir</button>
-              <button type="button" role="tab" aria-selected="false" data-home-seo-tab="google">En Google</button>
-            </div>
-            <div class="seo-social-preview" data-home-seo-panel="social">
-              <div class="seo-social-image"><img id="homeSeoSocialImage" src="<?= e($seoPortadaPanel['imagen_url_versionada']) ?>" alt=""></div>
-              <div class="seo-social-copy"><span><?= e((string) parse_url($seoPortadaPanel['url'], PHP_URL_HOST)) ?></span><strong id="homeSeoSocialTitle"><?= e($seoPortadaPanel['titulo']) ?></strong><p id="homeSeoSocialDescription"><?= e($seoPortadaPanel['descripcion']) ?></p><small><?= e($seoPortadaPanel['url']) ?></small></div>
-            </div>
-            <div class="seo-google-preview" data-home-seo-panel="google" hidden>
-              <span><?= e($seoPortadaPanel['url']) ?></span>
-              <strong id="homeSeoGoogleTitle"><?= e($seoPortadaPanel['titulo']) ?></strong>
-              <p id="homeSeoGoogleDescription"><?= e($seoPortadaPanel['descripcion']) ?></p>
-            </div>
-            <p class="seo-preview-note">La vista es orientativa: cada plataforma puede recortar imágenes o textos de forma diferente.</p>
-          </div>
-
-          <span class="settings-save-status" id="homeSeoSaveStatus" aria-live="polite"></span>
-          <div class="settings-form-actions">
-            <button type="button" class="btn btn-outline" id="homeSeoCancel">Cancelar</button>
-            <button type="submit" class="btn btn-primary" id="homeSeoSaveButton">Guardar SEO</button>
-          </div>
-        </div>
-      </form>
+      <?php if ($seoPortadaPanel !== null && $puedeGestionarPaginas && empty($seoPortadaEnPagina)): ?>
+        <?php require __DIR__ . '/seo-portada-form.php'; ?>
       <?php endif; ?>
 
       <?php if ($codigoHeaderPanel !== null): ?>
