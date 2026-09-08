@@ -1,5 +1,14 @@
 # Continuidad — Portal de Noticias
 
+## Paginador y robustez del asistente editorial — PROD del 8 de septiembre de 2026
+
+- La tabla administrativa de Noticias pagina en el navegador con 25 registros iniciales, selector 25/50/100, resumen, páginas anterior/siguiente y combinación correcta con búsqueda y ordenamiento. El mismo código fue validado en escritorio y móvil sin desborde ni errores de consola.
+- El asistente editorial usa salida JSON, 4096 tokens, hasta dos intentos de transporte y hasta tres generaciones para recuperarse de respuestas truncadas, formatos inesperados, indisponibilidad temporal o similitud excesiva. La cuota quedó en 50 acciones por hora; los reintentos internos no agregan consumo.
+- Cardona Hoy conserva tanto **Extraer de URL** como **Pegar contenido**. El diagnóstico temporal usado en RS Medios no fue copiado.
+- PROD recibió únicamente `admin/index.php`, `admin/assets/admin.css` y `admin/mejorar-noticia.php`. Para mantener el alcance, el CSS publicado se construyó sobre la versión remota y excluyó el ajuste local pendiente del formulario de fecha.
+- FTPS explícito validó la cadena TLS y descartó conflictos contra `.deploy/estado.json`. Los originales quedaron en `.deploy/respaldos/2026-09-08_192848-paginador-ia-prod/`; los tres archivos finales coincidieron por SHA-256 y no quedaron temporales remotos.
+- Smoke PROD: portada/login `200`, listado sin sesión `302`, CSS `200` con hash verificado, endpoint IA anónimo `401` con JSON controlado y configuraciones privadas `403`. No hubo base de datos, migración, borrado, commit ni push; resta probar el paginador y una generación real con la sesión editorial del usuario.
+
 ## Páginas Home y firmas activas — DEV, GitHub y PROD del 8 de septiembre de 2026
 
 - Cardona Hoy incorpora exclusivamente **Páginas → Home** debajo de Noticias. `admin/paginas.php` divide el área principal en una vista previa navegable sin scripts ni interacciones publicitarias y una card SEO editable con título, descripción, imagen y previsualizaciones social/Google.

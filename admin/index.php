@@ -124,7 +124,19 @@ require __DIR__ . '/includes/header.php';
         <input type="search" id="noticiasSearch" placeholder="Buscar noticias..." autocomplete="off" aria-describedby="noticiasSearchStatus">
       </label>
     <?php endif; ?>
-    <span class="noticias-search-status" id="noticiasSearchStatus" aria-live="polite"><?= count($noticias) ?> noticias</span>
+    <div class="noticias-list-meta">
+      <span class="noticias-search-status" id="noticiasSearchStatus" aria-live="polite"><?= count($noticias) ?> noticias</span>
+      <?php if (!empty($noticias)): ?>
+        <label class="noticias-page-size" for="noticiasPageSize">
+          <span>Mostrar</span>
+          <select id="noticiasPageSize" aria-label="Noticias por página">
+            <option value="25" selected>25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </label>
+      <?php endif; ?>
+    </div>
     <?php if (tiene_permiso('noticias.crear')): ?>
       <a href="noticia-form.php" class="btn btn-primary noticias-create-btn" aria-label="Nueva noticia" title="Nueva noticia">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -269,6 +281,18 @@ require __DIR__ . '/includes/header.php';
     <div class="noticias-filter-empty" id="noticiasFilterEmpty" hidden>
       No encontramos noticias con esa búsqueda.
     </div>
+    <div class="noticias-pagination" id="noticiasPagination">
+      <span class="noticias-pagination-summary" id="noticiasPaginationSummary" aria-live="polite"></span>
+      <nav class="noticias-pagination-controls" id="noticiasPaginationControls" aria-label="Páginas de noticias">
+        <button type="button" class="noticias-page-button noticias-page-arrow" id="noticiasPagePrev" aria-label="Página anterior">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        <span class="noticias-page-numbers" id="noticiasPageNumbers"></span>
+        <button type="button" class="noticias-page-button noticias-page-arrow" id="noticiasPageNext" aria-label="Página siguiente">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      </nav>
+    </div>
   <?php endif; ?>
 </div>
 
@@ -281,9 +305,18 @@ require __DIR__ . '/includes/header.php';
     const sharesButton = document.getElementById('sharesSortBtn');
     const search = document.getElementById('noticiasSearch');
     const status = document.getElementById('noticiasSearchStatus');
+    const pageSizeSelect = document.getElementById('noticiasPageSize');
     const empty = document.getElementById('noticiasFilterEmpty');
+    const pagination = document.getElementById('noticiasPagination');
+    const paginationSummary = document.getElementById('noticiasPaginationSummary');
+    const paginationControls = document.getElementById('noticiasPaginationControls');
+    const pageNumbers = document.getElementById('noticiasPageNumbers');
+    const pagePrev = document.getElementById('noticiasPagePrev');
+    const pageNext = document.getElementById('noticiasPageNext');
     const tbody = document.querySelector('.noticias-list tbody');
-    if (!weightButton || !dateButton || !votesButton || !viewsButton || !sharesButton || !search || !status || !empty || !tbody) return;
+    if (!weightButton || !dateButton || !votesButton || !viewsButton || !sharesButton || !search || !status
+      || !pageSizeSelect || !empty || !pagination || !paginationSummary || !paginationControls
+      || !pageNumbers || !pagePrev || !pageNext || !tbody) return;
 
     const original = new Map(Array.from(tbody.rows).map((row, index) => [row, index]));
     const controls = {
@@ -320,6 +353,7 @@ require __DIR__ . '/includes/header.php';
     };
     let sortKey = 'date';
     let direction = 'desc';
+    let currentPage = 1;
 
     const normalize = (value) => value
       .normalize('NFD')
@@ -349,6 +383,8 @@ require __DIR__ . '/includes/header.php';
       });
       rows.forEach((row) => tbody.appendChild(row));
       updateSortControls();
+      currentPage = 1;
+      renderRows();
     }
 
     function restoreOriginalOrder() {
@@ -358,19 +394,75 @@ require __DIR__ . '/includes/header.php';
         .sort((a, b) => original.get(a) - original.get(b))
         .forEach((row) => tbody.appendChild(row));
       updateSortControls();
+      currentPage = 1;
+      renderRows();
     }
 
-    function filterRows() {
-      const term = normalize(search.value.trim());
-      let visible = 0;
-      Array.from(tbody.rows).forEach((row) => {
-        const matches = !term || normalize(row.textContent || '').includes(term);
-        row.hidden = !matches;
-        if (matches) visible += 1;
+    function paginationItems(totalPages) {
+      if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
+      const pages = new Set([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
+      const ordered = Array.from(pages).filter((page) => page > 0 && page <= totalPages).sort((a, b) => a - b);
+      const items = [];
+      ordered.forEach((page, index) => {
+        if (index > 0 && page - ordered[index - 1] > 1) items.push('ellipsis-' + page);
+        items.push(page);
       });
-      const total = tbody.rows.length;
-      status.textContent = term ? `${visible} de ${total} noticias` : `${total} noticias`;
-      empty.hidden = visible !== 0;
+      return items;
+    }
+
+    function renderPagination(totalPages) {
+      pageNumbers.replaceChildren();
+      paginationItems(totalPages).forEach((item) => {
+        if (typeof item === 'string') {
+          const ellipsis = document.createElement('span');
+          ellipsis.className = 'noticias-page-ellipsis';
+          ellipsis.textContent = '…';
+          ellipsis.setAttribute('aria-hidden', 'true');
+          pageNumbers.appendChild(ellipsis);
+          return;
+        }
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'noticias-page-button';
+        button.textContent = String(item);
+        button.setAttribute('aria-label', 'Página ' + item);
+        if (item === currentPage) {
+          button.classList.add('is-active');
+          button.setAttribute('aria-current', 'page');
+        }
+        button.addEventListener('click', () => {
+          currentPage = item;
+          renderRows();
+        });
+        pageNumbers.appendChild(button);
+      });
+      pagePrev.disabled = currentPage <= 1;
+      pageNext.disabled = currentPage >= totalPages;
+      paginationControls.hidden = totalPages <= 1;
+    }
+
+    function renderRows() {
+      const term = normalize(search.value.trim());
+      const rows = Array.from(tbody.rows);
+      const matches = rows.filter((row) => !term || normalize(row.textContent || '').includes(term));
+      const pageSize = Number(pageSizeSelect.value) || 25;
+      const totalPages = Math.max(1, Math.ceil(matches.length / pageSize));
+      currentPage = Math.min(Math.max(1, currentPage), totalPages);
+      const firstIndex = (currentPage - 1) * pageSize;
+      const lastIndex = Math.min(firstIndex + pageSize, matches.length);
+      const visibleRows = new Set(matches.slice(firstIndex, lastIndex));
+
+      rows.forEach((row) => {
+        row.hidden = !visibleRows.has(row);
+      });
+
+      status.textContent = term ? `${matches.length} de ${rows.length} noticias` : `${rows.length} noticias`;
+      empty.hidden = matches.length !== 0;
+      pagination.hidden = matches.length === 0;
+      paginationSummary.textContent = matches.length === 0
+        ? ''
+        : `Mostrando ${firstIndex + 1}–${lastIndex} de ${matches.length} noticias`;
+      renderPagination(totalPages);
     }
 
     Object.entries(controls).forEach(([key, control]) => {
@@ -384,7 +476,30 @@ require __DIR__ . '/includes/header.php';
         }
       });
     });
-    search.addEventListener('input', filterRows);
+    search.addEventListener('input', () => {
+      currentPage = 1;
+      renderRows();
+    });
+    pageSizeSelect.addEventListener('change', () => {
+      currentPage = 1;
+      renderRows();
+    });
+    pagePrev.addEventListener('click', () => {
+      if (currentPage <= 1) return;
+      currentPage -= 1;
+      renderRows();
+    });
+    pageNext.addEventListener('click', () => {
+      const totalMatches = Array.from(tbody.rows).filter((row) => {
+        const term = normalize(search.value.trim());
+        return !term || normalize(row.textContent || '').includes(term);
+      }).length;
+      const totalPages = Math.max(1, Math.ceil(totalMatches / (Number(pageSizeSelect.value) || 25)));
+      if (currentPage >= totalPages) return;
+      currentPage += 1;
+      renderRows();
+    });
+    renderRows();
   })();
 </script>
 
