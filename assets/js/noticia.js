@@ -6,6 +6,21 @@
       noticiaId: articleScript?.dataset.noticiaId || '',
       adPlacementsUrl: articleScript?.dataset.adPlacementsUrl || 'publicidad-ubicaciones.php',
     };
+    document.addEventListener('click', (event) => {
+      const link = event.target.closest('a[data-ad-click-url][data-ad-id][data-ad-destination]');
+      if (!link || !event.isTrusted || !link.href || link.getAttribute('aria-disabled') === 'true') return;
+      fetch(link.dataset.adClickUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json',
+        },
+        body: new URLSearchParams({ id: link.dataset.adId, destino: link.dataset.adDestination }),
+        credentials: 'same-origin',
+        keepalive: true,
+      }).catch(() => {});
+    }, { capture: true });
     if (articleConfig.noticiaId) {
       fetch(articleConfig.viewUrl, {
         method: 'POST',
@@ -110,6 +125,27 @@
             const html = htmlByPlacement[slot.dataset.adPlacement] ?? '';
             if (slot.innerHTML.trim() !== html.trim()) slot.innerHTML = html;
             slot.hidden = html === '';
+          });
+          const destinos = data.anuncios_destinos && typeof data.anuncios_destinos === 'object'
+            ? data.anuncios_destinos
+            : {};
+          document.querySelectorAll('a[data-ad-id][data-ad-destination]').forEach((link) => {
+            const url = String(destinos[link.dataset.adId]?.[link.dataset.adDestination] || '');
+            const label = link.dataset.adLabel || 'Enlace';
+            const name = link.dataset.adName || 'anunciante';
+            link.classList.toggle('is-disabled', url === '');
+            link.tabIndex = url === '' ? -1 : 0;
+            if (url === '') {
+              link.removeAttribute('href');
+              link.setAttribute('aria-disabled', 'true');
+              link.setAttribute('aria-label', `${label} sin configurar para ${name}`);
+              link.title = `${label} sin configurar`;
+            } else {
+              link.href = url;
+              link.removeAttribute('aria-disabled');
+              link.setAttribute('aria-label', `${label} de ${name}`);
+              link.title = label;
+            }
           });
         } catch (error) {
           console.error(error);

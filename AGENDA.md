@@ -1,6 +1,6 @@
 # Agenda — Portal Cardona Hoy
 
-Última actualización: **8 de septiembre de 2026**.
+Última actualización: **9 de septiembre de 2026**.
 
 Este archivo es la **única agenda aplicable a `portal-cardonahoy`**. La aplicación nace del baseline aprobado `5ec3e42`, pero no comparte configuración privada, base de datos, uploads, despliegue ni remoto con RS Medios.
 
@@ -11,6 +11,14 @@ Este archivo es la **única agenda aplicable a `portal-cardonahoy`**. La aplicac
 3. Validar con una sesión administradora de Cardona Hoy PROD la selección de hasta diez noticias en Portada.
 4. Validar con una sesión administradora de Cardona Hoy PROD las tasas mensuales y la copia PNG ya publicadas.
 5. Configurar SEO, administradores y contenido definitivos del cliente sobre el despliegue inicial.
+
+## Clics y enlaces de anuncios — publicado el 9 de septiembre de 2026
+
+- Cardona Hoy recibió la corrección aprobada en RS Medios para que `anuncios.clics` aumente únicamente mediante un POST originado por un clic humano confiable sobre Facebook, Instagram, WhatsApp o Sitio web. GET, HEAD, cargas, rastreadores y activaciones programáticas no cuentan.
+- Las cards usan directamente la URL externa vigente y sincronizan sin recarga los destinos modificados en Administración; un enlace vacío queda deshabilitado y uno válido vuelve a habilitarse.
+- Se publicaron solamente cinco archivos funcionales con preflight sin conflictos, respaldo, reemplazo atómico y verificación SHA-256. No hubo migración, borrado, reinicio de contadores ni cambios en Popup.
+- DEV y PROD pasaron PHP/JavaScript, HTTP y QA headless en escritorio y móvil. El usuario confirmó después en Cardona Hoy PROD que un clic real sobre un anuncio aumentó correctamente el contador una sola vez.
+- Por autorización posterior se respaldó y reinició exclusivamente `anuncios.clics` en Cardona Hoy PROD: 18 anuncios pasaron de 582 clics acumulados a 0. Popup, sus impresiones y Mantenimiento no cambiaron.
 
 ## Cierre Git actual — 6 de septiembre de 2026
 

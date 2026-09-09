@@ -11,23 +11,16 @@
     $urlRedPublicidad = trim((string) ($publicidad[$redPublicidad['campo']] ?? ''));
     $esUrlSegura = filter_var($urlRedPublicidad, FILTER_VALIDATE_URL) !== false
         && in_array(strtolower((string) parse_url($urlRedPublicidad, PHP_URL_SCHEME)), ['http', 'https'], true);
-    if (!$esUrlSegura) {
+    $anuncioId = (int) ($publicidad['id'] ?? 0);
+    $atributosSeguimiento = $anuncioId > 0
+        ? ' data-ad-click-url="' . e(url_portal('publicidad-click.php')) . '"'
+            . ' data-ad-id="' . $anuncioId . '"'
+            . ' data-ad-destination="' . e($redPublicidad['campo']) . '"'
+            . ' data-ad-label="' . e($redPublicidad['etiqueta']) . '"'
+            . ' data-ad-name="' . e($nombrePublicidad) . '"'
+        : '';
 ?>
-              <span class="<?= e($claseEnlacePublicidad) ?> is-disabled" role="img" aria-label="<?= e($redPublicidad['etiqueta']) ?> sin configurar para <?= e($nombrePublicidad) ?>" aria-disabled="true" title="<?= e($redPublicidad['etiqueta']) ?> sin configurar">
-                <svg viewBox="<?= e($redPublicidad['view_box']) ?>" <?= $redPublicidad['relleno'] ? 'fill="currentColor"' : 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"' ?> aria-hidden="true"><?= $redPublicidad['svg'] ?></svg>
-              </span>
-<?php
-        continue;
-    }
-    $urlDestinoPublicidad = $urlRedPublicidad;
-    if (!empty($publicidad['id'])) {
-        $urlDestinoPublicidad = url_portal('publicidad-click.php?' . http_build_query([
-            'id' => (int) $publicidad['id'],
-            'destino' => $redPublicidad['campo'],
-        ]));
-    }
-?>
-              <a class="<?= e($claseEnlacePublicidad) ?>" href="<?= e($urlDestinoPublicidad) ?>" target="_blank" rel="noopener noreferrer sponsored" aria-label="<?= e($redPublicidad['etiqueta']) ?> de <?= e($nombrePublicidad) ?>" title="<?= e($redPublicidad['etiqueta']) ?>">
+              <a class="<?= e($claseEnlacePublicidad) ?><?= $esUrlSegura ? '' : ' is-disabled' ?>"<?= $esUrlSegura ? ' href="' . e($urlRedPublicidad) . '"' : '' ?><?= $atributosSeguimiento ?> target="_blank" rel="noopener noreferrer sponsored" aria-label="<?= e($esUrlSegura ? $redPublicidad['etiqueta'] . ' de ' . $nombrePublicidad : $redPublicidad['etiqueta'] . ' sin configurar para ' . $nombrePublicidad) ?>" title="<?= e($esUrlSegura ? $redPublicidad['etiqueta'] : $redPublicidad['etiqueta'] . ' sin configurar') ?>"<?= $esUrlSegura ? '' : ' aria-disabled="true" tabindex="-1"' ?>>
                 <svg viewBox="<?= e($redPublicidad['view_box']) ?>" <?= $redPublicidad['relleno'] ? 'fill="currentColor"' : 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"' ?> aria-hidden="true"><?= $redPublicidad['svg'] ?></svg>
               </a>
 <?php endforeach; ?>

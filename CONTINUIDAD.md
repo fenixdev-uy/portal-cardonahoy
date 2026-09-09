@@ -1,5 +1,17 @@
 # Continuidad — Portal de Noticias
 
+## Clics humanos y actualización de enlaces publicitarios — PROD del 9 de septiembre de 2026
+
+- Se trasladó desde RS Medios el lote común de cinco archivos: `partials/publicidad-social.php`, `publicidad-click.php`, `publicidad-ubicaciones.php`, `assets/js/portal.js` y `assets/js/noticia.js`. Los cinco quedaron idénticos byte a byte entre ambos checkouts.
+- Las cards publicitarias enlazan directamente al destino externo. El contador se ejecuta aparte mediante POST same-origin desde un evento `click` confiable; GET/HEAD responden 405 y las cargas, robots o activaciones programáticas no suman clics.
+- Los cuatro destinos de cada anuncio activo se entregan en la sincronización de ubicaciones. Las cards ya abiertas actualizan URL, foco y accesibilidad sin recargar; un destino vacío queda sin `href`, deshabilitado y fuera del tabulado.
+- PHP, JavaScript y `git diff --check` pasaron. Con Puppeteer —Browser plugin no disponible— DEV y PROD respondieron 200 en `1440×900` y `390×844`; un clic visible produjo exactamente un POST interceptado por prueba y los enlaces vacíos conservaron el estado deshabilitado. La CSP existente continúa bloqueando la hoja de Google Fonts y fue el único error de consola, ajeno a esta tanda.
+- El preflight FTPS de Cardona Hoy PROD confirmó cero conflictos. Los originales quedaron en `.deploy/respaldos/2026-09-09_105216-publicidad-clicks-prod/`; los cinco reemplazos se descargaron nuevamente y coincidieron por SHA-256. Portada y ubicaciones respondieron 200, GET/HEAD del contador 405, no quedaron enlaces `href` antiguos hacia el contador ni temporales remotos.
+- No se ejecutó migración, borrado ni modificación de Popup durante el despliegue de código. Las solicitudes de clic de QA fueron interceptadas antes de llegar al servidor, por lo que la prueba automática no alteró métricas PROD.
+- A continuación, el usuario autorizó resetear los contadores de anuncios en PROD. El runner efímero confirmó la huella `b83ead0fb903`, 18 anuncios y 582 clics acumulados; el snapshot previo quedó en `.deploy/respaldos-db/2026-09-09_110302-publicidad-clicks-reset-prod/`, con 1.240 bytes y SHA-256 `bb0b3c50687c11d78691922675d30328882265f8313ca96702e02dd7a27df551`.
+- La transacción actualizó exactamente las 18 filas con clics y dejó `anuncios.clics=0`. Popup permaneció en 18 clics y 8.380 impresiones, y Mantenimiento en 0. El runner fue eliminado, quedó con cero coincidencias FTPS y respondió HTTP 404.
+- Validación manual final del usuario: hizo clic en un anuncio de Cardona Hoy PROD y confirmó que el contador registró correctamente ese único clic. La corrección queda funcionalmente aprobada.
+
 ## Paginador y robustez del asistente editorial — PROD del 8 de septiembre de 2026
 
 - La tabla administrativa de Noticias pagina en el navegador con 25 registros iniciales, selector 25/50/100, resumen, páginas anterior/siguiente y combinación correcta con búsqueda y ordenamiento. El mismo código fue validado en escritorio y móvil sin desborde ni errores de consola.

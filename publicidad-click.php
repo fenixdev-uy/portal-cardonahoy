@@ -1,14 +1,33 @@
 <?php
-/**
- * Registra un clic público sobre un destino del anuncio y redirige a la URL
- * guardada. El destino nunca se acepta desde el navegador para evitar redirects
- * abiertos y métricas sobre enlaces inexistentes.
- */
+/** Registra únicamente activaciones reales de los enlaces publicitarios. */
 require_once __DIR__ . '/admin/includes/funciones.php';
-exigir_portal_disponible();
+exigir_portal_disponible('json');
 
-$id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-$destino = (string) ($_GET['destino'] ?? '');
+header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store, private');
+header('X-Content-Type-Options: nosniff');
+
+function responder_clic_publicidad(array $datos, int $estado = 200): never
+{
+    http_response_code($estado);
+    echo json_encode($datos, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+$metodo = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+if ($metodo !== 'POST') {
+    header('Allow: POST');
+    responder_clic_publicidad(['ok' => false, 'error' => 'Método no permitido.'], 405);
+}
+
+$solicitudAjax = strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
+$origenFetch = strtolower((string) ($_SERVER['HTTP_SEC_FETCH_SITE'] ?? ''));
+if (!$solicitudAjax || ($origenFetch !== '' && $origenFetch !== 'same-origin')) {
+    responder_clic_publicidad(['ok' => false, 'error' => 'Solicitud no válida.'], 400);
+}
+
+$id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+$destino = (string) ($_POST['destino'] ?? '');
 $camposPermitidos = [
     'facebook_url' => 'facebook_url',
     'instagram_url' => 'instagram_url',
@@ -17,8 +36,7 @@ $camposPermitidos = [
 ];
 
 if ($id === false || $id === null || !isset($camposPermitidos[$destino])) {
-    http_response_code(404);
-    exit('Enlace publicitario no disponible.');
+    responder_clic_publicidad(['ok' => false, 'error' => 'Enlace publicitario no disponible.'], 404);
 }
 
 $pdo = db();
@@ -33,8 +51,7 @@ $stmt->execute([(int) $id]);
 $anuncio = $stmt->fetch();
 
 if (!$anuncio) {
-    http_response_code(404);
-    exit('Enlace publicitario no disponible.');
+    responder_clic_publicidad(['ok' => false, 'error' => 'Enlace publicitario no disponible.'], 404);
 }
 
 $vencido = !empty($anuncio['fecha_vencimiento']) && (string) $anuncio['fecha_vencimiento'] <= $hoy;
@@ -46,8 +63,7 @@ $url = trim((string) ($anuncio['url'] ?? ''));
 $esUrlSegura = filter_var($url, FILTER_VALIDATE_URL) !== false
     && in_array(strtolower((string) parse_url($url, PHP_URL_SCHEME)), ['http', 'https'], true);
 if ((int) $anuncio['activo'] !== 1 || $vencido || !$esUrlSegura) {
-    http_response_code(404);
-    exit('Enlace publicitario no disponible.');
+    responder_clic_publicidad(['ok' => false, 'error' => 'Enlace publicitario no disponible.'], 404);
 }
 
 $stmt = $pdo->prepare(
@@ -60,10 +76,7 @@ $stmt = $pdo->prepare(
 );
 $stmt->execute([(int) $id, $hoy]);
 if ($stmt->rowCount() !== 1) {
-    http_response_code(404);
-    exit('Enlace publicitario no disponible.');
+    responder_clic_publicidad(['ok' => false, 'error' => 'Enlace publicitario no disponible.'], 404);
 }
 
-header('Cache-Control: no-store, private');
-header('Location: ' . $url, true, 302);
-exit;
+responder_clic_publicidad(['ok' => true]);
