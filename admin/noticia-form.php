@@ -9,7 +9,6 @@ $usuarioSesion = exigir_login();
 $pdo = db();
 $categorias = obtener_categorias();
 $usuariosFirma = obtener_usuarios_para_noticias();
-$hoy = date('Y-m-d');
 
 $id = (int) ($_POST['id'] ?? $_GET['id'] ?? 0);
 $editando = $id > 0;
@@ -18,8 +17,7 @@ exigir_permiso($editando ? 'noticias.editar' : 'noticias.crear');
 $noticia = [
     'id' => 0,
     'categoria_id' => '',
-    'usuario_id' => '',
-    'fecha_publicacion' => $hoy,
+    'usuario_id' => (int) ($usuarioSesion['id'] ?? 0) ?: '',
     'titulo' => '',
     'slug' => '',
     'descripcion' => '',
@@ -53,7 +51,6 @@ if ($editando) {
     }
 
     $noticia = $existente;
-    $noticia['fecha_publicacion'] = date('Y-m-d', strtotime((string) $existente['created_at']));
     $slugOriginal = (string) ($existente['slug'] ?? '');
     $seoImagenOriginal = (string) ($existente['seo_imagen'] ?? '');
     $categoriaIds = array_column(obtener_categorias_noticia($id), 'id');
@@ -83,25 +80,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
     $usuarioId = $_POST['usuario_id'] ?? '';
     $usuarioId = $usuarioId !== '' ? (int) $usuarioId : null;
-
-    $fechaPublicacion = trim((string) ($_POST['fecha_publicacion'] ?? ''));
-    $fechaPublicacionValida = false;
-    if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $fechaPublicacion, $partesFecha)) {
-        $fechaPublicacionValida = checkdate(
-            (int) $partesFecha[2],
-            (int) $partesFecha[3],
-            (int) $partesFecha[1]
-        );
-    }
-    if (!$fechaPublicacionValida || $fechaPublicacion < '1970-01-01') {
-        $errores[] = 'La fecha de publicación no es válida.';
-    } elseif ($fechaPublicacion > $hoy) {
-        $errores[] = 'La fecha de publicación no puede ser posterior a hoy.';
-    }
-    $horaPublicacion = $editando && !empty($existente['created_at'])
-        ? date('H:i:s', strtotime((string) $existente['created_at']))
-        : date('H:i:s');
-    $fechaHoraPublicacion = $fechaPublicacionValida ? $fechaPublicacion . ' ' . $horaPublicacion : null;
 
     $titulo = trim((string) ($_POST['titulo'] ?? ''));
     $descripcion = sanitizar_html((string) ($_POST['descripcion'] ?? ''));
@@ -155,7 +133,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         'categoria_id' => $categoriaId ?: '',
         'categoria_ids' => $categoriaIds,
         'usuario_id' => $usuarioId ?: '',
-        'fecha_publicacion' => $fechaPublicacion,
         'titulo' => $titulo,
         'slug' => $slug,
         'descripcion' => $descripcion,
@@ -214,8 +191,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 'UPDATE noticias
                     SET categoria_id=?, usuario_id=?, titulo=?, slug=?, descripcion=?,
                         seo_titulo=?, seo_descripcion=?, seo_imagen=?,
-                        youtube=?, youtube_2=?, youtube_3=?, audio_1=?, audio_2=?, audio_3=?, portada=?,
-                        created_at=?
+                        youtube=?, youtube_2=?, youtube_3=?, audio_1=?, audio_2=?, audio_3=?, portada=?
                   WHERE id=?'
             );
             if ($slugOriginal !== '' && $slugOriginal !== $slug) {
@@ -227,7 +203,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $seoTitulo, $seoDescripcion, $seoImagen !== '' ? $seoImagen : null,
                 $videos['youtube'], $videos['youtube_2'], $videos['youtube_3'],
                 $audios['audio_1'], $audios['audio_2'], $audios['audio_3'], $portada,
-                $fechaHoraPublicacion, $id,
+                $id,
             ]);
             if ($stmt->rowCount() === 0) {
                 $comprobar = $pdo->prepare('SELECT COUNT(*) FROM noticias WHERE id=?');
@@ -238,15 +214,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $stmt = $pdo->prepare(
                 'INSERT INTO noticias
                     (categoria_id, usuario_id, titulo, slug, descripcion, seo_titulo, seo_descripcion, seo_imagen,
-                     youtube, youtube_2, youtube_3, audio_1, audio_2, audio_3, portada, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                     youtube, youtube_2, youtube_3, audio_1, audio_2, audio_3, portada)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
             );
             $stmt->execute([
                 $categoriaId, $usuarioId, $titulo, $slug, $descripcion,
                 $seoTitulo, $seoDescripcion, $seoImagen !== '' ? $seoImagen : null,
                 $videos['youtube'], $videos['youtube_2'], $videos['youtube_3'],
                 $audios['audio_1'], $audios['audio_2'], $audios['audio_3'], 0,
-                $fechaHoraPublicacion,
             ]);
             $id = (int) $pdo->lastInsertId();
         }
@@ -403,12 +378,6 @@ require __DIR__ . '/includes/header.php';
     </div>
 
     <div class="noticia-form-grid">
-      <div class="form-group">
-        <label for="fecha_publicacion">Fecha de publicación</label>
-        <input class="form-control" type="date" id="fecha_publicacion" name="fecha_publicacion" value="<?= e((string) $noticia['fecha_publicacion']) ?>" min="1970-01-01" max="<?= e($hoy) ?>" required />
-        <div class="form-hint">Se publica al guardar; no programa una publicación futura.</div>
-      </div>
-
       <div class="form-group category-multiselect" data-category-multiselect>
         <label id="categoriasLabel">Categorías</label>
         <details>

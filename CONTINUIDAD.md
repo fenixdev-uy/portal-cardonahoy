@@ -1,5 +1,23 @@
 # Continuidad — Portal de Noticias
 
+## Alineación del formulario editorial en DEV — 10 de septiembre de 2026
+
+- Cardona Hoy DEV retiró el campo y la lógica manual de **Fecha de publicación**. Las altas vuelven a usar el timestamp automático de `noticias.created_at` y editar una noticia no altera su fecha histórica.
+- Se conservan la firma predeterminada del usuario autenticado y la eliminación con transferencia de autoría ya publicadas. Las variantes propias del asistente editorial de Cardona Hoy no fueron reemplazadas ni modificadas.
+- QA DEV transaccional reversible: 5 usuarios y 8 noticias antes y después; se transfirieron temporalmente 4 noticias, se eliminó el autor y `ROLLBACK` restauró exactamente todo.
+- QA headless aislada —Browser plugin no disponible— en `1440×900` y `390×844`: formulario sin Fecha, firma seleccionada, grilla 2/1 columnas, diálogo centrado, receptor obligatorio, origen deshabilitado, cero overflow y consola limpia. Capturas: `/tmp/pntest/capturas/portal-cardonahoy-firma-eliminar-{desktop,mobile}.png`.
+- Este ajuste fue exclusivamente DEV: no se realizó un nuevo despliegue, migración ni modificación persistente de datos. El usuario autorizó posteriormente el commit y push independiente de los tres portales.
+
+## Firma predeterminada y eliminación de usuarios — PROD del 9 de septiembre de 2026
+
+- Al crear una noticia, **Firma de la noticia** queda seleccionada con el usuario autenticado. La edición conserva la firma ya guardada y el selector continúa admitiendo únicamente usuarios activos.
+- Un usuario con `usuarios.gestionar` puede eliminar otra cuenta, pero nunca la propia. Si la cuenta tiene noticias, el diálogo exige elegir otro usuario activo y el backend transfiere toda la autoría antes de borrar; ambas operaciones ocurren en una única transacción con bloqueo de filas y sin cambios parciales.
+- La prueba reversible en Cardona Hoy DEV, huella `6349afc0e628`, trabajó sobre 5 usuarios y 8 noticias: transfirió temporalmente 4 noticias, eliminó el autor dentro de la transacción y confirmó que `ROLLBACK` restauró exactamente usuario, noticias y totales. Solo un usuario activo posee el permiso de gestión.
+- El preflight FTPS encontró cero conflictos contra el baseline real. Como el checkout contiene ajustes editoriales todavía no publicados, los tres artefactos se construyeron selectivamente desde los archivos remotos: no se introdujo el cambio pendiente del campo Fecha ni otro CSS ajeno a este alcance.
+- PROD recibió `admin/noticia-form.php`, `admin/usuarios.php` y `admin/assets/admin.css` mediante temporales verificados y renombrado atómico. Respaldo: `.deploy/respaldos/20260910_025146-firma-eliminar-usuarios-prod/`. Hashes finales: `baa6ae52120c279f9c8a38b9df36018c3124e27fe7f89ba9bce6072b55f3d2ea`, `8c480459274aafb9faa7b9ddc9bc1f40956289669799cf47a9f3eafc4221b021` y `5fb67941f1cd5075405f7f7412aea71d33fcde99e61ed379007ab98aad28e90d`.
+- QA headless aislada —Browser plugin no disponible— en `1440×900` y `390×844`: diálogo centrado, receptor obligatorio, autor origen deshabilitado, cero overflow y cero errores de consola. Capturas: `/tmp/pntest/capturas/cardonahoy-usuarios-eliminar-{desktop,mobile}.png`.
+- Smoke final: portada/login/CSS `200`; Usuarios y formulario de noticia sin sesión `302` hacia login; cero temporales remotos. No hubo migración, modificación de datos PROD, cambio de Mantenimiento, commit ni push. Resta únicamente comprobar el recorrido con la sesión administradora real sin eliminar una cuenta necesaria.
+
 ## Clics humanos y actualización de enlaces publicitarios — PROD del 9 de septiembre de 2026
 
 - Se trasladó desde RS Medios el lote común de cinco archivos: `partials/publicidad-social.php`, `publicidad-click.php`, `publicidad-ubicaciones.php`, `assets/js/portal.js` y `assets/js/noticia.js`. Los cinco quedaron idénticos byte a byte entre ambos checkouts.

@@ -34,6 +34,76 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         redirigir('usuarios.php');
     }
 
+    if ($accion === 'eliminar') {
+        $transferirA = (int) ($_POST['transferir_a'] ?? 0);
+        if ($id <= 0) {
+            flash('danger', 'El usuario indicado no es válido.');
+            redirigir('usuarios.php');
+        }
+        if ($id === (int) $actual['id']) {
+            flash('danger', 'No podes eliminar tu propio usuario.');
+            redirigir('usuarios.php');
+        }
+
+        $fotoUsuario = '';
+        try {
+            $pdo->beginTransaction();
+
+            $stmt = $pdo->prepare('SELECT id, nombre, foto FROM usuarios WHERE id = ? FOR UPDATE');
+            $stmt->execute([$id]);
+            $usuarioEliminar = $stmt->fetch();
+            if (!$usuarioEliminar) {
+                throw new DomainException('El usuario que intentas eliminar ya no existe.');
+            }
+
+            $stmt = $pdo->prepare('SELECT COUNT(*) FROM noticias WHERE usuario_id = ?');
+            $stmt->execute([$id]);
+            $totalNoticias = (int) $stmt->fetchColumn();
+            $nombreDestino = '';
+
+            if ($totalNoticias > 0) {
+                if ($transferirA <= 0 || $transferirA === $id) {
+                    throw new DomainException('Selecciona otro usuario activo para recibir las noticias.');
+                }
+                $stmt = $pdo->prepare('SELECT id, nombre FROM usuarios WHERE id = ? AND activo = 1 FOR UPDATE');
+                $stmt->execute([$transferirA]);
+                $usuarioDestino = $stmt->fetch();
+                if (!$usuarioDestino) {
+                    throw new DomainException('El usuario elegido para recibir las noticias no existe o está inactivo.');
+                }
+                $nombreDestino = (string) $usuarioDestino['nombre'];
+                $stmt = $pdo->prepare('UPDATE noticias SET usuario_id = ? WHERE usuario_id = ?');
+                $stmt->execute([$transferirA, $id]);
+                if ($stmt->rowCount() !== $totalNoticias) {
+                    throw new RuntimeException('No se pudo transferir toda la autoría.');
+                }
+            }
+
+            $stmt = $pdo->prepare('DELETE FROM usuarios WHERE id = ?');
+            $stmt->execute([$id]);
+            if ($stmt->rowCount() !== 1) {
+                throw new RuntimeException('No se pudo eliminar el usuario.');
+            }
+
+            $fotoUsuario = trim((string) ($usuarioEliminar['foto'] ?? ''));
+            $nombreEliminado = (string) $usuarioEliminar['nombre'];
+            $pdo->commit();
+
+            eliminar_imagen_usuario($fotoUsuario);
+            $mensaje = $totalNoticias > 0
+                ? "Usuario eliminado. Sus {$totalNoticias} " . ($totalNoticias === 1 ? 'noticia fue transferida' : 'noticias fueron transferidas') . " a {$nombreDestino}."
+                : "Usuario {$nombreEliminado} eliminado correctamente.";
+            flash('success', $mensaje);
+        } catch (DomainException $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            flash('danger', $e->getMessage());
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            flash('danger', 'No se pudo eliminar el usuario ni transferir sus noticias. No se aplicaron cambios parciales.');
+        }
+        redirigir('usuarios.php');
+    }
+
     $nombre = trim((string) ($_POST['nombre'] ?? ''));
     $email = mb_strtolower(trim((string) ($_POST['email'] ?? '')), 'UTF-8');
     $rolId = (int) ($_POST['rol_id'] ?? 0);
@@ -172,11 +242,41 @@ require __DIR__ . '/includes/header.php';
       <td data-label="Noticias"><?= (int)$u['total_noticias'] ?></td>
       <td data-label="Estado"><span class="user-status <?= (int)$u['activo']===1?'is-active':'is-inactive' ?>"><span aria-hidden="true"></span><?= (int)$u['activo']===1?'Activo':'Inactivo' ?></span><div class="user-access-note"><?= (int)$u['tiene_clave']===0?'Sin contraseña':((int)$u['debe_cambiar_password']===1?'Contraseña temporal':'Acceso configurado') ?></div></td>
       <td data-label="Último acceso"><?= $u['ultimo_acceso_at']?e(date('d/m/Y H:i',strtotime($u['ultimo_acceso_at']))):'—' ?></td>
-      <td data-label="Acciones"><div class="cell-actions user-icon-actions"><a class="action-icon action-icon-edit" href="usuarios.php?editar=<?= (int)$u['id'] ?>" aria-label="Editar a <?= e($u['nombre']) ?>" title="Editar usuario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></a><?php if((int)$u['id']!==(int)$actual['id']): ?><form method="post" action="usuarios.php" onsubmit="return confirm('¿<?= (int)$u['activo']===1?'Desactivar':'Activar' ?> a <?= e($u['nombre']) ?>?')"><?= csrf_input() ?><input type="hidden" name="accion" value="estado"><input type="hidden" name="id" value="<?= (int)$u['id'] ?>"><input type="hidden" name="activo" value="<?= (int)$u['activo']===1?0:1 ?>"><button class="action-icon <?= (int)$u['activo']===1?'action-icon-deactivate':'action-icon-activate' ?>" type="submit" aria-label="<?= (int)$u['activo']===1?'Desactivar':'Activar' ?> a <?= e($u['nombre']) ?>" title="<?= (int)$u['activo']===1?'Desactivar':'Activar' ?> usuario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg></button></form><?php endif; ?></div></td>
+      <td data-label="Acciones"><div class="cell-actions user-icon-actions"><a class="action-icon action-icon-edit" href="usuarios.php?editar=<?= (int)$u['id'] ?>" aria-label="Editar a <?= e($u['nombre']) ?>" title="Editar usuario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></a><?php if((int)$u['id']!==(int)$actual['id']): ?><form method="post" action="usuarios.php" onsubmit="return confirm('¿<?= (int)$u['activo']===1?'Desactivar':'Activar' ?> a <?= e($u['nombre']) ?>?')"><?= csrf_input() ?><input type="hidden" name="accion" value="estado"><input type="hidden" name="id" value="<?= (int)$u['id'] ?>"><input type="hidden" name="activo" value="<?= (int)$u['activo']===1?0:1 ?>"><button class="action-icon <?= (int)$u['activo']===1?'action-icon-deactivate':'action-icon-activate' ?>" type="submit" aria-label="<?= (int)$u['activo']===1?'Desactivar':'Activar' ?> a <?= e($u['nombre']) ?>" title="<?= (int)$u['activo']===1?'Desactivar':'Activar' ?> usuario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg></button></form><button class="action-icon action-icon-delete js-delete-user" type="button" data-user-id="<?= (int)$u['id'] ?>" data-user-name="<?= e($u['nombre']) ?>" data-user-news="<?= (int)$u['total_noticias'] ?>" aria-label="Eliminar a <?= e($u['nombre']) ?>" title="Eliminar usuario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button><?php endif; ?></div></td>
     </tr>
   <?php endforeach; ?>
   </tbody></table></div>
 </section>
+
+<dialog class="user-delete-dialog" id="userDeleteDialog" aria-labelledby="userDeleteTitle">
+  <form method="post" action="usuarios.php" id="userDeleteForm">
+    <?= csrf_input() ?>
+    <input type="hidden" name="accion" value="eliminar">
+    <input type="hidden" name="id" id="deleteUserId" value="">
+    <div class="user-delete-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+    </div>
+    <h2 id="userDeleteTitle">Eliminar usuario</h2>
+    <p class="user-delete-summary" id="userDeleteSummary"></p>
+    <div class="form-group user-delete-transfer" id="userDeleteTransfer">
+      <label for="transferir_a">Transferir autoría de las noticias a</label>
+      <select class="form-control" id="transferir_a" name="transferir_a">
+        <option value="">Seleccionar usuario</option>
+        <?php foreach ($usuarios as $destino): ?>
+          <?php if ((int) $destino['activo'] === 1): ?>
+            <option value="<?= (int) $destino['id'] ?>"><?= e($destino['nombre']) ?> · <?= e($destino['rol_nombre']) ?></option>
+          <?php endif; ?>
+        <?php endforeach; ?>
+      </select>
+      <div class="form-hint">Todas las noticias conservarán su contenido y pasarán a mostrar esta firma.</div>
+    </div>
+    <p class="user-delete-warning">Esta acción elimina definitivamente la cuenta y su foto de perfil. No elimina noticias.</p>
+    <div class="form-actions user-delete-actions">
+      <button class="btn btn-outline" type="button" id="userDeleteCancel">Cancelar</button>
+      <button class="btn btn-danger" type="submit" id="userDeleteSubmit">Transferir y eliminar</button>
+    </div>
+  </form>
+</dialog>
 
 <div class="drawer-backdrop" id="userDrawerBackdrop"></div>
 <aside class="drawer user-drawer" id="userDrawer" aria-hidden="true" aria-labelledby="userDrawerTitle">
@@ -242,6 +342,13 @@ require __DIR__ . '/includes/header.php';
     const photoHelp = document.getElementById('userPhotoHelp');
     const nameInput = document.getElementById('nombre');
     const defaultPhotoHelp = photoHelp.textContent;
+    const deleteDialog = document.getElementById('userDeleteDialog');
+    const deleteUserId = document.getElementById('deleteUserId');
+    const deleteSummary = document.getElementById('userDeleteSummary');
+    const deleteTransfer = document.getElementById('userDeleteTransfer');
+    const deleteRecipient = document.getElementById('transferir_a');
+    const deleteSubmit = document.getElementById('userDeleteSubmit');
+    const deleteCancel = document.getElementById('userDeleteCancel');
     let originalPhotoNodes = Array.from(photoPreview.childNodes, node => node.cloneNode(true));
     let photoPreviewSequence = 0;
 
@@ -327,6 +434,32 @@ require __DIR__ . '/includes/header.php';
 
     nameInput.addEventListener('input', () => {
       if (photoPreview.querySelector('.user-photo-initial')) showPhotoInitial(photoHelp.textContent);
+    });
+
+    document.querySelectorAll('.js-delete-user').forEach(button => {
+      button.addEventListener('click', () => {
+        const userId = button.dataset.userId || '';
+        const userName = button.dataset.userName || 'este usuario';
+        const newsCount = Number.parseInt(button.dataset.userNews || '0', 10) || 0;
+        deleteUserId.value = userId;
+        deleteRecipient.value = '';
+        Array.from(deleteRecipient.options).forEach(option => {
+          option.disabled = option.value === userId;
+          option.hidden = option.value === userId;
+        });
+        const hasNews = newsCount > 0;
+        deleteTransfer.hidden = !hasNews;
+        deleteRecipient.required = hasNews;
+        deleteSummary.textContent = hasNews
+          ? `${userName} tiene ${newsCount} ${newsCount === 1 ? 'noticia publicada' : 'noticias publicadas'}. Elegí quién conservará su autoría.`
+          : `${userName} no tiene noticias publicadas y puede eliminarse directamente.`;
+        deleteSubmit.textContent = hasNews ? 'Transferir y eliminar' : 'Eliminar usuario';
+        deleteDialog.showModal();
+      });
+    });
+    deleteCancel.addEventListener('click', () => deleteDialog.close());
+    deleteDialog.addEventListener('click', event => {
+      if (event.target === deleteDialog) deleteDialog.close();
     });
 
     function openDrawer() {

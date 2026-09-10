@@ -1,16 +1,17 @@
 # Agenda — Portal Cardona Hoy
 
-Última actualización: **9 de septiembre de 2026**.
+Última actualización: **10 de septiembre de 2026**.
 
 Este archivo es la **única agenda aplicable a `portal-cardonahoy`**. La aplicación nace del baseline aprobado `5ec3e42`, pero no comparte configuración privada, base de datos, uploads, despliegue ni remoto con RS Medios.
 
 ## Prioridad activa
 
-1. Validar con una sesión editorial real de Cardona Hoy PROD el nuevo **Título ideal**, los destellos y una generación DeepSeek completa desde URL y desde contenido pegado.
-2. Validar con dos navegadores o dispositivos reales que el segundo login cierre la primera sesión del mismo usuario y conserve la nueva.
-3. Validar con una sesión administradora de Cardona Hoy PROD la selección de hasta diez noticias en Portada.
-4. Validar con una sesión administradora de Cardona Hoy PROD las tasas mensuales y la copia PNG ya publicadas.
-5. Configurar SEO, administradores y contenido definitivos del cliente sobre el despliegue inicial.
+1. Validar con una sesión administradora real de Cardona Hoy PROD que una noticia nueva seleccione por defecto la firma del usuario autenticado y, sobre una cuenta prescindible, el flujo de transferencia de autoría y eliminación.
+2. Validar con una sesión editorial real de Cardona Hoy PROD el nuevo **Título ideal**, los destellos y una generación DeepSeek completa desde URL y desde contenido pegado.
+3. Validar con dos navegadores o dispositivos reales que el segundo login cierre la primera sesión del mismo usuario y conserve la nueva.
+4. Validar con una sesión administradora de Cardona Hoy PROD la selección de hasta diez noticias en Portada.
+5. Validar con una sesión administradora de Cardona Hoy PROD las tasas mensuales y la copia PNG ya publicadas.
+6. Configurar SEO, administradores y contenido definitivos del cliente sobre el despliegue inicial.
 
 ## Clics y enlaces de anuncios — publicado el 9 de septiembre de 2026
 
