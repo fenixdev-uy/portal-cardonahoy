@@ -17,10 +17,14 @@ if ($id <= 0) {
     exit;
 }
 
-$stmt = db()->prepare(
+$pdo = db();
+$camposEstado = noticias_estados_disponibles($pdo)
+    ? 'n.publicada_at, n.estado'
+    : "n.created_at AS publicada_at, 'publicada' AS estado";
+$stmt = $pdo->prepare(
     'SELECT n.id, n.titulo, n.descripcion,
             n.youtube, n.youtube_2, n.youtube_3,
-            n.audio_1, n.audio_2, n.audio_3, n.created_at,
+            n.audio_1, n.audio_2, n.audio_3, n.created_at, n.updated_at, ' . $camposEstado . ',
             n.me_gusta, n.no_me_gusta, n.vistas, n.compartidos,
             c.nombre AS categoria_nombre,
             u.nombre AS autor_nombre
@@ -42,6 +46,7 @@ $noticiaDetalle = [$n];
 cargar_categorias_noticias($noticiaDetalle);
 $n = $noticiaDetalle[0];
 
+$fechaDetalle = ($n['estado'] ?? '') === 'publicada' ? ($n['publicada_at'] ?? $n['created_at']) : $n['updated_at'];
 $fotos = obtener_fotos_noticia((int) $n['id']);
 $galeria = [];
 foreach ($fotos as $f) {
@@ -72,8 +77,9 @@ echo json_encode([
     'categoria'      => $n['categoria_nombre'] ?: null,
     'categorias'     => $n['categorias'] ?? [],
     'autor'          => $n['autor_nombre'] ?? null,
-    'fecha'          => $n['created_at'] ? date('d/m/Y', strtotime($n['created_at'])) : null,
-    'fecha_larga'    => fecha_larga($n['created_at']),
+    'fecha'          => $fechaDetalle ? date('d/m/Y', strtotime($fechaDetalle)) : null,
+    'fecha_larga'    => fecha_larga((string) $fechaDetalle),
+    'estado'         => (string) ($n['estado'] ?? 'borrador'),
     'youtube'        => $videos[0] ?? '',
     'videos'         => $videos,
     'audios'         => $audios,

@@ -7,6 +7,21 @@ require_once __DIR__ . '/auth.php';
 
 const PORTADA_NOTICIAS_LIMITE = 10;
 
+/** Permite desplegar el código antes de ejecutar la migración de estados. */
+function noticias_estados_disponibles(PDO $pdo): bool
+{
+    static $disponible = null;
+    if (is_bool($disponible)) return $disponible;
+    $stmt = $pdo->prepare(
+        "SELECT COUNT(*) FROM information_schema.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'noticias'
+            AND COLUMN_NAME IN ('estado', 'publicada_at')"
+    );
+    $stmt->execute();
+    $disponible = (int) $stmt->fetchColumn() === 2;
+    return $disponible;
+}
+
 /**
  * Bloquea la selección actual de Portada al alcanzar el cupo configurado.
  * Debe ejecutarse dentro de la misma transacción que guarda el cambio.
@@ -17,9 +32,10 @@ function exigir_cupo_noticia_portada(PDO $pdo, int $noticiaId): void
         throw new LogicException('El cupo de Portada debe validarse dentro de una transacción.');
     }
 
+    $filtroEstado = noticias_estados_disponibles($pdo) ? " AND estado = 'publicada'" : '';
     $ids = array_map(
         'intval',
-        $pdo->query('SELECT id FROM noticias WHERE portada = 1 ORDER BY id FOR UPDATE')->fetchAll(PDO::FETCH_COLUMN)
+        $pdo->query("SELECT id FROM noticias WHERE portada = 1$filtroEstado ORDER BY id FOR UPDATE")->fetchAll(PDO::FETCH_COLUMN)
     );
 
     if (!in_array($noticiaId, $ids, true) && count($ids) >= PORTADA_NOTICIAS_LIMITE) {

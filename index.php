@@ -96,19 +96,23 @@ foreach (array_merge($noticias, $noticiasPc, $noticiasRecientes) as $noticiaTemp
 $noticiasTemplates = array_values($noticiasTemplatesPorId);
 $fotosPorNoticia = $paginaRecientes['fotos'] + $paginaPc['fotos'] + $paginaMovil['fotos'];
 
+$estadosNoticiasDisponibles = noticias_estados_disponibles($pdo);
+$fechaPublicaSql = $estadosNoticiasDisponibles ? 'n.publicada_at' : 'n.created_at';
+$filtroPublicadaSql = $estadosNoticiasDisponibles ? " AND n.estado = 'publicada'" : '';
 $noticiasPortada = $pdo->query(
     'SELECT n.id, n.categoria_id, n.titulo, n.slug, n.descripcion,
             n.youtube, n.youtube_2, n.youtube_3,
-            n.audio_1, n.audio_2, n.audio_3, n.created_at,
+            n.audio_1, n.audio_2, n.audio_3, ' . $fechaPublicaSql . ' AS created_at,
             n.me_gusta, n.no_me_gusta, n.portada,
             c.nombre AS categoria_nombre,
             u.nombre AS autor_nombre
        FROM noticias n
        LEFT JOIN categorias c ON c.id = n.categoria_id
-       LEFT JOIN usuarios u ON u.id = n.usuario_id
+      LEFT JOIN usuarios u ON u.id = n.usuario_id
       WHERE n.portada = 1
+        ' . $filtroPublicadaSql . '
         AND EXISTS (SELECT 1 FROM noticias_fotos nf WHERE nf.noticia_id = n.id)
-      ORDER BY n.created_at DESC, n.id DESC
+      ORDER BY ' . $fechaPublicaSql . ' DESC, n.id DESC
       LIMIT ' . PORTADA_NOTICIAS_LIMITE
 )->fetchAll();
 cargar_categorias_noticias($noticiasPortada);

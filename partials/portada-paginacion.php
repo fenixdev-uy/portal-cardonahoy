@@ -60,7 +60,9 @@ function consultar_bloque_portada(PDO $pdo, array $opciones = []): array
     $desde = (string) ($opciones['desde'] ?? '');
     $hasta = (string) ($opciones['hasta'] ?? '');
     $cursor = is_array($opciones['cursor'] ?? null) ? $opciones['cursor'] : null;
-    $condiciones = [];
+    $estadosDisponibles = noticias_estados_disponibles($pdo);
+    $columnaFecha = $estadosDisponibles ? 'n.publicada_at' : 'n.created_at';
+    $condiciones = $estadosDisponibles ? ["n.estado = 'publicada'"] : [];
     $parametros = [];
 
     if ($buscar !== '') {
@@ -82,15 +84,15 @@ function consultar_bloque_portada(PDO $pdo, array $opciones = []): array
         $condiciones[] = 'EXISTS (SELECT 1 FROM noticias_categorias nc WHERE nc.noticia_id = n.id AND nc.categoria_id IN (' . implode(',', $placeholders) . '))';
     }
     if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $desde)) {
-        $condiciones[] = 'n.created_at >= :desde';
+        $condiciones[] = "$columnaFecha >= :desde";
         $parametros[':desde'] = $desde . ' 00:00:00';
     }
     if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $hasta)) {
-        $condiciones[] = 'n.created_at < :hasta';
+        $condiciones[] = "$columnaFecha < :hasta";
         $parametros[':hasta'] = (new DateTimeImmutable($hasta))->modify('+1 day')->format('Y-m-d') . ' 00:00:00';
     }
     if ($cursor) {
-        $condiciones[] = '(n.created_at < :cursor_fecha_1 OR (n.created_at = :cursor_fecha_2 AND n.id < :cursor_id))';
+        $condiciones[] = "($columnaFecha < :cursor_fecha_1 OR ($columnaFecha = :cursor_fecha_2 AND n.id < :cursor_id))";
         $parametros[':cursor_fecha_1'] = $cursor['fecha'];
         $parametros[':cursor_fecha_2'] = $cursor['fecha'];
         $parametros[':cursor_id'] = $cursor['id'];
@@ -98,7 +100,7 @@ function consultar_bloque_portada(PDO $pdo, array $opciones = []): array
 
     $sql = 'SELECT n.id, n.categoria_id, n.titulo, n.slug, n.descripcion,
                    n.youtube, n.youtube_2, n.youtube_3,
-                   n.audio_1, n.audio_2, n.audio_3, n.created_at,
+                   n.audio_1, n.audio_2, n.audio_3, ' . $columnaFecha . ' AS created_at,
                    n.me_gusta, n.no_me_gusta, n.portada,
                    c.nombre AS categoria_nombre,
                    u.nombre AS autor_nombre
@@ -106,7 +108,7 @@ function consultar_bloque_portada(PDO $pdo, array $opciones = []): array
               LEFT JOIN categorias c ON c.id = n.categoria_id
               LEFT JOIN usuarios u ON u.id = n.usuario_id';
     if ($condiciones) $sql .= ' WHERE ' . implode(' AND ', $condiciones);
-    $sql .= ' ORDER BY n.created_at DESC, n.id DESC LIMIT ' . ($limite + 1);
+    $sql .= " ORDER BY $columnaFecha DESC, n.id DESC LIMIT " . ($limite + 1);
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($parametros);

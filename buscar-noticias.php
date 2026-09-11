@@ -23,7 +23,11 @@ if (mb_strlen($busqueda, 'UTF-8') < 2) {
 $patron = str_replace(['=', '%', '_'], ['==', '=%', '=_'], $busqueda);
 $patron = '%' . $patron . '%';
 
-$stmt = db()->prepare(
+$pdo = db();
+$estadosDisponibles = noticias_estados_disponibles($pdo);
+$filtroEstado = $estadosDisponibles ? "n.estado = 'publicada' AND " : '';
+$ordenFecha = $estadosDisponibles ? 'n.publicada_at' : 'n.created_at';
+$stmt = $pdo->prepare(
     "SELECT n.id, n.titulo, n.slug, n.descripcion,
             (SELECT f.ruta
                FROM noticias_fotos f
@@ -31,9 +35,9 @@ $stmt = db()->prepare(
               ORDER BY f.posicion ASC, f.id ASC
               LIMIT 1) AS miniatura
        FROM noticias n
-      WHERE n.titulo LIKE :patron_titulo ESCAPE '='
-         OR n.descripcion LIKE :patron_descripcion ESCAPE '='
-      ORDER BY n.created_at DESC, n.id DESC
+      WHERE " . $filtroEstado . "(n.titulo LIKE :patron_titulo ESCAPE '='
+         OR n.descripcion LIKE :patron_descripcion ESCAPE '=')
+      ORDER BY " . $ordenFecha . " DESC, n.id DESC
       LIMIT 5"
 );
 $stmt->execute([

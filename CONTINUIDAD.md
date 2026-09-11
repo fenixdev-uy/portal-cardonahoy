@@ -1,5 +1,22 @@
 # Continuidad — Portal de Noticias
 
+## Punto de pausa vigente — cierre Git aprobado y revisión PROD pendiente — 11 de septiembre de 2026
+
+- El usuario aprobó todo el árbol actual de Cardona Hoy y autorizó su consolidación mediante commit y push al remoto independiente.
+- El checkpoint incluye el flujo Borrador/Publicada y las mejoras editoriales comunes documentadas debajo, sin reemplazar la identidad, el asistente ni las particularidades propias del cliente.
+- Cardona Hoy PROD ya recibió partes de este trabajo mediante despliegues selectivos. Mañana se debe realizar un preflight contra el estado remoto, respaldar y transferir únicamente las diferencias aprobadas aún pendientes; no repetir SQL ni asumir equivalencia por el solo push de GitHub.
+- Hoy no se ejecuta FTPS, migración, cambio de datos ni modificación de Mantenimiento.
+
+## Borradores de noticias — DEV y PROD del 10 de septiembre de 2026
+
+- Cardona Hoy incorpora los estados **Borrador** y **Publicada**, acciones editoriales separadas, filtro y badges en el listado, y respaldo automático recuperable en `localStorage` ante una salida accidental. Publicar exige título, cuerpo y al menos una categoría; un borrador puede guardarse incompleto y nunca participa de Portada, paginación, búsqueda, sitemap, página individual, votos ni métricas públicas.
+- QA Chromium DEV validó guardado incompleto, validaciones, publicación, HTTP 404 al volver a borrador, exclusión pública y recuperación local, sin errores JavaScript. Los datos QA fueron eliminados y DEV volvió a sus 8 noticias originales.
+- Con autorización expresa se realizó el despliegue incremental en Cardona Hoy PROD. FTPS/TLS válido, huella `b83ead0fb903`, cero conflictos y 15 reemplazos atómicos con hashes finales coincidentes. Respaldo de código: `.deploy/respaldos/20260910_170500-borradores-prod/`, modo `700/600`; su `SHA256SUMS` tiene SHA-256 `d9b8878e9b0ccd6ae8590a6aa130a3428f1d64f6bb8bfc5752ddbcacf3cf4906`.
+- Antes de migrar se respaldó la misma base PROD en `.deploy/respaldos-db/2026-09-10-borradores-prod/cardonahoy-production-before-noticias-estados-v1.sql`: 2.395.674 bytes, modo `600`, SHA-256 `38c52e37eb914900f729c247f85d650c159a85ca405cdd30f4ce0c6ff85516c1`.
+- La migración idempotente se ejecutó dos veces. Las 131 noticias existentes quedaron Publicadas y conservaron fecha; finalizaron cero borradores, cero estados inválidos, cero publicaciones sin fecha y cero borradores en Portada. Mantenimiento permaneció en `0`.
+- Smoke PROD: portada, login, CSS, buscador, sitemap y una noticia real `200`; formulario e índice administrativos anónimos `302` al login; manifiesto y configuración privada `403`. El ejecutor efímero fue eliminado, responde `404` y no quedaron temporales FTPS.
+- No se desplegaron `schema.sql`, documentación, instaladores, configuraciones privadas ni respaldos. No hubo borrados, commit, push ni cambios en Portal Base o RS Medios. Resta únicamente una validación autenticada manual con una noticia prescindible.
+
 ## Alineación del formulario editorial en DEV — 10 de septiembre de 2026
 
 - Cardona Hoy DEV retiró el campo y la lógica manual de **Fecha de publicación**. Las altas vuelven a usar el timestamp automático de `noticias.created_at` y editar una noticia no altera su fecha histórica.

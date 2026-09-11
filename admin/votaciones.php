@@ -15,6 +15,7 @@ require_once __DIR__ . '/includes/funciones.php';
 const VOTACIONES_TOPE = 8;
 
 $pdo = db();
+$filtroPublicadaSql = noticias_estados_disponibles($pdo) ? "n.estado = 'publicada' AND " : '';
 
 $noticiasVotadas = $pdo->query(
     'SELECT n.id, n.titulo, n.me_gusta, n.no_me_gusta,
@@ -22,7 +23,7 @@ $noticiasVotadas = $pdo->query(
             c.nombre AS categoria_nombre
        FROM noticias n
        LEFT JOIN categorias c ON c.id = n.categoria_id
-      WHERE n.me_gusta > 0 OR n.no_me_gusta > 0
+      WHERE ' . $filtroPublicadaSql . '(n.me_gusta > 0 OR n.no_me_gusta > 0)
       ORDER BY total DESC, n.me_gusta DESC, n.id DESC'
 )->fetchAll();
 cargar_categorias_noticias($noticiasVotadas);

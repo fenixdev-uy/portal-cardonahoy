@@ -10,6 +10,12 @@ Backend de noticias para la landing page. Las noticias se administran desde un p
 
 **Estado actual:** panel protegido con login, usuarios, roles/permisos, noticias, categorías y galería. El slider y los dos feeds del front, PC y móvil, están conectados al backend.
 
+El árbol aprobado quedó consolidado en el checkpoint Git del 11 de septiembre de 2026. Cardona Hoy PROD ya contiene partes publicadas selectivamente; cualquier actualización restante requiere comparar, respaldar y desplegar únicamente las diferencias verificadas.
+
+### Borradores de noticias
+
+Las noticias pueden guardarse incompletas como **Borrador** y publicarse después. El panel conserva además una copia automática en el navegador para recuperar cambios no enviados. Solo las noticias con estado **Publicada** participan de la portada, búsqueda, sitemap, página individual, votos y métricas. En instalaciones existentes, aplicar por CLI `php install/noticias-estados-v1.php --environment=development|production` después de identificar y respaldar el entorno correcto.
+
 ### Modo mantenimiento
 
 El menú del panel incluye **Mantenimiento** con un switch rápido, protegido por el permiso independiente `mantenimiento.gestionar`. Durante el bloqueo, el público recibe una pantalla responsive con HTTP `503`; solo las sesiones cuyo rol conserva ese permiso pueden ingresar al Admin y revisar el Portal real.
@@ -76,6 +82,7 @@ landing/
 │   ├── seo-v1.php              ← migración idempotente de slugs y overrides SEO
 │   ├── categorias-multiples-v1.php ← varias categorías por noticia
 │   ├── usuarios-foto-v1.php   ← foto opcional en perfiles de usuario
+│   ├── noticias-estados-v1.php ← estados Borrador/Publicada y fecha real de publicación
 │   └── migrate.php             ← migración histórica v2, solo CLI
 │
 ├── votar.php                   ← endpoint público de votos (POST, sin login)

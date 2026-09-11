@@ -18,18 +18,20 @@ $faviconPortalArchivo = $identidadAdmin['favicon_ruta'] !== null ? __DIR__ . '/'
 $faviconPortalVersion = is_file($faviconPortalArchivo) ? (string) filemtime($faviconPortalArchivo) : '1';
 require_once __DIR__ . '/partials/publicidad.php';
 $slugSolicitado = normalizar_slug_noticia($_GET['slug'] ?? '');
+$estadosDisponibles = noticias_estados_disponibles($pdo);
+$filtroPublicadaSql = $estadosDisponibles ? " AND n.estado = 'publicada'" : '';
 $stmt = $pdo->prepare(
     'SELECT n.*, c.nombre AS categoria_nombre, u.nombre AS autor_nombre
        FROM noticias n
        LEFT JOIN categorias c ON c.id=n.categoria_id
        LEFT JOIN usuarios u ON u.id=n.usuario_id
-      WHERE n.slug=? LIMIT 1'
+      WHERE n.slug=?' . $filtroPublicadaSql . ' LIMIT 1'
 );
 $stmt->execute([$slugSolicitado]);
 $noticia = $stmt->fetch();
 
 if (!$noticia) {
-    $stmt = $pdo->prepare('SELECT n.slug FROM noticias_slugs_historial h JOIN noticias n ON n.id=h.noticia_id WHERE h.slug=? LIMIT 1');
+    $stmt = $pdo->prepare('SELECT n.slug FROM noticias_slugs_historial h JOIN noticias n ON n.id=h.noticia_id WHERE h.slug=?' . $filtroPublicadaSql . ' LIMIT 1');
     $stmt->execute([$slugSolicitado]);
     $slugActual = $stmt->fetchColumn();
     if (is_string($slugActual) && $slugActual !== '') {
@@ -56,11 +58,12 @@ $nombreSitio = configuracion_nombre_sitio();
 $autor = trim((string) ($noticia['autor_nombre'] ?? '')) ?: $nombreSitio;
 $categoria = trim((string) ($noticia['categoria_nombre'] ?? ''));
 $categoriasNoticia = $noticia['categorias'] ?? [];
-$fecha = $noticia ? fecha_larga($noticia['created_at']) : '';
+$fechaPublicacion = $noticia['publicada_at'] ?? $noticia['created_at'] ?? null;
+$fecha = $noticia ? fecha_larga((string) $fechaPublicacion) : '';
 $jsonLd = $noticia ? [
     '@context' => 'https://schema.org', '@type' => 'NewsArticle',
     'headline' => $seo['titulo'], 'description' => $seo['descripcion'], 'image' => $seo['imagenes'],
-    'datePublished' => date(DATE_ATOM, strtotime($noticia['created_at'])),
+    'datePublished' => date(DATE_ATOM, strtotime((string) $fechaPublicacion)),
     'dateModified' => date(DATE_ATOM, strtotime($noticia['updated_at'])),
     'mainEntityOfPage' => ['@type' => 'WebPage', '@id' => $seo['url']],
     'author' => ['@type' => 'Person', 'name' => $autor],

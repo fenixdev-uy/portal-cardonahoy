@@ -7,6 +7,7 @@ require_once __DIR__ . '/includes/funciones.php';
 
 $usuarioSesion = exigir_login();
 $pdo = db();
+$estadosNoticiasDisponibles = noticias_estados_disponibles($pdo);
 $categorias = obtener_categorias();
 $usuariosFirma = obtener_usuarios_para_noticias();
 
@@ -31,6 +32,8 @@ $noticia = [
     'audio_2' => '',
     'audio_3' => '',
     'portada' => 0,
+    'estado' => 'borrador',
+    'publicada_at' => null,
 ];
 
 $fotos = [];
@@ -51,6 +54,10 @@ if ($editando) {
     }
 
     $noticia = $existente;
+    if (!$estadosNoticiasDisponibles) {
+        $noticia['estado'] = 'publicada';
+        $noticia['publicada_at'] = $noticia['created_at'] ?? null;
+    }
     $slugOriginal = (string) ($existente['slug'] ?? '');
     $seoImagenOriginal = (string) ($existente['seo_imagen'] ?? '');
     $categoriaIds = array_column(obtener_categorias_noticia($id), 'id');
@@ -77,6 +84,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
     $categoriaIds = normalizar_ids_categorias($_POST['categoria_ids'] ?? []);
     $categoriaId = $categoriaIds[0] ?? null;
+    $accionPredeterminada = $editando && ($existente['estado'] ?? 'borrador') === 'publicada' ? 'publicar' : 'borrador';
+    $accionNoticia = (string) ($_POST['accion_noticia'] ?? $accionPredeterminada);
+    $estado = $accionNoticia === 'publicar' ? 'publicada' : 'borrador';
+    if (!$estadosNoticiasDisponibles) $estado = 'publicada';
 
     $usuarioId = $_POST['usuario_id'] ?? '';
     $usuarioId = $usuarioId !== '' ? (int) $usuarioId : null;
@@ -85,9 +96,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $descripcion = sanitizar_html((string) ($_POST['descripcion'] ?? ''));
     $slugEnviado = trim((string) ($_POST['slug'] ?? ''));
     if ($slugEnviado === '') {
-        $slug = $editando && $slugOriginal !== ''
-            ? $slugOriginal
-            : generar_slug_noticia_unico($pdo, $titulo, $id);
+        if ($editando && $slugOriginal !== '' && !($estado === 'publicada' && str_starts_with($slugOriginal, 'borrador-'))) {
+            $slug = $slugOriginal;
+        } elseif ($estado === 'borrador') {
+            $slug = 'borrador-' . bin2hex(random_bytes(8));
+        } else {
+            $slug = generar_slug_noticia_unico($pdo, $titulo, $id);
+        }
     } else {
         $slug = normalizar_slug_noticia($slugEnviado);
         if (slug_noticia_en_uso($pdo, $slug, $id)) {
@@ -146,13 +161,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         'audio_2' => $audios['audio_2'],
         'audio_3' => $audios['audio_3'],
         'portada' => $portada,
+        'estado' => $estado,
+        'publicada_at' => $existente['publicada_at'] ?? null,
     ];
 
-    if ($titulo === '') {
+    if ($estado === 'publicada' && $titulo === '') {
         $errores[] = 'El título es obligatorio.';
     }
-    if ($descripcion === '') {
+    if ($estado === 'publicada' && $descripcion === '') {
         $errores[] = 'La descripción es obligatoria.';
+    }
+    if ($estadosNoticiasDisponibles && $estado === 'publicada' && !$categoriaIds) {
+        $errores[] = 'Seleccioná al menos una categoría antes de publicar.';
     }
     if ($categoriaIds) {
         $placeholdersCategorias = implode(',', array_fill(0, count($categoriaIds), '?'));
@@ -174,6 +194,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     if (!is_array($fotosJson)) {
         $fotosJson = [];
     }
+    if ($estado !== 'publicada') {
+        $portada = 0;
+        $noticia['portada'] = 0;
+    }
     if ($portada === 1 && $fotosJson === []) {
         $errores[] = 'La noticia necesita al menos una foto para mostrarse en el slider de portada.';
     }
@@ -187,42 +211,66 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             if ($portada === 1) {
                 exigir_cupo_noticia_portada($pdo, $id);
             }
-            $stmt = $pdo->prepare(
-                'UPDATE noticias
+            if ($estadosNoticiasDisponibles) {
+                $stmt = $pdo->prepare(
+                    "UPDATE noticias
                     SET categoria_id=?, usuario_id=?, titulo=?, slug=?, descripcion=?,
                         seo_titulo=?, seo_descripcion=?, seo_imagen=?,
-                        youtube=?, youtube_2=?, youtube_3=?, audio_1=?, audio_2=?, audio_3=?, portada=?
-                  WHERE id=?'
-            );
+                        youtube=?, youtube_2=?, youtube_3=?, audio_1=?, audio_2=?, audio_3=?, portada=?,
+                        estado=?, publicada_at=CASE WHEN ? = 'publicada' THEN COALESCE(publicada_at, NOW()) ELSE publicada_at END
+                  WHERE id=?"
+                );
+            } else {
+                $stmt = $pdo->prepare(
+                    'UPDATE noticias
+                        SET categoria_id=?, usuario_id=?, titulo=?, slug=?, descripcion=?,
+                            seo_titulo=?, seo_descripcion=?, seo_imagen=?,
+                            youtube=?, youtube_2=?, youtube_3=?, audio_1=?, audio_2=?, audio_3=?, portada=?
+                      WHERE id=?'
+                );
+            }
             if ($slugOriginal !== '' && $slugOriginal !== $slug) {
                 $pdo->prepare('DELETE FROM noticias_slugs_historial WHERE noticia_id=? AND slug=?')->execute([$id, $slug]);
                 $pdo->prepare('INSERT INTO noticias_slugs_historial (noticia_id, slug) VALUES (?, ?)')->execute([$id, $slugOriginal]);
             }
-            $stmt->execute([
+            $parametrosGuardar = [
                 $categoriaId, $usuarioId, $titulo, $slug, $descripcion,
                 $seoTitulo, $seoDescripcion, $seoImagen !== '' ? $seoImagen : null,
                 $videos['youtube'], $videos['youtube_2'], $videos['youtube_3'],
                 $audios['audio_1'], $audios['audio_2'], $audios['audio_3'], $portada,
-                $id,
-            ]);
+            ];
+            if ($estadosNoticiasDisponibles) array_push($parametrosGuardar, $estado, $estado);
+            $parametrosGuardar[] = $id;
+            $stmt->execute($parametrosGuardar);
             if ($stmt->rowCount() === 0) {
                 $comprobar = $pdo->prepare('SELECT COUNT(*) FROM noticias WHERE id=?');
                 $comprobar->execute([$id]);
                 if (!(int)$comprobar->fetchColumn()) throw new RuntimeException('La noticia ya no existe.');
             }
         } else {
-            $stmt = $pdo->prepare(
-                'INSERT INTO noticias
+            if ($estadosNoticiasDisponibles) {
+                $stmt = $pdo->prepare(
+                    "INSERT INTO noticias
                     (categoria_id, usuario_id, titulo, slug, descripcion, seo_titulo, seo_descripcion, seo_imagen,
-                     youtube, youtube_2, youtube_3, audio_1, audio_2, audio_3, portada)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-            );
-            $stmt->execute([
+                     youtube, youtube_2, youtube_3, audio_1, audio_2, audio_3, portada, estado, publicada_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 'publicada' THEN NOW() ELSE NULL END)"
+                );
+            } else {
+                $stmt = $pdo->prepare(
+                    'INSERT INTO noticias
+                        (categoria_id, usuario_id, titulo, slug, descripcion, seo_titulo, seo_descripcion, seo_imagen,
+                         youtube, youtube_2, youtube_3, audio_1, audio_2, audio_3, portada)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                );
+            }
+            $parametrosGuardar = [
                 $categoriaId, $usuarioId, $titulo, $slug, $descripcion,
                 $seoTitulo, $seoDescripcion, $seoImagen !== '' ? $seoImagen : null,
                 $videos['youtube'], $videos['youtube_2'], $videos['youtube_3'],
                 $audios['audio_1'], $audios['audio_2'], $audios['audio_3'], 0,
-            ]);
+            ];
+            if ($estadosNoticiasDisponibles) array_push($parametrosGuardar, $estado, $estado);
+            $stmt->execute($parametrosGuardar);
             $id = (int) $pdo->lastInsertId();
         }
 
@@ -292,7 +340,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             eliminar_variantes_imagen_seo($seoFuenteOriginal);
         }
 
-        flash('success', $editando ? 'Noticia actualizada correctamente.' : 'Noticia creada correctamente.');
+        $mensaje = !$estadosNoticiasDisponibles
+            ? ($editando ? 'Noticia actualizada correctamente.' : 'Noticia creada correctamente.')
+            : ($estado === 'publicada'
+            ? ($editando ? 'Publicación actualizada correctamente.' : 'Noticia publicada correctamente.')
+            : ($editando ? 'Borrador guardado correctamente.' : 'Borrador creado correctamente.'));
+        flash('success', $mensaje);
         redirigir('index.php');
       } catch (DomainException $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
@@ -336,6 +389,9 @@ $seoPersonalizadoForm = $seoTituloPersonalizadoForm
     || $seoDescripcionPersonalizadaForm
     || trim((string) ($noticia['seo_imagen'] ?? '')) !== '';
 $slugForm = trim((string) ($noticia['slug'] ?? ''));
+if (($noticia['estado'] ?? 'borrador') === 'borrador' && str_starts_with($slugForm, 'borrador-')) {
+    $slugForm = '';
+}
 if ($slugForm === '' && trim((string) ($noticia['titulo'] ?? '')) !== '') {
     $slugForm = normalizar_slug_noticia((string) $noticia['titulo']);
 }
@@ -352,6 +408,28 @@ require __DIR__ . '/includes/header.php';
     <input type="hidden" name="id" value="<?= (int) $noticia['id'] ?>" />
     <?php /* Campo oculto con el HTML del editor, enviado al servidor */ ?>
     <input type="hidden" name="descripcion" id="descripcionInput" value="<?= e($noticia['descripcion']) ?>" />
+
+    <div class="draft-recovery" id="draftRecovery" role="status" hidden>
+      <div>
+        <strong>Encontramos cambios sin guardar</strong>
+        <span id="draftRecoveryTime">Podés recuperar la última copia guardada en este navegador.</span>
+      </div>
+      <div class="draft-recovery-actions">
+        <button type="button" class="btn btn-primary btn-sm" id="draftRecoveryRestore">Recuperar</button>
+        <button type="button" class="btn btn-outline btn-sm" id="draftRecoveryDiscard">Descartar</button>
+      </div>
+    </div>
+
+    <?php if ($estadosNoticiasDisponibles): ?>
+    <div class="news-editor-state" aria-label="Estado editorial">
+      <span class="news-status-badge is-<?= e((string) ($noticia['estado'] ?? 'borrador')) ?>">
+        <?= ($noticia['estado'] ?? 'borrador') === 'publicada' ? 'Publicada' : 'Borrador' ?>
+      </span>
+      <span><?= ($noticia['estado'] ?? 'borrador') === 'publicada'
+          ? 'Está visible para los lectores.'
+          : 'Solo es visible dentro del panel hasta que la publiques.' ?></span>
+    </div>
+    <?php endif; ?>
 
     <?php if (!empty($errores)): ?>
       <div class="flash">
@@ -413,10 +491,10 @@ require __DIR__ . '/includes/header.php';
 
     <div class="form-group">
       <label for="titulo">Título</label>
-      <input class="form-control" type="text" id="titulo" name="titulo" value="<?= e($noticia['titulo']) ?>" maxlength="255" required />
+      <input class="form-control" type="text" id="titulo" name="titulo" value="<?= e($noticia['titulo']) ?>" maxlength="255" />
     </div>
 
-    <?php if ($editando): ?>
+    <?php if ($editando && (!$estadosNoticiasDisponibles || ($noticia['estado'] ?? 'borrador') === 'publicada')): ?>
       <div class="form-group news-cover-form-field">
         <span class="news-cover-field-label">Portada</span>
         <label class="news-cover-form-switch">
@@ -675,7 +753,16 @@ require __DIR__ . '/includes/header.php';
     </div>
 
     <div class="form-actions">
-      <button type="submit" class="btn btn-primary">Guardar</button>
+      <div class="draft-save-status" id="draftSaveStatus" aria-live="polite">Los cambios se respaldan en este navegador.</div>
+      <?php if (!$estadosNoticiasDisponibles): ?>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+      <?php elseif (($noticia['estado'] ?? 'borrador') === 'publicada'): ?>
+        <button type="submit" class="btn btn-primary" name="accion_noticia" value="publicar">Actualizar publicación</button>
+        <button type="submit" class="btn btn-outline" name="accion_noticia" value="borrador" data-unpublish>Pasar a borrador</button>
+      <?php else: ?>
+        <button type="submit" class="btn btn-outline" name="accion_noticia" value="borrador">Guardar borrador</button>
+        <button type="submit" class="btn btn-primary" name="accion_noticia" value="publicar">Publicar</button>
+      <?php endif; ?>
       <a href="index.php" class="btn btn-outline">Cancelar</a>
     </div>
   </form>
@@ -1086,8 +1173,18 @@ require __DIR__ . '/includes/header.php';
   const iaApply = document.getElementById('iaPreviewApply');
   const csrfTokenIa = <?= json_encode(csrf_token()) ?>;
   const iaInstructionsStorageKey = <?= json_encode('portal_noticias_ia_instrucciones_' . PORTAL_INSTANCE_ID) ?>;
+  const draftStorageKey = <?= json_encode('portal_noticias_borrador_' . PORTAL_INSTANCE_ID . '_' . (int) ($usuarioSesion['id'] ?? 0) . '_' . ($editando ? (string) $id : 'nuevo')) ?>;
+  const draftRecovery = document.getElementById('draftRecovery');
+  const draftRecoveryTime = document.getElementById('draftRecoveryTime');
+  const draftRecoveryRestore = document.getElementById('draftRecoveryRestore');
+  const draftRecoveryDiscard = document.getElementById('draftRecoveryDiscard');
+  const draftSaveStatus = document.getElementById('draftSaveStatus');
   let propuestaIa = '';
   let iaEnProceso = false;
+  let draftDirty = false;
+  let draftHasUnsavedServerChanges = <?= !empty($errores) ? 'true' : 'false' ?>;
+  let draftTimer = 0;
+  let recoveredDraft = null;
   let modoContenidoAnterior = iaContentMode.value;
   const contenidoPorModo = { texto: '', url: '' };
 
@@ -1154,12 +1251,99 @@ require __DIR__ . '/includes/header.php';
     content: aRutaEditor(input.value)
   });
 
+  function serializarBorrador() {
+    input.value = aRutaAlmacenada(editor.getHTML());
+    const campos = {};
+    form.querySelectorAll('[name]').forEach((campo) => {
+      if (['csrf_token', 'accion_noticia', 'id'].includes(campo.name) || campo.type === 'file') return;
+      if (campo.type === 'checkbox') {
+        if (!Array.isArray(campos[campo.name])) campos[campo.name] = [];
+        if (campo.checked) campos[campo.name].push(campo.value);
+        return;
+      }
+      campos[campo.name] = campo.value;
+    });
+    return { version: 1, savedAt: Date.now(), campos };
+  }
+
+  function guardarRespaldoLocal() {
+    if (!draftDirty) return;
+    try {
+      const borrador = serializarBorrador();
+      window.localStorage.setItem(draftStorageKey, JSON.stringify(borrador));
+      draftDirty = false;
+      if (draftSaveStatus) {
+        draftSaveStatus.textContent = 'Respaldo automático · ' + new Date(borrador.savedAt).toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' });
+      }
+    } catch (error) {
+      if (draftSaveStatus) draftSaveStatus.textContent = 'No se pudo crear el respaldo automático.';
+    }
+  }
+
+  function programarRespaldoLocal() {
+    draftDirty = true;
+    draftHasUnsavedServerChanges = true;
+    if (draftSaveStatus) draftSaveStatus.textContent = 'Cambios pendientes…';
+    window.clearTimeout(draftTimer);
+    draftTimer = window.setTimeout(guardarRespaldoLocal, 1500);
+  }
+
+  function aplicarBorradorLocal(borrador) {
+    const campos = borrador && borrador.campos;
+    if (!campos || typeof campos !== 'object') return;
+    form.querySelectorAll('[name]').forEach((campo) => {
+      if (!(campo.name in campos) || ['csrf_token', 'accion_noticia', 'id'].includes(campo.name) || campo.type === 'file') return;
+      const valor = campos[campo.name];
+      if (campo.type === 'checkbox') {
+        campo.checked = Array.isArray(valor) && valor.includes(campo.value);
+      } else {
+        campo.value = typeof valor === 'string' ? valor : '';
+      }
+      campo.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    editor.commands.setContent(aRutaEditor(String(campos.descripcion || '')), { emitUpdate: true });
+    draftDirty = false;
+    draftHasUnsavedServerChanges = true;
+    if (draftSaveStatus) draftSaveStatus.textContent = 'Borrador recuperado. Guardalo para conservarlo en el panel.';
+  }
+
+  try {
+    const guardado = JSON.parse(window.localStorage.getItem(draftStorageKey) || 'null');
+    if (guardado && guardado.version === 1 && guardado.campos) {
+      recoveredDraft = guardado;
+      if (draftRecoveryTime && guardado.savedAt) {
+        draftRecoveryTime.textContent = 'Copia del ' + new Date(guardado.savedAt).toLocaleString('es-UY') + '.';
+      }
+      if (draftRecovery) draftRecovery.hidden = false;
+    }
+  } catch (error) {
+    recoveredDraft = null;
+  }
+
+  draftRecoveryRestore?.addEventListener('click', () => {
+    aplicarBorradorLocal(recoveredDraft);
+    if (draftRecovery) draftRecovery.hidden = true;
+  });
+  draftRecoveryDiscard?.addEventListener('click', () => {
+    try { window.localStorage.removeItem(draftStorageKey); } catch (error) {}
+    recoveredDraft = null;
+    if (draftRecovery) draftRecovery.hidden = true;
+  });
+  form.addEventListener('input', programarRespaldoLocal);
+  form.addEventListener('change', programarRespaldoLocal);
+  form.addEventListener('click', (event) => {
+    if (event.target.closest('#galeria button')) window.setTimeout(programarRespaldoLocal, 0);
+  });
+
   function informarContenidoSeo() {
     document.dispatchEvent(new CustomEvent('noticia-editor-update', {
       detail: { texto: editor.getText().replace(/\s+/g, ' ').trim() }
     }));
   }
-  editor.on('update', informarContenidoSeo);
+  editor.on('update', () => {
+    informarContenidoSeo();
+    programarRespaldoLocal();
+  });
   informarContenidoSeo();
 
   function textoVisibleEditor() {
@@ -1330,9 +1514,27 @@ require __DIR__ . '/includes/header.php';
   });
 
   // Sincroniza el HTML hacia el campo oculto antes de enviar el formulario.
-  form.addEventListener('submit', () => {
+  form.addEventListener('submit', (event) => {
+    if (event.submitter?.matches('[data-unpublish]')
+      && !window.confirm('La noticia dejará de estar visible y saldrá de Portada. ¿Querés pasarla a borrador?')) {
+      event.preventDefault();
+      return;
+    }
     input.value = aRutaAlmacenada(editor.getHTML());
+    window.clearTimeout(draftTimer);
+    try { window.localStorage.removeItem(draftStorageKey); } catch (error) {}
+    draftDirty = false;
+    draftHasUnsavedServerChanges = false;
   });
+
+  window.addEventListener('beforeunload', (event) => {
+    if (!draftHasUnsavedServerChanges) return;
+    guardarRespaldoLocal();
+    event.preventDefault();
+    event.returnValue = '';
+  });
+
+  if (draftHasUnsavedServerChanges) programarRespaldoLocal();
 
   // ===== Toolbar =====
   const toolbar = document.getElementById('toolbar');

@@ -22,6 +22,7 @@ if ($hasta > $hoy) $hasta = $hoy;
 if ($desde > $hasta) $desde = $hasta;
 
 $pdo = db();
+$filtroPublicadaSql = noticias_estados_disponibles($pdo) ? "n.estado = 'publicada' AND " : '';
 $stmt = $pdo->prepare(
     'SELECT n.id, n.titulo,
             COALESCE(v.vistas, 0) AS vistas,
@@ -42,7 +43,7 @@ $stmt = $pdo->prepare(
              WHERE fecha BETWEEN ? AND ?
              GROUP BY noticia_id
        ) s ON s.noticia_id = n.id
-      WHERE COALESCE(v.vistas, 0) > 0 OR COALESCE(s.compartidas, 0) > 0
+      WHERE ' . $filtroPublicadaSql . '(COALESCE(v.vistas, 0) > 0 OR COALESCE(s.compartidas, 0) > 0)
       ORDER BY total DESC, vistas DESC, n.id DESC'
 );
 $stmt->execute([

@@ -152,7 +152,8 @@ function registrar_voto(PDO $pdo, int $noticiaId, int $valor, string $visitante)
     $pdo->beginTransaction();
     try {
         // Se bloquea la fila para que dos votos simultaneos no se pisen.
-        $stmt = $pdo->prepare('SELECT id FROM noticias WHERE id = ? FOR UPDATE');
+        $filtroEstado = noticias_estados_disponibles($pdo) ? " AND estado = 'publicada'" : '';
+        $stmt = $pdo->prepare("SELECT id FROM noticias WHERE id = ?$filtroEstado FOR UPDATE");
         $stmt->execute([$noticiaId]);
         if ($stmt->fetchColumn() === false) {
             $pdo->rollBack();

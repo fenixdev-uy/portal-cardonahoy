@@ -14,7 +14,8 @@ function registrar_vista_noticia(PDO $pdo, int $noticiaId, string $visitante): ?
 
     $pdo->beginTransaction();
     try {
-        $stmt = $pdo->prepare('SELECT vistas FROM noticias WHERE id = ? FOR UPDATE');
+        $filtroEstado = noticias_estados_disponibles($pdo) ? " AND estado = 'publicada'" : '';
+        $stmt = $pdo->prepare("SELECT vistas FROM noticias WHERE id = ?$filtroEstado FOR UPDATE");
         $stmt->execute([$noticiaId]);
         $vistas = $stmt->fetchColumn();
         if ($vistas === false) {
@@ -50,7 +51,8 @@ function registrar_compartido_noticia(PDO $pdo, int $noticiaId, string $destino)
 
     $pdo->beginTransaction();
     try {
-        $stmt = $pdo->prepare('SELECT id FROM noticias WHERE id = ? FOR UPDATE');
+        $filtroEstado = noticias_estados_disponibles($pdo) ? " AND estado = 'publicada'" : '';
+        $stmt = $pdo->prepare("SELECT id FROM noticias WHERE id = ?$filtroEstado FOR UPDATE");
         $stmt->execute([$noticiaId]);
         if ($stmt->fetchColumn() === false) {
             $pdo->rollBack();

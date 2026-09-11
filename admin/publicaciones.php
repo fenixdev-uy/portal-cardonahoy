@@ -19,11 +19,14 @@ if ($hasta > $hoy) $hasta = $hoy;
 if ($desde > $hasta) $desde = $hasta;
 
 $pdo = db();
+$estadosDisponibles = noticias_estados_disponibles($pdo);
+$fechaPublicacionSql = $estadosDisponibles ? 'publicada_at' : 'created_at';
+$filtroPublicadaSql = $estadosDisponibles ? "estado = 'publicada' AND " : '';
 $consulta = $pdo->prepare(
-    'SELECT DATE(created_at) AS fecha, COUNT(*) AS cantidad
+    'SELECT DATE(' . $fechaPublicacionSql . ') AS fecha, COUNT(*) AS cantidad
        FROM noticias
-      WHERE created_at >= ? AND created_at < ?
-      GROUP BY DATE(created_at)
+      WHERE ' . $filtroPublicadaSql . $fechaPublicacionSql . ' >= ? AND ' . $fechaPublicacionSql . ' < ?
+      GROUP BY DATE(' . $fechaPublicacionSql . ')
       ORDER BY fecha ASC'
 );
 $consulta->execute([

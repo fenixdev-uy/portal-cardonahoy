@@ -9,6 +9,7 @@ $solicitudPortada = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST'
 exigir_permiso('noticias.ver', $solicitudPortada);
 
 $pdo = db();
+$estadosNoticiasDisponibles = noticias_estados_disponibles($pdo);
 
 if ($solicitudPortada) {
     exigir_permiso('noticias.editar', true);
@@ -18,17 +19,21 @@ if ($solicitudPortada) {
     $estadoPortada = (string) ($_POST['portada'] ?? '0') === '1' ? 1 : 0;
     try {
         $pdo->beginTransaction();
+        $campoEstadoPortada = $estadosNoticiasDisponibles ? 'n.estado' : "'publicada' AS estado";
         $stmtPortada = $pdo->prepare(
-            'SELECT n.id,
+            "SELECT n.id, $campoEstadoPortada,
                     EXISTS (SELECT 1 FROM noticias_fotos f WHERE f.noticia_id = n.id) AS tiene_foto
                FROM noticias n
               WHERE n.id = ?
-              FOR UPDATE'
+              FOR UPDATE"
         );
         $stmtPortada->execute([$idPortada]);
         $noticiaPortada = $stmtPortada->fetch();
         if (!$noticiaPortada) {
             throw new DomainException('La noticia ya no existe.');
+        }
+        if ($estadoPortada === 1 && ($noticiaPortada['estado'] ?? '') !== 'publicada') {
+            throw new DomainException('Publicá la noticia antes de mostrarla en Portada.');
         }
         if ($estadoPortada === 1 && !(int) $noticiaPortada['tiene_foto']) {
             throw new DomainException('La noticia necesita al menos una foto para mostrarse en el slider.');
@@ -39,7 +44,8 @@ if ($solicitudPortada) {
 
         $stmtPortada = $pdo->prepare('UPDATE noticias SET portada = ?, updated_at = updated_at WHERE id = ?');
         $stmtPortada->execute([$estadoPortada, $idPortada]);
-        $totalPortada = (int) $pdo->query('SELECT COUNT(*) FROM noticias WHERE portada = 1')->fetchColumn();
+        $filtroEstadoPortada = $estadosNoticiasDisponibles ? " AND estado = 'publicada'" : '';
+        $totalPortada = (int) $pdo->query("SELECT COUNT(*) FROM noticias WHERE portada = 1$filtroEstadoPortada")->fetchColumn();
         $pdo->commit();
     } catch (DomainException $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
@@ -67,8 +73,13 @@ if ($solicitudPortada) {
 }
 
 // Últimas noticias para el listado
+$camposEstadoListado = $estadosNoticiasDisponibles
+    ? 'n.publicada_at, n.estado'
+    : "n.created_at AS publicada_at, 'publicada' AS estado";
+$ordenEstadoListado = $estadosNoticiasDisponibles ? 'COALESCE(n.publicada_at, n.updated_at)' : 'n.created_at';
 $noticias = $pdo->query(
-    'SELECT n.id, n.titulo, n.descripcion, n.created_at, n.portada AS portada_estado,
+    "SELECT n.id, n.titulo, n.descripcion, n.created_at, n.updated_at, $camposEstadoListado,
+            n.portada AS portada_estado,
             n.audio_1, n.audio_2, n.audio_3,
             n.me_gusta, n.no_me_gusta, n.vistas, n.compartidos,
             c.nombre AS categoria_nombre,
@@ -79,7 +90,7 @@ $noticias = $pdo->query(
        FROM noticias n
        LEFT JOIN categorias c ON c.id = n.categoria_id
        LEFT JOIN usuarios u ON u.id = n.usuario_id
-      ORDER BY n.created_at DESC, n.id DESC'
+      ORDER BY $ordenEstadoListado DESC, n.id DESC"
 )->fetchAll();
 cargar_categorias_noticias($noticias);
 $cantidadNoticiasPortada = count(array_filter(
@@ -108,7 +119,7 @@ require __DIR__ . '/includes/header.php';
 
 <div class="users-page-heading">
   <h1>Noticias</h1>
-  <p>Creá, editá y organizá las noticias publicadas en el portal y administrá sus imágenes, audios y videos.</p>
+  <p>Creá, guardá como borrador y publicá noticias sin perder el trabajo en curso.</p>
 </div>
 
 <div class="alert warning news-cover-limit-alert" id="newsCoverLimitAlert" role="status"<?= $cantidadNoticiasPortada > PORTADA_NOTICIAS_LIMITE ? '' : ' hidden' ?>>
@@ -122,6 +133,14 @@ require __DIR__ . '/includes/header.php';
       <label class="noticias-search" for="noticiasSearch">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
         <input type="search" id="noticiasSearch" placeholder="Buscar noticias..." autocomplete="off" aria-describedby="noticiasSearchStatus">
+      </label>
+      <label class="noticias-state-filter" for="noticiasStateFilter">
+        <span>Estado</span>
+        <select id="noticiasStateFilter">
+          <option value="">Todas</option>
+          <option value="borrador">Borradores</option>
+          <option value="publicada">Publicadas</option>
+        </select>
       </label>
     <?php endif; ?>
     <div class="noticias-list-meta">
@@ -194,7 +213,8 @@ require __DIR__ . '/includes/header.php';
       </thead>
       <tbody>
         <?php foreach ($noticias as $n): ?>
-          <tr class="noticia-row" data-weight="<?= (int) $n['_peso']['total'] ?>" data-date="<?= e((string) strtotime($n['created_at'])) ?>" data-votes="<?= (int) ($n['me_gusta'] ?? 0) + (int) ($n['no_me_gusta'] ?? 0) ?>" data-views="<?= (int) ($n['vistas'] ?? 0) ?>" data-shares="<?= (int) ($n['compartidos'] ?? 0) ?>">
+          <?php $fechaListado = ($n['estado'] ?? '') === 'publicada' ? ($n['publicada_at'] ?? $n['created_at']) : $n['updated_at']; ?>
+          <tr class="noticia-row" data-state="<?= e((string) ($n['estado'] ?? 'borrador')) ?>" data-weight="<?= (int) $n['_peso']['total'] ?>" data-date="<?= e((string) strtotime($fechaListado)) ?>" data-votes="<?= (int) ($n['me_gusta'] ?? 0) + (int) ($n['no_me_gusta'] ?? 0) ?>" data-views="<?= (int) ($n['vistas'] ?? 0) ?>" data-shares="<?= (int) ($n['compartidos'] ?? 0) ?>">
             <td class="td-photo">
               <a href="#" class="thumb-link js-ver-noticia" data-id="<?= (int) $n['id'] ?>" title="Ver noticia completa">
                 <?php if (!empty($n['portada'])): ?>
@@ -205,7 +225,10 @@ require __DIR__ . '/includes/header.php';
               </a>
             </td>
             <td class="td-info">
-              <strong class="cell-title"><?= e($n['titulo']) ?></strong>
+              <div class="cell-title-row">
+                <strong class="cell-title"><?= e(trim((string) $n['titulo']) !== '' ? $n['titulo'] : 'Sin título') ?></strong>
+                <span class="news-status-badge is-<?= e((string) ($n['estado'] ?? 'borrador')) ?>"><?= ($n['estado'] ?? '') === 'publicada' ? 'Publicada' : 'Borrador' ?></span>
+              </div>
               <div class="cell-desc"><?= e(html_a_texto($n['descripcion'])) ?></div>
               <div class="cell-author"><?= e($n['autor_nombre'] ?? 'Sin autor') ?></div>
             </td>
@@ -216,7 +239,7 @@ require __DIR__ . '/includes/header.php';
                 <span style="color:#94a3b8;">—</span>
               <?php endif; ?>
             </td>
-            <td class="td-date"><time datetime="<?= e(date(DATE_ATOM, strtotime($n['created_at']))) ?>" title="Fecha y hora de publicación"><?= e(date('d/m/Y · H:i', strtotime($n['created_at']))) ?> hs.</time></td>
+            <td class="td-date"><time datetime="<?= e(date(DATE_ATOM, strtotime($fechaListado))) ?>" title="<?= ($n['estado'] ?? '') === 'publicada' ? 'Fecha y hora de publicación' : 'Último guardado del borrador' ?>"><?= e(date('d/m/Y · H:i', strtotime($fechaListado))) ?> hs.</time></td>
             <td class="td-weight">
               <span class="weight-value" title="Fotos: <?= e(formatear_megabytes((int) $n['_peso']['fotos'])) ?> · Audios: <?= e(formatear_megabytes((int) $n['_peso']['audios'])) ?> · Solo archivos alojados en este servidor">
                 <?= e(formatear_megabytes((int) $n['_peso']['total'])) ?>
@@ -245,7 +268,9 @@ require __DIR__ . '/includes/header.php';
               </span>
             </td>
             <td class="td-news-cover">
-              <?php if (tiene_permiso('noticias.editar')): ?>
+              <?php if (($n['estado'] ?? '') !== 'publicada'): ?>
+                <span class="news-cover-readonly">Publicala primero</span>
+              <?php elseif (tiene_permiso('noticias.editar')): ?>
                 <form method="post" action="index.php" class="news-cover-status-form js-news-cover-form">
                   <?= csrf_input() ?>
                   <input type="hidden" name="accion" value="portada">
@@ -279,7 +304,7 @@ require __DIR__ . '/includes/header.php';
       </tbody>
     </table>
     <div class="noticias-filter-empty" id="noticiasFilterEmpty" hidden>
-      No encontramos noticias con esa búsqueda.
+      No encontramos noticias con esos filtros.
     </div>
     <div class="noticias-pagination" id="noticiasPagination">
       <span class="noticias-pagination-summary" id="noticiasPaginationSummary" aria-live="polite"></span>
@@ -304,6 +329,7 @@ require __DIR__ . '/includes/header.php';
     const viewsButton = document.getElementById('viewsSortBtn');
     const sharesButton = document.getElementById('sharesSortBtn');
     const search = document.getElementById('noticiasSearch');
+    const stateFilter = document.getElementById('noticiasStateFilter');
     const status = document.getElementById('noticiasSearchStatus');
     const pageSizeSelect = document.getElementById('noticiasPageSize');
     const empty = document.getElementById('noticiasFilterEmpty');
@@ -314,7 +340,7 @@ require __DIR__ . '/includes/header.php';
     const pagePrev = document.getElementById('noticiasPagePrev');
     const pageNext = document.getElementById('noticiasPageNext');
     const tbody = document.querySelector('.noticias-list tbody');
-    if (!weightButton || !dateButton || !votesButton || !viewsButton || !sharesButton || !search || !status
+    if (!weightButton || !dateButton || !votesButton || !viewsButton || !sharesButton || !search || !stateFilter || !status
       || !pageSizeSelect || !empty || !pagination || !paginationSummary || !paginationControls
       || !pageNumbers || !pagePrev || !pageNext || !tbody) return;
 
@@ -443,8 +469,10 @@ require __DIR__ . '/includes/header.php';
 
     function renderRows() {
       const term = normalize(search.value.trim());
+      const state = stateFilter.value;
       const rows = Array.from(tbody.rows);
-      const matches = rows.filter((row) => !term || normalize(row.textContent || '').includes(term));
+      const matches = rows.filter((row) => (!term || normalize(row.textContent || '').includes(term))
+        && (!state || row.dataset.state === state));
       const pageSize = Number(pageSizeSelect.value) || 25;
       const totalPages = Math.max(1, Math.ceil(matches.length / pageSize));
       currentPage = Math.min(Math.max(1, currentPage), totalPages);
@@ -456,7 +484,7 @@ require __DIR__ . '/includes/header.php';
         row.hidden = !visibleRows.has(row);
       });
 
-      status.textContent = term ? `${matches.length} de ${rows.length} noticias` : `${rows.length} noticias`;
+      status.textContent = term || state ? `${matches.length} de ${rows.length} noticias` : `${rows.length} noticias`;
       empty.hidden = matches.length !== 0;
       pagination.hidden = matches.length === 0;
       paginationSummary.textContent = matches.length === 0
@@ -480,6 +508,10 @@ require __DIR__ . '/includes/header.php';
       currentPage = 1;
       renderRows();
     });
+    stateFilter.addEventListener('change', () => {
+      currentPage = 1;
+      renderRows();
+    });
     pageSizeSelect.addEventListener('change', () => {
       currentPage = 1;
       renderRows();
@@ -492,7 +524,8 @@ require __DIR__ . '/includes/header.php';
     pageNext.addEventListener('click', () => {
       const totalMatches = Array.from(tbody.rows).filter((row) => {
         const term = normalize(search.value.trim());
-        return !term || normalize(row.textContent || '').includes(term);
+        const state = stateFilter.value;
+        return (!term || normalize(row.textContent || '').includes(term)) && (!state || row.dataset.state === state);
       }).length;
       const totalPages = Math.max(1, Math.ceil(totalMatches / (Number(pageSizeSelect.value) || 25)));
       if (currentPage >= totalPages) return;
