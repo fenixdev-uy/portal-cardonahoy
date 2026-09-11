@@ -513,6 +513,9 @@
       const url = new URL(endpoint, window.location.href);
       url.searchParams.set('vista', view);
       url.searchParams.set('cursor', cursor);
+      if (/^\d+$/.test(button.dataset.adSeed || '')) {
+        url.searchParams.set('semilla_publicidad', button.dataset.adSeed);
+      }
       if (view === 'pc' && pcNewsFilters) {
         const filterParams = pcNewsFilterUrl().searchParams;
         filterParams.forEach((value, key) => url.searchParams.append(key, value));

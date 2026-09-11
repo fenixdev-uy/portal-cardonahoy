@@ -23,6 +23,11 @@ try {
         exit;
     }
 
+    $semillaEntrada = $_GET['semilla_publicidad'] ?? '';
+    $semillaPublicidad = is_string($semillaEntrada) && preg_match('/^\d{1,10}$/', $semillaEntrada)
+        ? min(2147483647, (int) $semillaEntrada)
+        : random_int(0, 2147483647);
+
     $pdo = db();
     $opciones = ['cursor' => $cursor, 'limite' => PORTAL_NOTICIAS_POR_BLOQUE];
     if ($vista === 'pc') {
@@ -59,13 +64,7 @@ try {
         $noticiasPc = $pagina['noticias'];
         $offsetAnterior = $cursor['offset'];
         $indiceFilaMixtaInicial = intdiv($offsetAnterior, 2);
-        $filtrosSemilla = [
-            'buscar' => $opciones['buscar'] ?? '',
-            'categorias' => $opciones['categorias'] ?? [],
-            'desde' => $opciones['desde'] ?? '',
-            'hasta' => $opciones['hasta'] ?? '',
-        ];
-        $semillaPortadaPc = (int) sprintf('%u', crc32(json_encode($filtrosSemilla, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)));
+        $semillaPortadaPc = $semillaPublicidad;
         require __DIR__ . '/partials/pc-news-items.php';
     } else {
         $noticiasMovil = $pagina['noticias'];

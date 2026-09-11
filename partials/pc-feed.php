@@ -74,7 +74,7 @@ $resumenCategoriasPc = count($nombresCategoriasSeleccionadasPc) === 0
       </div>
 <?php if (!empty($hayMasNoticiasPc)): ?>
       <div class="news-load-more-wrap">
-        <button class="news-load-more-button" type="button" data-news-load-more data-view="pc" data-url="<?= e(url_portal('cargar-noticias.php')) ?>" data-cursor="<?= e($cursorNoticiasPc ?? '') ?>">Ver + Noticias</button>
+        <button class="news-load-more-button" type="button" data-news-load-more data-view="pc" data-url="<?= e(url_portal('cargar-noticias.php')) ?>" data-cursor="<?= e($cursorNoticiasPc ?? '') ?>" data-ad-seed="<?= (int) $semillaPublicidad ?>">Ver + Noticias</button>
       </div>
 <?php endif; ?>
 <?php endif; ?>

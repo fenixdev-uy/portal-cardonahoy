@@ -57,6 +57,35 @@ $redesPublicidadPortal = [
 $anunciosPublicidadActivos = [];
 $anuncioPublicidadEncabezado = null;
 $anuncioPublicidadPie = null;
+$semillaPublicidad = isset($semillaPublicidad) && is_int($semillaPublicidad)
+    ? max(0, min(2147483647, $semillaPublicidad))
+    : random_int(0, 2147483647);
+
+/**
+ * Genera una permutación estable para una carga de página. La semilla cambia
+ * al entrar a la portada y se conserva al pedir más noticias por AJAX.
+ *
+ * @param array<int,array<string,mixed>> $anuncios
+ * @return array<int,array<string,mixed>>
+ */
+$ordenarPublicidadPorSemilla = static function (array $anuncios) use ($semillaPublicidad): array {
+    $decorados = [];
+    foreach (array_values($anuncios) as $indice => $anuncio) {
+        $identificador = (int) ($anuncio['id'] ?? 0) > 0
+            ? 'id:' . (int) $anuncio['id']
+            : 'imagen:' . (string) ($anuncio['imagen'] ?? $indice);
+        $decorados[] = [
+            'orden' => hash('sha256', $semillaPublicidad . '|' . $identificador),
+            'indice' => $indice,
+            'anuncio' => $anuncio,
+        ];
+    }
+    usort($decorados, static function (array $a, array $b): int {
+        $comparacion = strcmp($a['orden'], $b['orden']);
+        return $comparacion !== 0 ? $comparacion : $a['indice'] <=> $b['indice'];
+    });
+    return array_values(array_column($decorados, 'anuncio'));
+};
 
 // Los anuncios administrados reemplazan el banco PC y alimentan el feed móvil
 // solamente cuando están activos, vigentes y la migración de clics está lista.
@@ -90,3 +119,6 @@ if (isset($pdo) && $pdo instanceof PDO) {
         // Permite desplegar código y migración de forma incremental.
     }
 }
+
+$anunciosPublicidadActivos = $ordenarPublicidadPorSemilla($anunciosPublicidadActivos);
+$filaPublicidadPc = $ordenarPublicidadPorSemilla($filaPublicidadPc);

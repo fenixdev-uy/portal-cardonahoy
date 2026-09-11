@@ -19,7 +19,7 @@ $offsetNoticiasMovil = 0;
     </div>
 <?php if (!empty($hayMasNoticiasMovil)): ?>
     <div class="news-load-more-wrap">
-      <button class="news-load-more-button" type="button" data-news-load-more data-view="mobile" data-url="<?= e(url_portal('cargar-noticias.php')) ?>" data-cursor="<?= e($cursorNoticiasMovil ?? '') ?>">Ver + Noticias</button>
+      <button class="news-load-more-button" type="button" data-news-load-more data-view="mobile" data-url="<?= e(url_portal('cargar-noticias.php')) ?>" data-cursor="<?= e($cursorNoticiasMovil ?? '') ?>" data-ad-seed="<?= (int) $semillaPublicidad ?>">Ver + Noticias</button>
     </div>
 <?php endif; ?>
   </section>

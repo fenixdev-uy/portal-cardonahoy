@@ -77,6 +77,7 @@ $filtrosPc = [
     'desde' => $desdePc,
     'hasta' => $hastaPc,
 ];
+$semillaPublicidad = random_int(0, 2147483647);
 $paginaMovil = consultar_bloque_portada($pdo, ['limite' => PORTAL_NOTICIAS_POR_BLOQUE]);
 $paginaPc = consultar_bloque_portada($pdo, $filtrosPc + ['limite' => PORTAL_NOTICIAS_POR_BLOQUE]);
 $paginaRecientes = consultar_bloque_portada($pdo, ['limite' => 11]);
@@ -87,7 +88,7 @@ $hayMasNoticiasMovil = $paginaMovil['hay_mas'];
 $cursorNoticiasMovil = $paginaMovil['cursor'];
 $hayMasNoticiasPc = $paginaPc['hay_mas'];
 $cursorNoticiasPc = $paginaPc['cursor'];
-$semillaPortadaPc = (int) sprintf('%u', crc32(json_encode($filtrosPc, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)));
+$semillaPortadaPc = $semillaPublicidad;
 
 $noticiasTemplatesPorId = [];
 foreach (array_merge($noticias, $noticiasPc, $noticiasRecientes) as $noticiaTemplate) {
