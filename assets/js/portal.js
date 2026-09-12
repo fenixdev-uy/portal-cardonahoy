@@ -729,6 +729,45 @@
       storySheet.querySelector('.story-sheet-close')?.focus();
     }
 
+    window.addEventListener('portal:abrir-noticia', async (event) => {
+      const detail = event.detail || {};
+      const storyId = String(detail.storyId || '');
+      const trigger = detail.trigger instanceof HTMLElement ? detail.trigger : null;
+      const fallbackUrl = typeof detail.fallbackUrl === 'string' ? detail.fallbackUrl : '';
+      const templateEndpoint = typeof detail.templateEndpoint === 'string' ? detail.templateEndpoint : '';
+      if (!/^\d+$/.test(storyId)) {
+        if (fallbackUrl) window.location.href = fallbackUrl;
+        return;
+      }
+
+      if (!document.querySelector(`template[data-story-template="${storyId}"]`) && templateEndpoint) {
+        trigger?.setAttribute('aria-busy', 'true');
+        try {
+          const url = new URL(templateEndpoint, window.location.href);
+          url.searchParams.set('id', storyId);
+          const response = await fetch(url, {
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+          });
+          const data = await response.json();
+          if (!response.ok || typeof data.template_html !== 'string') {
+            throw new Error(`No se pudo cargar la noticia (${response.status})`);
+          }
+          appendNewsTemplates(data.template_html);
+        } catch (error) {
+          console.error(error);
+        } finally {
+          trigger?.removeAttribute('aria-busy');
+        }
+      }
+
+      if (document.querySelector(`template[data-story-template="${storyId}"]`)) {
+        openStorySheet(storyId, trigger);
+      } else if (fallbackUrl) {
+        window.location.href = fallbackUrl;
+      }
+    });
+
     function closeStorySheet(dragOffset = 0) {
       if (!storySheet?.classList.contains('open')) return;
 

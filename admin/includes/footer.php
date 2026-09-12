@@ -897,6 +897,118 @@
   })();
 </script>
 
++<script>
+  (function () {
+    const form = document.getElementById('assistantSettingsForm');
+    if (!form) return;
+    const active = document.getElementById('assistantSettingsActive');
+    const activeLabel = document.getElementById('assistantSettingsActiveLabel');
+    const state = document.getElementById('assistantSettingsState');
+    const title = document.getElementById('assistantSettingsTitle');
+    const detail = document.getElementById('assistantSettingsDetail');
+    const welcome = document.getElementById('assistantSettingsWelcome');
+    const titleCounter = document.getElementById('assistantSettingsTitleCounter');
+    const detailCounter = document.getElementById('assistantSettingsDetailCounter');
+    const welcomeCounter = document.getElementById('assistantSettingsWelcomeCounter');
+    const preview = document.getElementById('assistantSettingsPreview');
+    const previewTitle = document.getElementById('assistantPreviewTitle');
+    const previewDetail = document.getElementById('assistantPreviewDetail');
+    const previewWelcome = document.getElementById('assistantPreviewWelcome');
+    const status = document.getElementById('assistantSettingsSaveStatus');
+    const saveButton = document.getElementById('assistantSettingsSaveButton');
+    const cancelButton = document.getElementById('assistantSettingsCancel');
+    const cardToggle = document.getElementById('assistantSettingsCardToggle');
+    const cardContent = document.getElementById('assistantSettingsCardContent');
+    const drawerClose = document.getElementById('settingsDrawerClose');
+    const drawerBackdrop = document.getElementById('settingsDrawerBackdrop');
+    const historyNav = document.querySelector('[data-assistant-history-nav]');
+    if (!active || !activeLabel || !state || !title || !detail || !welcome || !titleCounter || !detailCounter || !welcomeCounter || !preview || !previewTitle || !previewDetail || !previewWelcome || !status || !saveButton || !cancelButton || !cardToggle || !cardContent || !drawerClose || !drawerBackdrop) return;
+
+    let saved = {
+      active: active.checked,
+      title: title.value,
+      detail: detail.value,
+      welcome: welcome.value
+    };
+
+    const count = value => Array.from(value).length;
+
+    function updatePreview() {
+      activeLabel.textContent = active.checked ? 'Activado' : 'Desactivado';
+      state.textContent = active.checked ? 'Activo' : 'Inactivo';
+      state.classList.toggle('is-active', active.checked);
+      preview.classList.toggle('is-disabled', !active.checked);
+      titleCounter.textContent = count(title.value) + '/24';
+      detailCounter.textContent = count(detail.value) + '/44';
+      welcomeCounter.textContent = count(welcome.value) + '/240';
+      previewTitle.textContent = title.value.trim() || 'Título';
+      previewDetail.textContent = detail.value.trim() || 'Detalle de la burbuja';
+      previewWelcome.textContent = welcome.value.trim() || 'Mensaje de bienvenida';
+    }
+
+    function resetUnsaved() {
+      active.checked = saved.active;
+      title.value = saved.title;
+      detail.value = saved.detail;
+      welcome.value = saved.welcome;
+      status.textContent = '';
+      status.className = 'settings-save-status';
+      updatePreview();
+    }
+
+    function setCardExpanded(expanded) {
+      cardToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      cardToggle.setAttribute('aria-label', expanded ? 'Contraer ajustes del asistente' : 'Expandir ajustes del asistente');
+      cardContent.hidden = !expanded;
+      form.classList.toggle('is-collapsed', !expanded);
+    }
+
+    [active, title, detail, welcome].forEach(control => {
+      control.addEventListener(control === active ? 'change' : 'input', updatePreview);
+    });
+    cardToggle.addEventListener('click', () => setCardExpanded(cardToggle.getAttribute('aria-expanded') !== 'true'));
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!form.reportValidity() || saveButton.disabled) return;
+      saveButton.disabled = true;
+      saveButton.textContent = 'Guardando…';
+      status.textContent = 'Guardando configuración del asistente…';
+      status.className = 'settings-save-status';
+      try {
+        const response = await fetch('configuracion-asistente.php', { method: 'POST', body: new FormData(form) });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.ok) throw new Error(result.error || 'No se pudo guardar la configuración del asistente.');
+        saved = {
+          active: Boolean(result.activo),
+          title: result.titulo || title.value.trim(),
+          detail: result.detalle || detail.value.trim(),
+          welcome: result.bienvenida || welcome.value.trim()
+        };
+        active.checked = saved.active;
+        title.value = saved.title;
+        detail.value = saved.detail;
+        welcome.value = saved.welcome;
+        if (historyNav) historyNav.hidden = !saved.active;
+        updatePreview();
+        status.textContent = result.mensaje || 'Configuración del asistente guardada.';
+      } catch (error) {
+        status.textContent = error.message || 'No se pudo guardar la configuración del asistente.';
+        status.className = 'settings-save-status is-error';
+      } finally {
+        saveButton.disabled = false;
+        saveButton.textContent = 'Guardar asistente';
+      }
+    });
+
+    cancelButton.addEventListener('click', () => { resetUnsaved(); drawerClose.click(); });
+    drawerClose.addEventListener('click', resetUnsaved);
+    drawerBackdrop.addEventListener('click', resetUnsaved);
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') resetUnsaved(); });
+    updatePreview();
+  })();
+</script>
+
 <script>
   (function () {
     const form = document.getElementById('homeSeoSettingsForm');

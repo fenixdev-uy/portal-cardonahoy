@@ -4,6 +4,8 @@
 /subir.txt
 /servicios.local.json
 /admin/servicios.runtime.local.json
+/asistente/servicios.runtime.local.json
+/asistente/error_log
 /.deploy/
 /.agents/
 /.codex/

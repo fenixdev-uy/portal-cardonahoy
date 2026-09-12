@@ -22,6 +22,22 @@ function noticias_estados_disponibles(PDO $pdo): bool
     return $disponible;
 }
 
+/** Permite publicar el código del historial antes de ejecutar su migración. */
+function asistente_historial_disponible(PDO $pdo): bool
+{
+    static $disponible = null;
+    if (is_bool($disponible)) return $disponible;
+
+    $stmt = $pdo->prepare(
+        "SELECT COUNT(*) FROM information_schema.TABLES
+          WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME IN ('asistente_conversaciones', 'asistente_mensajes')"
+    );
+    $stmt->execute();
+    $disponible = (int) $stmt->fetchColumn() === 2;
+    return $disponible;
+}
+
 /**
  * Bloquea la selección actual de Portada al alcanzar el cupo configurado.
  * Debe ejecutarse dentro de la misma transacción que guarda el cambio.
@@ -363,6 +379,50 @@ function configuracion_nombre_sitio(): string
     }
 
     return $nombre;
+}
+
+/**
+ * Presentacion y disponibilidad del asistente publico de noticias.
+ * Las claves ausentes conservan el comportamiento aprobado originalmente.
+ *
+ * @return array{activo:bool,titulo:string,detalle:string,bienvenida:string}
+ */
+function configuracion_asistente_publico(): array
+{
+    $configuracion = [
+        'activo' => true,
+        'titulo' => 'Nuevo',
+        'detalle' => 'Explorá las noticias',
+        'bienvenida' => 'Hola, puedo ayudarte a encontrar noticias publicadas en este portal. ¿Qué te gustaría saber?',
+    ];
+
+    try {
+        $stmt = db()->query(
+            "SELECT clave, valor FROM configuracion WHERE clave IN (
+                'asistente_publico_activo',
+                'asistente_publico_titulo',
+                'asistente_publico_detalle',
+                'asistente_publico_bienvenida'
+            )"
+        );
+        foreach ($stmt->fetchAll() as $fila) {
+            $clave = (string) $fila['clave'];
+            $valor = trim((string) $fila['valor']);
+            if ($clave === 'asistente_publico_activo') {
+                $configuracion['activo'] = $valor === '1';
+            } elseif ($clave === 'asistente_publico_titulo' && $valor !== '' && mb_strlen($valor, 'UTF-8') <= 24) {
+                $configuracion['titulo'] = $valor;
+            } elseif ($clave === 'asistente_publico_detalle' && $valor !== '' && mb_strlen($valor, 'UTF-8') <= 44) {
+                $configuracion['detalle'] = $valor;
+            } elseif ($clave === 'asistente_publico_bienvenida' && $valor !== '' && mb_strlen($valor, 'UTF-8') <= 240) {
+                $configuracion['bienvenida'] = $valor;
+            }
+        }
+    } catch (PDOException $e) {
+        // La tabla o las claves pueden estar pendientes durante un despliegue incremental.
+    }
+
+    return $configuracion;
 }
 
 /** @return array{titulo:string,descripcion:string} */

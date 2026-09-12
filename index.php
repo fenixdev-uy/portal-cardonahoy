@@ -24,6 +24,7 @@ $faviconPortalArchivo = $identidadAdmin['favicon_ruta'] !== null ? __DIR__ . '/'
 $faviconPortalVersion = is_file($faviconPortalArchivo) ? (string) filemtime($faviconPortalArchivo) : '1';
 $seoPortada = configuracion_seo_portada();
 $nombreSitio = configuracion_nombre_sitio();
+$asistentePublico = configuracion_asistente_publico();
 $jsonLdPortada = [
     '@context' => 'https://schema.org',
     '@type' => 'WebSite',
@@ -149,6 +150,9 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
   <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,400;1,700&amp;display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/portal.css?v=<?= (int) @filemtime(__DIR__ . '/assets/css/portal.css') ?>">
   <link rel="stylesheet" href="assets/css/popup.css?v=<?= (int) @filemtime(__DIR__ . '/assets/css/popup.css') ?>">
+<?php if ($asistentePublico['activo']): ?>
+  <link rel="stylesheet" href="assets/css/asistente.css?v=<?= (int) @filemtime(__DIR__ . '/assets/css/asistente.css') ?>">
+<?php endif; ?>
 <?php imprimir_codigo_header_publico(); ?>
 </head>
 <body style="<?= e($logoPortalEstilo) ?>">
@@ -242,9 +246,16 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
 
   </div>
 
+<?php if ($asistentePublico['activo']): ?>
+<?php require __DIR__ . '/partials/asistente.php'; ?>
+<?php endif; ?>
+
 <?php require __DIR__ . '/partials/popup-publico.php'; ?>
 
   <script src="assets/js/portal.js?v=<?= (int) @filemtime(__DIR__ . '/assets/js/portal.js') ?>" data-vote-url="<?= e(url_portal('votar.php')) ?>" data-view-url="<?= e(url_portal('noticia-vista.php')) ?>" data-share-url="<?= e(url_portal('noticia-compartir.php')) ?>" data-ad-placements-url="<?= e(url_portal('publicidad-ubicaciones.php')) ?>"></script>
+<?php if ($asistentePublico['activo']): ?>
+  <script src="assets/js/asistente.js?v=<?= (int) @filemtime(__DIR__ . '/assets/js/asistente.js') ?>"></script>
+<?php endif; ?>
   <script src="assets/js/popup.js?v=<?= (int) @filemtime(__DIR__ . '/assets/js/popup.js') ?>" data-popup-endpoint="<?= e(url_portal('popup-publico.php')) ?>"></script>
 </body>
 </html>

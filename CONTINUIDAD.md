@@ -1,5 +1,13 @@
 # Continuidad — Portal de Noticias
 
+## Punto de pausa vigente — asistente público validado en DEV — 12 de septiembre de 2026
+
+- El usuario completó y aprobó la validación funcional del asistente público de Cardona Hoy en DEV: configuración y activación, visibilidad del menú, respuestas DeepSeek, cards y apertura, historial, noticias recientes, categorías múltiples, fechas relativas, contexto encadenado, tolerancia ortográfica, consultas repetidas y respuestas sin coincidencias.
+- Los últimos ajustes evitan resultados irrelevantes por coincidencias parciales, conservan el contexto en preguntas breves, limitan en el navegador la frecuencia de solicitudes y corrigen el fallo Apache causado por términos numéricos interpretados como enteros.
+- QA final: `php -l`, `node --check` y `git diff --check` correctos; pruebas HTTPS reales devolvieron la noticia esperada en la cadena de Indulacsa y cero cards/IA para una consulta sin resultados. Browser plugin no estaba disponible; las verificaciones renderizadas se hicieron con Puppeteer/Chromium.
+- Por autorización expresa se vació únicamente el historial del asistente en la base DEV: 14 conversaciones y 104 mensajes pasaron a cero dentro de una transacción. Noticias, configuración y PROD no cambiaron.
+- El usuario autorizó consolidar y subir este bloque al repositorio independiente de `portal-cardonahoy`. Un commit/push no constituye despliegue ni autoriza migrar o modificar PROD.
+
 ## Punto de pausa vigente — cierre Git aprobado y revisión PROD pendiente — 11 de septiembre de 2026
 
 - El usuario aprobó todo el árbol actual de Cardona Hoy y autorizó su consolidación mediante commit y push al remoto independiente.
@@ -1258,3 +1266,27 @@ Después del cierre inicial de Popups se completó una nueva tanda, revisada pas
 QA local acumulada con Chromium/Puppeteer —Browser plugin ausente— cubrió PC `1440×900/950`, móvil `390×844` y los controles compactos también a `360×800`. Se verificaron geometría, navegación, filtros inclusivos, cambio Área/Columnas, apertura de drawers, ausencia de overflow y consola limpia. Las sesiones y registros temporales de QA fueron eliminados; no se ejecutó el borrado de anuncios reales. Las capturas finales más útiles están en `/tmp/pntest/capturas/admin-noticias-tabla-limpia-mobile.png`, `admin-anuncios-tabla-compacta-mobile.png`, `admin-analisis-publicaciones-pc.png` y `admin-analisis-publicaciones-mobile.png`.
 
 **Pausa operativa:** todo el bloque anterior queda aprobado como baseline de DEV. El worktree continúa acumulado y sin separar cambios preexistentes. **No se creó commit, no se hizo push, no se desplegó esta tanda y no se autorizó ninguna migración nueva en PROD.** Al retomar, leer `AGENDA.md`, este cierre y `git status --short --branch`; preservar las vistas PC aprobadas y los ajustes móviles actuales, y esperar una nueva instrucción del usuario.
+
+### Traslado del asistente público de noticias a Cardona Hoy DEV — 11 de septiembre de 2026
+
+Se trasladó desde `portal-base` el módulo público completo y aislado: `asistente/consultar.php`, runtime privado, burbuja/panel responsive, carga dinámica de notas, historial administrativo y configuración de disponibilidad, título, detalle y bienvenida. La integración fue selectiva: se preservaron la identidad, los datos, las URLs y el menú **Páginas** exclusivos de Cardona Hoy. El asistente editorial **Crear noticia con IA** no fue tocado ni comparte endpoint, prompt, historial o ejecución con este módulo.
+
+El front sólo carga CSS, marcado y JavaScript cuando `asistente_publico_activo` está habilitado. El menú administrativo **Asistente** requiere `asistente.ver` y además queda oculto cuando el asistente público está desactivado. Las instalaciones nuevas incluyen las dos tablas de historial y las cuatro claves por defecto; las existentes usan `install/asistente-historial-v1.php` y `install/security-v1.php` de forma separada.
+
+El runtime `asistente/servicios.runtime.local.json` se generó únicamente con la sección DeepSeek privada de Cardona Hoy, quedó con modo `600`, ignorado por Git y cubierto por reglas Apache de denegación. El servidor PHP local devuelve ese archivo porque no interpreta `.htaccess`; esa respuesta no valida ni invalida el bloqueo Apache y el control deberá verificarse nuevamente en el servidor real antes de PROD.
+
+Validaciones completadas: lint PHP de todos los archivos incorporados, `node --check` de ambos scripts, `git diff --check`, comparación byte a byte del núcleo con Portal Base y QA Chromium/Puppeteer —Browser plugin ausente— en escritorio `1440×900`, móvil `390×844` y tablet `900×900`. Se comprobó portada HTTP 200, textos por defecto, aparición tras entrar al contenido, apertura/cierre, respuesta simulada, card y apertura de una noticia real, ausencia de overflow y consola limpia; tablet conserva el ocultamiento deliberado. El endpoint real respondió 405 a GET y 200 a un POST sin coincidencias, sin invocar DeepSeek.
+
+La inspección inicial de sólo lectura de Cardona Hoy DEV confirmó 8 noticias publicadas, 0 tablas del historial y, antes de que el usuario guardara la Configuración, 0 claves `asistente_publico_*`. Después se confirmó que las 4 claves ya existían y el asistente estaba activo, pero faltaban `asistente.ver`, su asignación y ambas tablas; por eso funcionaba la burbuja y no aparecía el menú administrativo.
+
+Con autorización expresa se respaldó exclusivamente DEV en `.deploy/respaldos-db/2026-09-11_201659-asistente-dev/cardonahoy-development-before-asistente.sql`: 48.546 bytes, modo `600` y SHA-256 `2dc8ab9902c93f0fe485f913a1c494009ddf4f0485a897a74e1c6517d6a86ae2`. `install/asistente-historial-v1.php --environment=development` se ejecutó dos veces y confirmó idempotencia: 2 tablas, permiso `asistente.ver`, una asignación al rol Administrador, configuración activa y 0 conversaciones/0 mensajes iniciales. No fue necesario ejecutar `security-v1.php`, evitando cualquier intervención sobre usuarios existentes.
+
+Las conversaciones usadas antes de crear las tablas no son recuperables; las nuevas se registrarán desde ahora. **No se invocó DeepSeek durante esta corrección, no se creó commit, no se hizo push y no se desplegó a PROD.** Próximo paso: el usuario debe recargar el Admin y validar el menú; luego probar una consulta real y su aparición en el historial antes de evaluar PROD.
+
+### Orden determinístico de noticias recientes — 11 de septiembre de 2026
+
+La consulta general **¿Qué noticias recientes hay?** recuperaba candidatos correctamente por `publicada_at DESC, id DESC`, pero luego DeepSeek podía elegir cualquier subconjunto de fuentes y omitir la primera. `asistente/consultar.php` ahora detecta una intención reciente sin términos temáticos y construye en el servidor la respuesta y las cinco cards más nuevas en el orden recibido; las búsquedas por tema conservan el flujo conversacional con IA.
+
+La prueba HTTP real en Cardona Hoy DEV devolvió, en este orden: Indulacsa (`2026-08-30 02:30:07`), la fuente experimental, Noche de la Nostalgia, WMS e IA. El modo fue `recientes`, `ia_utilizada=false` y se registraron los dos mensajes esperados. Se eliminó exclusivamente esa conversación temporal mediante su token verificado y el borrado en cascada; no se tocaron conversaciones del usuario. **Sin commit, push ni cambios en PROD.**
+
+Una segunda reproducción explicó por qué el usuario todavía veía resultados incorrectos dentro del chat abierto: antes de reconocer la intención reciente, el recuperador concatenaba cualquier pregunta anterior corta. Así, después de hablar de Deportes, “¿Qué noticias recientes hay?” quedaba convertida en una búsqueda temática de deportes. La intención general reciente ahora se detecta exclusivamente sobre el mensaje actual y omite la expansión contextual. La regresión con un turno previo de Deportes volvió a colocar Indulacsa primera; la conversación temporal se eliminó por su token sin afectar el historial real.

@@ -105,6 +105,7 @@ $permisos = [
     ['paginas.gestionar', 'Gestionar páginas', 'Ver y editar el SEO de la Home.'],
     ['mantenimiento.gestionar', 'Gestionar mantenimiento', 'Activar, desactivar y configurar el modo mantenimiento; permite ingresar durante el bloqueo.'],
     ['publicidad.gestionar', 'Gestionar publicidad', 'Crear, editar y eliminar anuncios y popups.'],
+    ['asistente.ver', 'Ver conversaciones del asistente', 'Consultar el historial de preguntas y respuestas del asistente público.'],
 ];
 $stmtPermiso = $pdo->prepare('INSERT INTO permisos (clave, nombre, descripcion) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE nombre=VALUES(nombre), descripcion=VALUES(descripcion)');
 foreach ($permisos as $permiso) {

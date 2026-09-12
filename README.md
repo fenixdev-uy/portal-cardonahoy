@@ -12,6 +12,14 @@ Backend de noticias para la landing page. Las noticias se administran desde un p
 
 El árbol aprobado quedó consolidado en el checkpoint Git del 11 de septiembre de 2026. Cardona Hoy PROD ya contiene partes publicadas selectivamente; cualquier actualización restante requiere comparar, respaldar y desplegar únicamente las diferencias verificadas.
 
+### Asistente público de noticias
+
+Cardona Hoy DEV incorpora el asistente público aprobado en Portal Base, completamente separado del asistente editorial del administrador. La portada muestra la burbuja sólo cuando está activa; su título, detalle y mensaje de bienvenida se administran desde Configuración. El historial tiene una pantalla protegida por `asistente.ver`, y ese acceso se oculta junto con la burbuja al desactivar el asistente.
+
+La validación funcional en Cardona Hoy DEV quedó aprobada el 12 de septiembre de 2026. Incluyó respuestas y cards reales, categorías múltiples, fechas relativas, contexto conversacional, tolerancia ortográfica, consultas repetidas y casos sin coincidencias. Al terminar se vació exclusivamente el historial de prueba: las tablas quedaron con cero conversaciones y cero mensajes, sin modificar noticias ni configuración.
+
+El runtime privado vive en `asistente/servicios.runtime.local.json`, con modo `600`, fuera de Git y bloqueado por Apache. Para instalaciones existentes, las tablas del historial, el permiso y su asignación al Administrador se agregan con `php install/asistente-historial-v1.php --environment=development|production`; cada ejecución requiere identificar y respaldar previamente la base del ambiente correcto. Cardona Hoy DEV ya recibió esta migración de forma respaldada e idempotente; PROD no recibió este módulo.
+
 ### Borradores de noticias
 
 Las noticias pueden guardarse incompletas como **Borrador** y publicarse después. El panel conserva además una copia automática en el navegador para recuperar cambios no enviados. Solo las noticias con estado **Publicada** participan de la portada, búsqueda, sitemap, página individual, votos y métricas. En instalaciones existentes, aplicar por CLI `php install/noticias-estados-v1.php --environment=development|production` después de identificar y respaldar el entorno correcto.

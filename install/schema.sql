@@ -167,6 +167,34 @@ CREATE TABLE IF NOT EXISTS intentos_login (
   PRIMARY KEY (clave_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS asistente_conversaciones (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  token_hash CHAR(64) NOT NULL,
+  visitante_hash CHAR(64) NOT NULL,
+  pregunta_inicial VARCHAR(500) NOT NULL,
+  cantidad_mensajes INT UNSIGNED NOT NULL DEFAULT 0,
+  ultimo_mensaje_at DATETIME NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_asistente_conversaciones_token (token_hash),
+  KEY idx_asistente_conversaciones_actividad (ultimo_mensaje_at, id),
+  KEY idx_asistente_conversaciones_visitante (visitante_hash, ultimo_mensaje_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS asistente_mensajes (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  conversacion_id BIGINT UNSIGNED NOT NULL,
+  rol VARCHAR(20) NOT NULL,
+  contenido TEXT NOT NULL,
+  noticias_json LONGTEXT NULL,
+  modo VARCHAR(30) NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_asistente_mensajes_conversacion (conversacion_id, id),
+  CONSTRAINT fk_asistente_mensajes_conversacion FOREIGN KEY (conversacion_id)
+    REFERENCES asistente_conversaciones(id) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS configuracion (
   clave VARCHAR(100) NOT NULL,
   valor TEXT NOT NULL,
@@ -182,7 +210,11 @@ INSERT INTO configuracion (clave, valor) VALUES
   ('mantenimiento_logo_ruta', ''),
   ('mantenimiento_logo_tamano', '58'),
   ('mantenimiento_mensaje', 'En mantenimiento, ¡volvemos pronto!'),
-  ('mantenimiento_mostrar_login', '1')
+  ('mantenimiento_mostrar_login', '1'),
+  ('asistente_publico_activo', '1'),
+  ('asistente_publico_titulo', 'Nuevo'),
+  ('asistente_publico_detalle', 'Explorá las noticias'),
+  ('asistente_publico_bienvenida', 'Hola, puedo ayudarte a encontrar noticias publicadas en este portal. ¿Qué te gustaría saber?')
 ON DUPLICATE KEY UPDATE valor=valor;
 
 CREATE TABLE IF NOT EXISTS anuncios (

@@ -27,6 +27,7 @@ $puedeGestionarMantenimiento = tiene_permiso('mantenimiento.gestionar');
 $puedeGestionarUsuarios = tiene_permiso('usuarios.gestionar');
 $puedeGestionarRoles = tiene_permiso('roles.gestionar');
 $puedeGestionarPublicidad = tiene_permiso('publicidad.gestionar');
+$puedeVerAsistente = tiene_permiso('asistente.ver');
 $grupoUsuariosVisible = $puedeGestionarUsuarios || $puedeGestionarRoles;
 $grupoNoticiasActivo = in_array($activo, ['noticias', 'categorias'], true);
 $grupoPaginasActivo = $activo === 'paginas-home';
@@ -38,6 +39,7 @@ $logoLoginPanel = null;
 $logoPortalPanel = null;
 $logoAdminPanel = null;
 $nombreSitioPanel = null;
+$asistentePublicoPanel = configuracion_asistente_publico();
 $seoPortadaPanel = null;
 $seoAutomaticoPanel = null;
 $codigoHeaderPanel = null;
@@ -159,6 +161,13 @@ header('Cache-Control: no-store, private');
 <?php endif; ?>
 
       <span class="nav-label">Administración</span>
+
+<?php if ($puedeVerAsistente): ?>
+      <a href="<?= $BASE ?>asistente.php" class="nav-link <?= $activo === 'asistente' ? 'active' : '' ?>" data-assistant-history-nav<?= $asistentePublicoPanel['activo'] ? '' : ' hidden' ?>>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="7" width="16" height="13" rx="3"></rect><path d="M9 11h.01M15 11h.01M8 16h8M12 7V3M9 3h6"></path></svg>
+        <span>Asistente</span>
+      </a>
+<?php endif; ?>
 
 <?php if ($grupoUsuariosVisible): ?>
       <div class="nav-group<?= $grupoUsuariosActivo ? ' has-active' : '' ?>">
@@ -433,6 +442,73 @@ header('Cache-Control: no-store, private');
           <div class="settings-form-actions">
             <button type="button" class="btn btn-outline" id="siteIdentityCancel">Cancelar</button>
             <button type="submit" class="btn btn-primary" id="siteIdentitySaveButton">Guardar identidad</button>
+          </div>
+        </div>
+      </form>
+      <?php endif; ?>
+
+      <?php if ($asistentePublicoPanel !== null): ?>
+      <form class="settings-card assistant-settings-card" id="assistantSettingsForm">
+        <?= csrf_input() ?>
+        <div class="settings-card-heading">
+          <span class="settings-card-icon settings-card-icon-assistant" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="7" width="16" height="13" rx="3"></rect><path d="M9 11h.01M15 11h.01M8 16h8M12 7V3M9 3h6"></path></svg>
+          </span>
+          <div class="settings-card-heading-copy">
+            <h3>Asistente de noticias</h3>
+            <p>Controlá su disponibilidad y los textos de presentación.</p>
+          </div>
+          <span class="header-code-state<?= $asistentePublicoPanel['activo'] ? ' is-active' : '' ?>" id="assistantSettingsState"><?= $asistentePublicoPanel['activo'] ? 'Activo' : 'Inactivo' ?></span>
+          <button type="button" class="settings-card-toggle" id="assistantSettingsCardToggle" aria-expanded="true" aria-controls="assistantSettingsCardContent" aria-label="Contraer ajustes del asistente">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"></path></svg>
+          </button>
+        </div>
+
+        <div class="settings-card-content assistant-settings-content" id="assistantSettingsCardContent">
+          <div class="assistant-settings-preview<?= $asistentePublicoPanel['activo'] ? '' : ' is-disabled' ?>" id="assistantSettingsPreview" aria-label="Vista previa del asistente público">
+            <span class="login-logo-preview-label">Vista pública</span>
+            <div class="assistant-preview-launcher">
+              <span class="assistant-preview-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14a4 4 0 0 1-4 4H9l-5 3v-7a4 4 0 0 1-1-2.65V7a4 4 0 0 1 4-4h9a4 4 0 0 1 4 4v7Z"></path><path d="m12 6 .72 2.28L15 9l-2.28.72L12 12l-.72-2.28L9 9l2.28-.72L12 6Z" fill="currentColor" stroke="none"></path></svg>
+              </span>
+              <span class="assistant-preview-copy"><small id="assistantPreviewTitle"><?= e($asistentePublicoPanel['titulo']) ?></small><strong id="assistantPreviewDetail"><?= e($asistentePublicoPanel['detalle']) ?></strong></span>
+            </div>
+            <div class="assistant-preview-message"><span aria-hidden="true">IA</span><p id="assistantPreviewWelcome"><?= e($asistentePublicoPanel['bienvenida']) ?></p></div>
+          </div>
+
+          <div class="maintenance-control-row">
+            <div><strong>Disponibilidad pública</strong><span>Al desactivarlo, la burbuja y el chat dejan de cargarse en la portada.</span></div>
+            <label class="header-code-switch ad-form-switch" for="assistantSettingsActive">
+              <input type="checkbox" id="assistantSettingsActive" name="activo" value="1" role="switch"<?= $asistentePublicoPanel['activo'] ? ' checked' : '' ?>>
+              <span class="ad-form-switch-track" aria-hidden="true"><span></span></span>
+              <span id="assistantSettingsActiveLabel"><?= $asistentePublicoPanel['activo'] ? 'Activado' : 'Desactivado' ?></span>
+            </label>
+          </div>
+
+          <div class="form-group assistant-settings-field">
+            <div class="maintenance-field-heading"><label for="assistantSettingsTitle">Título de la burbuja</label><span id="assistantSettingsTitleCounter"><?= mb_strlen($asistentePublicoPanel['titulo']) ?>/24</span></div>
+            <input class="form-control" type="text" id="assistantSettingsTitle" name="titulo" maxlength="24" value="<?= e($asistentePublicoPanel['titulo']) ?>" required>
+          </div>
+
+          <div class="form-group assistant-settings-field">
+            <div class="maintenance-field-heading"><label for="assistantSettingsDetail">Detalle de la burbuja</label><span id="assistantSettingsDetailCounter"><?= mb_strlen($asistentePublicoPanel['detalle']) ?>/44</span></div>
+            <input class="form-control" type="text" id="assistantSettingsDetail" name="detalle" maxlength="44" value="<?= e($asistentePublicoPanel['detalle']) ?>" required>
+          </div>
+
+          <div class="form-group assistant-settings-field">
+            <div class="maintenance-field-heading"><label for="assistantSettingsWelcome">Mensaje de bienvenida</label><span id="assistantSettingsWelcomeCounter"><?= mb_strlen($asistentePublicoPanel['bienvenida']) ?>/240</span></div>
+            <textarea class="form-control assistant-settings-welcome" id="assistantSettingsWelcome" name="bienvenida" maxlength="240" rows="4" required><?= e($asistentePublicoPanel['bienvenida']) ?></textarea>
+          </div>
+
+          <div class="settings-card-notice assistant-settings-notice">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>
+            <span>Estos textos personalizan la presentación pública. No modifican el prompt, las fuentes ni el funcionamiento interno del agente.</span>
+          </div>
+
+          <span class="settings-save-status" id="assistantSettingsSaveStatus" aria-live="polite"></span>
+          <div class="settings-form-actions">
+            <button type="button" class="btn btn-outline" id="assistantSettingsCancel">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="assistantSettingsSaveButton">Guardar asistente</button>
           </div>
         </div>
       </form>

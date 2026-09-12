@@ -1,19 +1,27 @@
 # Agenda — Portal Cardona Hoy
 
-Última actualización: **11 de septiembre de 2026**.
+Última actualización: **12 de septiembre de 2026**.
 
 Este archivo es la **única agenda aplicable a `portal-cardonahoy`**. La aplicación nace del baseline aprobado `5ec3e42`, pero no comparte configuración privada, base de datos, uploads, despliegue ni remoto con RS Medios.
 
 ## Prioridad activa
 
-1. Mañana comparar el checkpoint aprobado con Cardona Hoy PROD y, únicamente con nueva confirmación del usuario, desplegar de forma incremental las diferencias que todavía falten. Parte del lote ya fue publicada selectivamente: no repetir migraciones ni sobrescribir variantes propias sin preflight.
-2. Validar con una sesión administradora real de Cardona Hoy PROD el flujo ya publicado de guardar, recuperar, publicar y volver a borrador una noticia prescindible.
-3. Validar con una sesión administradora real de Cardona Hoy PROD que una noticia nueva seleccione por defecto la firma del usuario autenticado y, sobre una cuenta prescindible, el flujo de transferencia de autoría y eliminación.
-4. Validar con una sesión editorial real de Cardona Hoy PROD el nuevo **Título ideal**, los destellos y una generación DeepSeek completa desde URL y desde contenido pegado.
-5. Validar con dos navegadores o dispositivos reales que el segundo login cierre la primera sesión del mismo usuario y conserve la nueva.
-6. Validar con una sesión administradora de Cardona Hoy PROD la selección de hasta diez noticias en Portada.
-7. Validar con una sesión administradora de Cardona Hoy PROD las tasas mensuales y la copia PNG ya publicadas.
-8. Configurar SEO, administradores y contenido definitivos del cliente sobre el despliegue inicial.
+1. Conservar el asistente público aprobado en DEV y su separación total de **Crear noticia con IA**.
+2. Antes de cualquier publicación, comparar con Cardona Hoy PROD, respaldar código y base, migrar el ambiente correcto y desplegar incrementalmente con verificación de hashes y HTTP.
+3. Mantener pendientes las validaciones autenticadas previas de noticias, autoría, sesión única, Portada y Análisis que aún correspondan en PROD.
+
+## Asistente público aprobado en DEV — 12 de septiembre de 2026
+
+- Se trasladó desde Portal Base el asistente público de búsqueda de noticias sin combinarlo con **Crear noticia con IA** ni reemplazar variantes propias de Cardona Hoy.
+- La integración incluye burbuja y panel responsive, recuperación de noticias publicadas, apertura de la nota, configuración de disponibilidad y textos, historial administrativo, permiso independiente y migración reproducible.
+- El runtime DeepSeek se derivó de la configuración privada propia de Cardona Hoy, permanece ignorado por Git, conserva modo `600` y no fue publicado.
+- QA local con Chromium/Puppeteer pasó en `1440×900`, `390×844` y tablet `900×900`: interfaz y apertura de noticias correctas, sin overflow ni errores; en tablet continúa deliberadamente oculto.
+- Después de detectar que el menú administrativo no aparecía, se respaldó y migró exclusivamente DEV. Las 2 tablas, el permiso `asistente.ver` y su asignación al Administrador quedaron verificados en dos ejecuciones idempotentes; las 4 claves configurables ya existentes se preservaron.
+- El usuario validó con una sesión real la configuración, activación, menú, respuestas DeepSeek, apertura y cards, historial, categorías, fechas, consultas encadenadas, errores ortográficos, repeticiones y ausencia de resultados irrelevantes.
+- La consulta general **¿Qué noticias recientes hay?** quedó corregida para seleccionar en servidor las cinco publicaciones más nuevas por `publicada_at DESC, id DESC`; no delega el orden a DeepSeek ni hereda términos del turno anterior. QA real, incluido un contexto previo de Deportes, devolvió Indulacsa primero y las conversaciones temporales fueron retiradas.
+- Las búsquedas de categoría contemplan todas las categorías asignadas, los seguimientos reutilizan el contexto inmediato, las fechas relativas se filtran en servidor y las consultas nuevas con varios términos exigen coincidencias significativas para no arrastrar noticias por una palabra genérica.
+- Se corrigieron dos fallas observadas bajo Apache: términos numéricos convertidos a enteros y consultas consecutivas dentro del límite del servidor. El endpoint devuelve además un error JSON controlado ante una falla fatal, sin exponer detalles técnicos.
+- Al cerrar la validación se eliminaron exclusivamente de la base DEV las 14 conversaciones y 104 mensajes de prueba; ambas tablas del historial quedaron en cero. No se modificaron noticias ni configuración y PROD no fue tocado.
 
 ## Cierre Git aprobado — 11 de septiembre de 2026
 
