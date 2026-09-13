@@ -168,6 +168,24 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
         <img src="<?= e($logoPortalUrl) ?>" alt="Logo del portal" />
       </a>
 
+<?php if ($asistentePublico['activo']): ?>
+      <button
+        class="navbar-ai-mode"
+        type="button"
+        data-assistant-navbar-trigger
+        aria-controls="newsAssistantPanel"
+        aria-expanded="false"
+      >
+        <span class="navbar-ai-mode-icon" aria-hidden="true">
+          <svg viewBox="0 0 20 20" fill="none">
+            <path d="M10 1.8 11.65 8.35 18.2 10l-6.55 1.65L10 18.2l-1.65-6.55L1.8 10l6.55-1.65L10 1.8Z" fill="currentColor"/>
+          </svg>
+        </span>
+        <span class="navbar-ai-mode-label-desktop">Activar Modo IA</span>
+        <span class="navbar-ai-mode-label-mobile">IA</span>
+      </button>
+<?php endif; ?>
+
       <?php if ($usuarioPublico): ?>
         <?php require __DIR__ . '/partials/acceso-admin.php'; ?>
       <?php endif; ?>

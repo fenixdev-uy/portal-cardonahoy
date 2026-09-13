@@ -1,14 +1,23 @@
 # Agenda — Portal Cardona Hoy
 
-Última actualización: **12 de septiembre de 2026**.
+Última actualización: **13 de septiembre de 2026**.
 
 Este archivo es la **única agenda aplicable a `portal-cardonahoy`**. La aplicación nace del baseline aprobado `5ec3e42`, pero no comparte configuración privada, base de datos, uploads, despliegue ni remoto con RS Medios.
 
 ## Prioridad activa
 
-1. Continuar probando en PROD la selección por popularidad, especialmente singular/plural y los períodos hoy, ayer, anteayer, esta semana y semana pasada.
-2. Conservar como referencia la única conversación PROD restante —ID 20, último test aprobado— y no volver a limpiar historial sin una nueva autorización expresa.
-3. Mantener pendientes las validaciones autenticadas previas de noticias, autoría, sesión única, Portada y Análisis que aún correspondan en PROD.
+1. Revisar manualmente en DEV la nueva paridad visual del asistente con RS Medios antes de autorizar cualquier commit, push o publicación en PROD.
+2. Continuar probando en PROD la selección por popularidad, especialmente singular/plural y los períodos hoy, ayer, anteayer, esta semana y semana pasada.
+3. Conservar como referencia la única conversación PROD restante —ID 20, último test aprobado— y no volver a limpiar historial sin una nueva autorización expresa.
+4. Mantener pendientes las validaciones autenticadas previas de noticias, autoría, sesión única, Portada y Análisis que aún correspondan en PROD.
+
+## Paridad visual del asistente aplicada en DEV — 13 de septiembre de 2026
+
+- El historial administrativo identifica ahora cada conversación como **#ID · pregunta inicial**, para facilitar diagnósticos posteriores sin copiar el chat.
+- En PC, el acceso superior **Activar Modo IA** reemplaza la burbuja flotante y abre un Copilot fijo a la izquierda en división aproximada 30/70. La portada se desplaza a la derecha y una noticia puede abrirse simultáneamente en su panel lateral derecho sin cerrar el chat.
+- En móvil, la burbuja queda oculta y aparece el botón compacto **IA** junto al menú. El encabezado, A−/A+ y Cerrar comparten el halo verde animado; el CTA **Explorá las noticias** del menú usa el mismo perímetro luminoso. En 320 px se separó levemente el logo para evitar solapamiento.
+- Chromium/Puppeteer sobre DEV pasó en 1440×900, 1025×768, 390×844, 320×720 y tablet 800×900: aperturas/cierres, geometría, noticia simultánea, animaciones, controles y ausencia de overflow o errores propios. Las consultas se interceptaron con respuesta simulada, por lo que no se escribió historial ni se tocó la base.
+- Se preservaron el motor semántico, la configuración, identidad y geometría propia de Cardona Hoy. Tablet continúa deliberadamente sin activador. Cambio pendiente de revisión del usuario, sin commit, push ni PROD.
 
 ## Cierre Git autorizado — 12 de septiembre de 2026
 

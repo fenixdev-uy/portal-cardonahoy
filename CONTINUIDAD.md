@@ -1,5 +1,14 @@
 # Continuidad — Portal de Noticias
 
+## Punto de pausa vigente — paridad visual del asistente terminada en Cardona Hoy DEV — 13 de septiembre de 2026
+
+- Se trasladó selectivamente desde RS Medios el frente aprobado del asistente, sin copiar `asistente/consultar.php`, configuración privada, prompts, historial ni ninguna variante semántica. Cardona Hoy conserva íntegro su motor propio.
+- `admin/asistente.php` antepone **#ID ·** al título de cada conversación. `index.php` incorpora el acceso responsive en la barra; `assets/js/asistente.js` mantiene el Copilot abierto al consultar y abrir noticias; `assets/css/portal.css` y `assets/css/asistente.css` contienen los botones, división 30/70 y halos animados.
+- PC ≥1025 px: burbuja oculta, botón **Activar Modo IA**, panel fijo izquierdo y portada desplazada. La noticia se abre a la derecha sin cerrar el chat. Móvil ≤768 px: burbuja oculta, botón **IA**, panel modal y encabezado luminoso. Tablet 769–1024 conserva el comportamiento inactivo acordado.
+- En 320 px se desplazó 12 px el logo propio de Cardona Hoy para mantener separación real entre hamburguesa, botón IA y marca; en 390 px no fue necesario modificar la geometría.
+- Browser plugin no disponible; QA segura con Chromium/Puppeteer en la URL HTTPS DEV pasó en 1440×900, 1025×768, 390×844, 320×720 y 800×900. Se verificaron animaciones, aperturas/cierres, A−/A+, panel de noticia coexistente y cero overflow/errores propios. El endpoint IA y las métricas fueron interceptados, por lo que no se generó historial ni se modificaron datos.
+- `php -l index.php`, `php -l admin/asistente.php`, `node --check assets/js/asistente.js` y `git diff --check` correctos. Estado exclusivamente DEV y pendiente de revisión del usuario: sin migración, commit, push ni publicación PROD.
+
 ## Cierre Git autorizado del asistente público — 12 de septiembre de 2026
 
 - El usuario autorizó consolidar y subir al remoto independiente de Cardona Hoy todo el lote aprobado: interpretación flexible, fechas relativas, popularidad por vistas, CTA del menú, controles **A− / A+** y paleta negro/grafito con conversación clara tramada.

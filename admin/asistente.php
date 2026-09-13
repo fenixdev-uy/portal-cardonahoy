@@ -116,7 +116,7 @@ require __DIR__ . '/includes/header.php';
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
                 <?= e($formatearFecha((string) $conversacion['ultimo_mensaje_at'])) ?>
               </span>
-              <strong><?= e((string) $conversacion['pregunta_inicial']) ?></strong>
+              <strong>#<?= $idConversacion ?> · <?= e((string) $conversacion['pregunta_inicial']) ?></strong>
               <small><?= (int) $conversacion['cantidad_mensajes'] ?> mensajes</small>
             </a>
 <?php endforeach; ?>

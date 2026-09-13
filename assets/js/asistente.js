@@ -11,6 +11,7 @@
   const backdrop = root.querySelector('[data-assistant-backdrop]');
   const launcher = root.querySelector('[data-assistant-launcher]');
   const closeButton = root.querySelector('[data-assistant-close]');
+  const navbarTriggers = Array.from(document.querySelectorAll('[data-assistant-navbar-trigger]'));
   const textDecreaseButton = root.querySelector('[data-assistant-text-decrease]');
   const textIncreaseButton = root.querySelector('[data-assistant-text-increase]');
   const textStatus = root.querySelector('[data-assistant-text-status]');
@@ -119,7 +120,7 @@
       clearInvitation();
       if (pageEngaged) scheduleInvitation();
     }
-    if (!pageEngaged && open) setOpen(false, false);
+    if (!pageEngaged && open && !desktopMedia.matches) setOpen(false, false);
   }
 
   function launcherTopPosition() {
@@ -180,7 +181,9 @@
     clearInvitation();
     resetDragStyles();
     root.classList.toggle('is-open', open);
+    document.body.classList.toggle('news-assistant-desktop-open', open && desktopMedia.matches);
     launcher.setAttribute('aria-expanded', open ? 'true' : 'false');
+    navbarTriggers.forEach((trigger) => trigger.setAttribute('aria-expanded', open ? 'true' : 'false'));
     panel.setAttribute('aria-hidden', open ? 'false' : 'true');
     panel.setAttribute('aria-modal', open && isMobile() ? 'true' : 'false');
     panel.hidden = !open;
@@ -271,12 +274,10 @@
       link.addEventListener('click', (event) => {
         if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
         event.preventDefault();
-        const mobile = isMobile();
-        if (!mobile) setOpen(false, false);
         window.dispatchEvent(new CustomEvent('portal:abrir-noticia', {
           detail: {
             storyId: link.dataset.storyId,
-            trigger: mobile ? link : launcher,
+            trigger: link,
             fallbackUrl: link.href,
             templateEndpoint: storyEndpoint,
           },
@@ -385,6 +386,7 @@
   }
 
   launcher.addEventListener('click', () => setOpen(!open));
+  navbarTriggers.forEach((trigger) => trigger.addEventListener('click', () => setOpen(true)));
   window.addEventListener('portal:abrir-asistente', () => setOpen(true));
   closeButton?.addEventListener('click', () => setOpen(false));
   backdrop?.addEventListener('click', () => setOpen(false));
@@ -478,8 +480,12 @@
     scheduleLauncherVisibility();
     scheduleInvitation();
   };
-  if (typeof desktopMedia.addEventListener === 'function') desktopMedia.addEventListener('change', handleInvitationContextChange);
-  else if (typeof desktopMedia.addListener === 'function') desktopMedia.addListener(handleInvitationContextChange);
+  const handleDesktopChange = () => {
+    if (open) setOpen(false, false);
+    handleInvitationContextChange();
+  };
+  if (typeof desktopMedia.addEventListener === 'function') desktopMedia.addEventListener('change', handleDesktopChange);
+  else if (typeof desktopMedia.addListener === 'function') desktopMedia.addListener(handleDesktopChange);
   if (typeof reducedMotionMedia.addEventListener === 'function') reducedMotionMedia.addEventListener('change', handleInvitationContextChange);
   else if (typeof reducedMotionMedia.addListener === 'function') reducedMotionMedia.addListener(handleInvitationContextChange);
 
