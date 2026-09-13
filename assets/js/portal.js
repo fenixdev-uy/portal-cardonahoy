@@ -219,6 +219,7 @@
     const menuNewsSearch = document.querySelector('[data-menu-news-search]');
     const menuNewsSearchInput = menuNewsSearch?.querySelector('input[type="search"]');
     const menuNewsSearchResults = menuNewsSearch?.querySelector('.menu-news-search-results');
+    const menuAssistantButton = document.querySelector('[data-menu-assistant-open]');
     let menuNewsSearchTimer = null;
     let menuNewsSearchController = null;
 
@@ -256,6 +257,15 @@
     });
 
     closeMenuBtn.addEventListener('click', closeMenu);
+
+    menuAssistantButton?.addEventListener('click', () => {
+      closeMenu();
+      window.setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('portal:abrir-asistente', {
+          detail: { trigger: menuAssistantButton },
+        }));
+      }, 260);
+    });
 
     // Cierra el menú al hacer clic en un enlace
     menuLinks.forEach((link) => {

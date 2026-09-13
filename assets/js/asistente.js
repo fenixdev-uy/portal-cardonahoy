@@ -11,6 +11,9 @@
   const backdrop = root.querySelector('[data-assistant-backdrop]');
   const launcher = root.querySelector('[data-assistant-launcher]');
   const closeButton = root.querySelector('[data-assistant-close]');
+  const textDecreaseButton = root.querySelector('[data-assistant-text-decrease]');
+  const textIncreaseButton = root.querySelector('[data-assistant-text-increase]');
+  const textStatus = root.querySelector('[data-assistant-text-status]');
   const messages = root.querySelector('[data-assistant-messages]');
   const form = root.querySelector('[data-assistant-form]');
   const input = root.querySelector('[data-assistant-input]');
@@ -34,11 +37,43 @@
   const desktopMedia = window.matchMedia('(min-width: 1025px)');
   const reducedMotionMedia = window.matchMedia('(prefers-reduced-motion: reduce)');
   const isMobile = () => mobileMedia.matches;
+  const textSizeKey = root.dataset.textSizeKey || 'portal_asistente_texto';
+  const textScales = [0.9, 1, 1.1, 1.2, 1.3, 1.4];
+  let textScaleIndex = 1;
   const invitationFirstDelay = 5000;
   const invitationRepeatDelay = 18000;
   const invitationVisibleTime = 3000;
   let invitationTimer = 0;
   let invitationCloseTimer = 0;
+
+  function storedTextScaleIndex() {
+    try {
+      const stored = Number(window.localStorage.getItem(textSizeKey));
+      const index = textScales.findIndex((scale) => Math.abs(scale - stored) < 0.001);
+      return index >= 0 ? index : 1;
+    } catch (error) {
+      return 1;
+    }
+  }
+
+  function applyTextScale(index, persist = true) {
+    textScaleIndex = Math.min(textScales.length - 1, Math.max(0, index));
+    const scale = textScales[textScaleIndex];
+    const percentage = Math.round(scale * 100);
+    root.style.setProperty('--assistant-text-scale', String(scale));
+    if (textDecreaseButton) textDecreaseButton.disabled = textScaleIndex === 0;
+    if (textIncreaseButton) textIncreaseButton.disabled = textScaleIndex === textScales.length - 1;
+    if (textStatus) {
+      textStatus.textContent = `Tamaño de texto ${percentage}%`;
+    }
+    if (persist) {
+      try {
+        window.localStorage.setItem(textSizeKey, String(scale));
+      } catch (error) {
+        // El control continúa funcionando aunque el navegador bloquee almacenamiento local.
+      }
+    }
+  }
 
   function clearInvitation() {
     window.clearTimeout(invitationTimer);
@@ -350,8 +385,11 @@
   }
 
   launcher.addEventListener('click', () => setOpen(!open));
+  window.addEventListener('portal:abrir-asistente', () => setOpen(true));
   closeButton?.addEventListener('click', () => setOpen(false));
   backdrop?.addEventListener('click', () => setOpen(false));
+  textDecreaseButton?.addEventListener('click', () => applyTextScale(textScaleIndex - 1));
+  textIncreaseButton?.addEventListener('click', () => applyTextScale(textScaleIndex + 1));
 
   function finishDrag(event) {
     if (event.pointerId !== dragPointer) return;
@@ -366,7 +404,7 @@
   }
 
   panelHeader?.addEventListener('pointerdown', (event) => {
-    if (!isMobile() || !open || event.pointerType === 'mouse' || event.target.closest('[data-assistant-close]')) return;
+    if (!isMobile() || !open || event.pointerType === 'mouse' || event.target.closest('button')) return;
     dragPointer = event.pointerId;
     dragStartY = event.clientY;
     dragStartTime = performance.now();
@@ -447,9 +485,15 @@
 
   document.addEventListener('visibilitychange', handleInvitationContextChange);
 
+  window.addEventListener('storage', (event) => {
+    if (event.key !== textSizeKey) return;
+    applyTextScale(storedTextScaleIndex(), false);
+  });
+
   window.addEventListener('scroll', scheduleLauncherVisibility, { passive: true });
   window.addEventListener('resize', scheduleLauncherVisibility);
 
   updateLauncherVisibility();
+  applyTextScale(storedTextScaleIndex(), false);
   updateComposer();
 })();

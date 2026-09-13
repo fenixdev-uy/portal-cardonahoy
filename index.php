@@ -233,6 +233,29 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
       <img src="<?= e($logoPortalUrl) ?>" alt="Logo del portal" />
     </a>
 
+<?php if ($asistentePublico['activo']): ?>
+    <div class="menu-assistant-cta-wrap">
+      <button
+        class="menu-assistant-cta"
+        type="button"
+        data-menu-assistant-open
+        aria-controls="newsAssistantPanel"
+        aria-label="Explorá las noticias con nuestro asistente de IA"
+      >
+        <span class="menu-assistant-cta-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M12 2.8 13.65 8.35 19.2 10l-5.55 1.65L12 17.2l-1.65-5.55L4.8 10l5.55-1.65L12 2.8Z" fill="currentColor"/>
+            <path d="m18.5 15.5.7 2.3 2.3.7-2.3.7-.7 2.3-.7-2.3-2.3-.7 2.3-.7.7-2.3Z" fill="currentColor" opacity=".72"/>
+          </svg>
+        </span>
+        <span class="menu-assistant-cta-copy">
+          <strong>Explorá las noticias</strong>
+          <span>con nuestro asistente de IA</span>
+        </span>
+        <span class="menu-assistant-cta-sparkles" aria-hidden="true"><i></i><i></i><i></i></span>
+      </button>
+    </div>
+<?php else: ?>
     <div class="menu-news-search" role="search" data-menu-news-search data-search-url="<?= e(url_portal('buscar-noticias.php')) ?>">
       <label class="menu-news-search-field" for="menuNewsSearchInput">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
@@ -243,6 +266,7 @@ $misVotos = votos_del_visitante($pdo, visitante_id());
       </label>
       <div class="menu-news-search-results" id="menuNewsSearchResults" aria-live="polite" hidden></div>
     </div>
+<?php endif; ?>
 
   </div>
 

@@ -10,15 +10,21 @@ Backend de noticias para la landing page. Las noticias se administran desde un p
 
 **Estado actual:** panel protegido con login, usuarios, roles/permisos, noticias, categorías y galería. El slider y los dos feeds del front, PC y móvil, están conectados al backend.
 
-El árbol aprobado quedó consolidado en el checkpoint Git del 11 de septiembre de 2026. Cardona Hoy PROD ya contiene partes publicadas selectivamente; cualquier actualización restante requiere comparar, respaldar y desplegar únicamente las diferencias verificadas.
+El baseline anterior quedó consolidado en el checkpoint Git del 11 de septiembre. La evolución completa del asistente público y su nueva paleta se incluyen en el checkpoint Git autorizado del 12 de septiembre de 2026. Cardona Hoy PROD ya contiene estas partes publicadas selectivamente; cualquier actualización restante requiere comparar, respaldar y desplegar únicamente diferencias verificadas.
 
 ### Asistente público de noticias
 
-Cardona Hoy DEV incorpora el asistente público aprobado en Portal Base, completamente separado del asistente editorial del administrador. La portada muestra la burbuja sólo cuando está activa; su título, detalle y mensaje de bienvenida se administran desde Configuración. El historial tiene una pantalla protegida por `asistente.ver`, y ese acceso se oculta junto con la burbuja al desactivar el asistente.
+Cardona Hoy DEV y PROD incorporan el asistente público aprobado, completamente separado del asistente editorial del administrador. La portada muestra la burbuja sólo cuando está activa; su título, detalle y mensaje de bienvenida se administran desde Configuración. El historial tiene una pantalla protegida por `asistente.ver`, y ese acceso se oculta junto con la burbuja al desactivar el asistente.
+
+El panel público ofrece controles accesibles **A− / A+** en PC y móvil para ajustar el texto entre 90% y 140%. La elección se conserva en el navegador con una clave aislada para Cardona Hoy; el panel PC dispone además de un ancho mayor para facilitar la lectura.
+
+En DEV y PROD, el buscador del menú de la portada se sustituye provisionalmente por una invitación responsive para explorar las noticias con el asistente. Al pulsarla, el menú se cierra y abre el mismo chat; si el asistente se desactiva desde Configuración, el buscador tradicional vuelve a mostrarse.
+
+Las consultas por hoy, ayer, anteayer, esta semana o semana pasada filtran primero las publicaciones mediante la fecha pública y la zona `America/Montevideo`. Para pedidos de noticias **importantes, relevantes, destacadas, principales, populares, más leídas o más vistas**, el servidor toma las lecturas como índice de interés y ordena por vistas, fecha e ID; la IA sólo redacta y resume el resultado. El contador nunca se muestra ni se entrega en las tarjetas.
 
 La validación funcional en Cardona Hoy DEV quedó aprobada el 12 de septiembre de 2026. Incluyó respuestas y cards reales, categorías múltiples, fechas relativas, contexto conversacional, tolerancia ortográfica, consultas repetidas y casos sin coincidencias. Al terminar se vació exclusivamente el historial de prueba: las tablas quedaron con cero conversaciones y cero mensajes, sin modificar noticias ni configuración.
 
-El runtime privado vive en `asistente/servicios.runtime.local.json`, con modo `600`, fuera de Git y bloqueado por Apache. Para instalaciones existentes, las tablas del historial, el permiso y su asignación al Administrador se agregan con `php install/asistente-historial-v1.php --environment=development|production`; cada ejecución requiere identificar y respaldar previamente la base del ambiente correcto. Cardona Hoy DEV ya recibió esta migración de forma respaldada e idempotente; PROD no recibió este módulo.
+El runtime privado vive en `asistente/servicios.runtime.local.json`, con modo `600`, fuera de Git y bloqueado por Apache. Para instalaciones existentes, las tablas del historial, el permiso y su asignación al Administrador se agregan con `php install/asistente-historial-v1.php --environment=development|production`; cada ejecución requiere identificar y respaldar previamente la base del ambiente correcto. Cardona Hoy DEV y PROD ya recibieron esta migración de forma respaldada e idempotente. PROD tiene el módulo activo desde el 12 de septiembre de 2026 y recibió después el selector semántico global: ante una búsqueda estricta vacía, DeepSeek recibe sólo el catálogo de publicaciones —ID, título, fecha y categorías—, el servidor valida la selección y recién después entrega los textos completos para responder. Las fechas, el orden, el estado Publicada y los enlaces permanecen bajo control del servidor. La validación funcional PROD confirmó recuperación semántica correcta para Silvana Clavero y la oferta educativa de UTU, rechazo de un tema inexistente y tolerancia de `utlima`.
 
 ### Borradores de noticias
 

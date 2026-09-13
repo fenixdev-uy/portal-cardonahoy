@@ -468,7 +468,8 @@
       }
     }
 
-    .menu-news-search {
+    .menu-news-search,
+    .menu-assistant-cta-wrap {
       position: relative;
       z-index: 2;
       display: block;
@@ -478,11 +479,102 @@
       transition: opacity .45s ease, transform .45s ease;
     }
 
-    .menu-overlay.open .menu-news-search {
+    .menu-overlay.open .menu-news-search,
+    .menu-overlay.open .menu-assistant-cta-wrap {
       opacity: 1;
       transform: translateY(0);
       transition-delay: .08s;
     }
+
+    .menu-assistant-cta {
+      position: relative;
+      display: grid;
+      width: 100%;
+      min-height: 86px;
+      grid-template-columns: 58px minmax(0, 1fr) 76px;
+      gap: 16px;
+      align-items: center;
+      padding: 13px 18px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, .76);
+      border-radius: 999px;
+      color: #fff;
+      background:
+        radial-gradient(circle at 86% 20%, rgba(255, 255, 255, .12), transparent 24%),
+        linear-gradient(120deg, rgba(5, 5, 6, .97), rgba(23, 25, 27, .95) 62%, rgba(54, 58, 62, .92));
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .32), inset 0 1px 0 rgba(255, 255, 255, .16);
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+    }
+
+    .menu-assistant-cta:hover,
+    .menu-assistant-cta:focus-visible {
+      outline: 0;
+      transform: translateY(-2px);
+      border-color: #d6d8da;
+      box-shadow: 0 28px 76px rgba(0, 0, 0, .44), 0 0 0 4px rgba(230, 232, 234, .12);
+    }
+
+    .menu-assistant-cta-icon {
+      display: grid;
+      width: 58px;
+      height: 58px;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, .32);
+      border-radius: 50%;
+      color: #f0f1f2;
+      background: rgba(255, 255, 255, .09);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14);
+    }
+
+    .menu-assistant-cta-icon svg {
+      width: 31px;
+      height: 31px;
+    }
+
+    .menu-assistant-cta-copy {
+      display: grid;
+      min-width: 0;
+      gap: 3px;
+    }
+
+    .menu-assistant-cta-copy strong {
+      font-size: clamp(1.18rem, 2vw, 1.48rem);
+      font-weight: 900;
+      letter-spacing: -.025em;
+      line-height: 1.05;
+    }
+
+    .menu-assistant-cta-copy > span {
+      color: rgba(255, 255, 255, .78);
+      font-size: .91rem;
+      font-weight: 650;
+      letter-spacing: .035em;
+    }
+
+    .menu-assistant-cta-sparkles {
+      position: relative;
+      display: block;
+      width: 76px;
+      height: 48px;
+      justify-self: end;
+    }
+
+    .menu-assistant-cta-sparkles i {
+      position: absolute;
+      display: block;
+      width: 9px;
+      height: 9px;
+      background: #fff;
+      clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+      filter: drop-shadow(0 0 7px rgba(230, 232, 234, .62));
+    }
+
+    .menu-assistant-cta-sparkles i:nth-child(1) { top: 4px; right: 4px; width: 23px; height: 23px; }
+    .menu-assistant-cta-sparkles i:nth-child(2) { right: 36px; bottom: 3px; width: 13px; height: 13px; opacity: .8; }
+    .menu-assistant-cta-sparkles i:nth-child(3) { top: 5px; left: 5px; width: 7px; height: 7px; opacity: .62; }
 
     .menu-news-search-field {
       display: flex;
@@ -620,9 +712,33 @@
       .menu-logo img {
         width: var(--portal-logo-mobile, 115px);
       }
-      .menu-news-search {
+      .menu-news-search,
+      .menu-assistant-cta-wrap {
         width: calc(100vw - 32px);
       }
+      .menu-assistant-cta {
+        min-height: 78px;
+        grid-template-columns: 48px minmax(0, 1fr) 38px;
+        gap: 11px;
+        padding: 12px 14px;
+      }
+      .menu-assistant-cta-icon {
+        width: 48px;
+        height: 48px;
+      }
+      .menu-assistant-cta-icon svg {
+        width: 27px;
+        height: 27px;
+      }
+      .menu-assistant-cta-copy strong { font-size: 1.06rem; }
+      .menu-assistant-cta-copy > span { font-size: .78rem; }
+      .menu-assistant-cta-sparkles {
+        width: 38px;
+        height: 42px;
+      }
+      .menu-assistant-cta-sparkles i:nth-child(1) { width: 19px; height: 19px; }
+      .menu-assistant-cta-sparkles i:nth-child(2) { right: 19px; width: 10px; height: 10px; }
+      .menu-assistant-cta-sparkles i:nth-child(3) { display: none; }
       .menu-news-search-field {
         height: 56px;
         gap: 10px;

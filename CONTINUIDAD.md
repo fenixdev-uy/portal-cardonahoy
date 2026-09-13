@@ -1,5 +1,111 @@
 # Continuidad — Portal de Noticias
 
+## Cierre Git autorizado del asistente público — 12 de septiembre de 2026
+
+- El usuario autorizó consolidar y subir al remoto independiente de Cardona Hoy todo el lote aprobado: interpretación flexible, fechas relativas, popularidad por vistas, CTA del menú, controles **A− / A+** y paleta negro/grafito con conversación clara tramada.
+- El checkpoint registra además la evidencia de las publicaciones PROD ya efectuadas. Esta operación Git no implica un nuevo despliegue, migración, limpieza de historial ni modificación de datos.
+
+## Acceso del menú alineado con la paleta del asistente y publicado en PROD — 12 de septiembre de 2026
+
+- Corrección solicitada tras revisar PROD: `assets/css/portal.css` reemplaza únicamente los azules/turquesas del CTA **Explorá las noticias** por el degradado negro/grafito, icono gris claro, foco gris y destellos blancos ya usados por la burbuja y el encabezado del chat.
+- DEV se validó primero. Con autorización expresa se publicó únicamente `assets/css/portal.css`; el preflight FTPS/TLS confirmó el baseline remoto `0512ede2…` y cero conflictos. El original quedó respaldado en `.deploy/respaldos/20260912_204842-menu-asistente-paleta-prod/`.
+- El reemplazo temporal/atómico terminó con 76.942 bytes y SHA-256 local/FTPS/HTTPS `e8158b70ca5679cbe316ecc3198b7f08ab734e6a8c6f5880d9ad77393b0d4e94`; cero temporales remotos.
+- Browser plugin no disponible; Chromium/Puppeteer en PROD validó `1440×900` y `390×844`: CTA único, buscador oculto, medidas `680×86`/`358×78`, estilos calculados sin azul, texto completo, cero overflow y apertura correcta del chat después del clic. La consola conserva únicamente el bloqueo CSP preexistente de Google Fonts y solicitudes deliberadamente abortadas por el QA.
+- Evidencia PROD: `/tmp/pntest/capturas/cardonahoy-menu-ia-negro-prod-{desktop,mobile}.png` y `cardonahoy-menu-ia-negro-panel-prod-{desktop,mobile}.png`. Sin cambios en HTML, JavaScript, datos, historial o Mantenimiento; sin commit ni push.
+
+## Paleta negro/grafito y blanco tramado publicada en PROD — 12 de septiembre de 2026
+
+- Por solicitud del usuario se trasladaron a `assets/css/asistente.css` los mismos colores aprobados en RS Medios: burbuja y encabezado negro/grafito, fondo de conversación blanco con puntos grises muy sutiles, mensajes/sugerencias/cards claros y base del compositor gris con textarea blanco.
+- El cambio es exclusivamente visual. No modifica HTML, JavaScript, motor, historial, datos ni configuración. Se excluyó deliberadamente la regla móvil que eleva la burbuja en RS Medios sobre su barra de tres opciones, inexistente en Cardona Hoy.
+- DEV fue validado primero. Con autorización expresa se publicó únicamente `assets/css/asistente.css` en Cardona Hoy PROD. El preflight FTPS/TLS confirmó que la copia remota coincidía con el baseline `f717b5ae…`, con cero conflictos; el original quedó respaldado en `.deploy/respaldos/20260912_203956-asistente-paleta-prod/`.
+- El reemplazo temporal/atómico terminó con 31.818 bytes y SHA-256 local/FTPS/HTTPS `17ab13c3523febaee119a6a3c7757971d88b3a8c23e38d1d7671c8ec8af494ba`; no quedaron temporales remotos.
+- Browser plugin no disponible; Chromium/Puppeteer sobre `https://cardonahoy.com/` validó `1440×900` y `390×844`: portada 200, launcher expandido, panel abierto, A−/A+ presentes, colores calculados y trama correctos, cero overflow y cero errores de aplicación. Runtime privado 403 y endpoint GET 405; no se enviaron consultas.
+- Evidencia PROD: `/tmp/pntest/capturas/cardonahoy-asistente-paleta-prod-{launcher,chat}-{desktop,mobile}.png`. Sin base de datos, historial, Mantenimiento, commit ni push.
+
+## Punto de pausa vigente — invitación al asistente desde el menú publicada en PROD — 12 de septiembre de 2026
+
+- En la portada, `index.php` reemplaza provisionalmente el buscador del menú responsive por una llamada **“Explorá las noticias / con nuestro asistente de IA”** únicamente cuando `asistente_publico_activo` está habilitado. Si se desactiva, se conserva como fallback el buscador AJAX anterior.
+- La cápsula nació con colores azul/turquesa; el cierre posterior documentado arriba la reemplazó por negro/grafito, icono gris claro y estrellas blancas. Sus estilos responsive viven en `assets/css/portal.css`.
+- `assets/js/portal.js` cierra primero el menú y emite `portal:abrir-asistente`; `assets/js/asistente.js` consume ese evento y abre el panel existente. No se duplica estado, historial, endpoint ni interfaz.
+- Browser plugin no disponible; QA con Puppeteer/Chromium sobre la URL HTTPS DEV en `1440×900` y `390×844`: portada correcta, contenido no vacío, `searchCount=0`, `ctaCount=1`, llamada completamente visible, `680×86` PC y `358×78` móvil, menú cerrado después del clic, asistente abierto, `aria-hidden=false`, bloqueo corporal móvil correcto y cero overflow.
+- El foco final fue `newsAssistantInput` en PC y `newsAssistantPanel` en móvil. La consola contiene únicamente el bloqueo preexistente de Google Fonts por CSP. Evidencia: `/tmp/pntest/capturas/cardonahoy-menu-ia-{desktop,mobile}.png` y `cardonahoy-menu-ia-panel-{desktop,mobile}.png`.
+- `php -l index.php`, `node --check assets/js/portal.js`, `node --check assets/js/asistente.js` y `git diff --check` pasaron.
+- Con autorización expresa se publicaron únicamente `index.php`, `assets/css/portal.css`, `assets/js/portal.js` y `assets/js/asistente.js`. El preflight FTPS confirmó cero conflictos y el original recuperable quedó en `.deploy/respaldos/20260912_193631-menu-asistente-prod/`; los cuatro hashes y tamaños finales coinciden con DEV y no quedaron temporales.
+- Postflight PROD: portada y tres assets `200`, configuración privada `403`. Chromium/Puppeteer pasó en `1440×900` y `390×844`: un CTA, cero buscadores, medidas `680×86`/`358×78`, menú cerrado, asistente abierto, foco correcto y cero overflow. No hubo base de datos, historial, Mantenimiento, commit ni push.
+
+## Punto de pausa vigente — historial QA limpiado en PROD — 12 de septiembre de 2026
+
+- Por autorización expresa se limpió exclusivamente el historial de pruebas del asistente público en la base PROD con huella `b83ead0fb903`, conservando el último test como evidencia.
+- El preflight encontró 20 conversaciones y 88 mensajes. La más reciente era la ID 20, iniciada con **“¿Cuál es la noticia más importante de esta semana?”**, actualizada a las 19:09:36 y con 10 mensajes; fue la única conversación preservada.
+- Antes de escribir se descargó el respaldo privado completo `.deploy/respaldos-db/20260912_191623-asistente-historial-prod/asistente-historial-prod.json`: 69.561 bytes, modo `600`, 20 conversaciones, 88 mensajes y SHA-256 `64cfcc0cd44a6eeabbb59ab5aa0e5f50272b84f085458d9831fe1be994709b7b`.
+- La transacción bloqueó y volvió a comprobar alcance, conteos y conversación más reciente antes de borrar. Eliminó exactamente 19 conversaciones y 78 mensajes mediante la relación en cascada; el postflight confirmó 1 conversación y 10 mensajes.
+- Invariantes PROD antes/después: 149 noticias, 11.241 vistas acumuladas y Mantenimiento `0`. No se modificaron noticias, vistas, configuración, esquema ni código.
+- El runner autenticado temporal quedó ausente por FTPS y responde HTTP `404`; no quedaron temporales remotos. No hubo commit ni push.
+
+## Punto de pausa vigente — popularidad por vistas publicada en PROD — 12 de septiembre de 2026
+
+- Por decisión del usuario, **importante**, **relevante**, **destacada**, **principal**, **popular**, **más leída** y **más vista** representan el interés real de la población medido mediante `noticias.vistas`; no se aplica una jerarquización editorial propia de DeepSeek.
+- `asistente/consultar.php` detecta esas expresiones —incluidas variantes y errores ortográficos breves—, retira sus palabras de la búsqueda temática y ordena en SQL por `n.vistas DESC`, fecha pública descendente e ID descendente. Puede devolver una noticia o hasta cinco según singular/plural.
+- El filtro temporal usa `publicada_at` y límites exclusivos en `America/Montevideo`. Además de hoy, ayer y anteayer, reconoce esta semana —lunes actual a lunes siguiente— y semana pasada —lunes anterior a lunes actual—.
+- DeepSeek conserva la redacción natural y el resumen, pero recibe una instrucción verificada para respetar el orden del servidor. No recibe cifras de vistas. La respuesta y el historial guardan únicamente ID, título, resumen, fecha, categorías, imagen y URL.
+- La base DEV confirmó el orden esperado: ID 11 con 15 vistas; plural `[11,8,7,6,5]`. QA HTTPS devolvió ese mismo singular/plural, `improtante` resolvió ID 11 y semana pasada sin publicaciones respondió vacío.
+- Se identificaron en `fenixdev_noticias-cardonahoy` exactamente las conversaciones QA 64–67 y sus ocho mensajes. Se eliminaron transaccionalmente por ID y cascada; los conteos volvieron de 29/100 a 25/92.
+- `php -l asistente/consultar.php` y `git diff --check` pasaron. Por autorización expresa se publicó únicamente ese archivo en Cardona Hoy PROD.
+- El preflight FTPS/TLS descargó la versión remota y confirmó el hash esperado `b640728a…`, por lo que hubo cero conflictos. El original quedó en `.deploy/respaldos/20260912_190624-asistente-popularidad-prod/`; la carga temporal, el renombrado atómico y la descarga final verificaron 64.077 bytes y SHA-256 `ab470097c54b9bf49b1127650f7fe1852bce3fd1728195a9e240dfe1870e2d57`, sin temporales remotos.
+- Postflight seguro: portada `200`, endpoint GET `405` y runtime privado `403`. No se envió una nueva pregunta automática en PROD, por lo que este despliegue no agregó historial de QA; la prueba con contenido real queda para el usuario desde el chat público.
+- No hubo migración, modificación de noticias, vistas, historial o Mantenimiento, commit ni push. Los demás cambios locales aprobados permanecieron intactos.
+
+## Punto de pausa vigente — consultas relevantes por fecha publicadas en PROD — 12 de septiembre de 2026
+
+- La frase **“cuales son las noticias mas relevantes de ayer”** sí detectaba `ayer`, pero `relevantes` sobrevivía como término temático obligatorio. Al no existir literalmente en títulos o contenidos del día, el recuperador devolvía “sobre este tema” antes de consultar a DeepSeek.
+- `asistente/consultar.php` trata ahora relevante/importante/destacada/principal y sus variantes como criterios de selección, no como temas. También retira expresiones generales como disponible, portal, sitio, acá, debería y saber para que el tema real —si existe— quede limpio.
+- Las consultas amplias de hoy, ayer o anteayer recuperan hasta 15 publicaciones dentro del rango SQL exacto calculado en `America/Montevideo`. DeepSeek recibe la fecha y hora actuales del portal, el rango ya verificado y sólo esas fuentes; puede jerarquizarlas y resumirlas, pero no ampliar fechas, inventar enlaces ni incorporar publicaciones fuera del día.
+- QA HTTP real en DEV: la frase exacta con “ayer” devolvió **No hay noticias publicadas ayer en el portal** porque las 8 publicaciones DEV son anteriores, demostrando que ya no interpreta relevancia como tema. La consulta amplia sin fecha llegó a DeepSeek con 8 candidatas, respondió en modo `relevantes` y eligió las fuentes de Indulacsa y Noche de la Nostalgia.
+- Las tres conversaciones y seis mensajes creados por estas pruebas se identificaron por token y se eliminaron dentro de una transacción. Los conteos DEV volvieron exactamente de 28 conversaciones/98 mensajes a 25/92. PHP y `git diff --check` pasaron; el servidor temporal se detuvo.
+- Con autorización expresa se publicó únicamente `asistente/consultar.php` en PROD. TLS y hostname válidos, cero conflictos contra el hash `3cdc6812…`, respaldo `.deploy/respaldos/20260912_183851-asistente-relevancia-fecha-prod/`, reemplazo atómico, cero temporales y hash final local/FTPS `b640728aee9b1bc5c62f9c9cd8e0ee479dda997dee11efc2eecc193e242eec2c`.
+- Postflight PROD: portada 200, endpoint GET 405 y runtime privado 403. La consulta exacta recuperó 8 publicaciones del 11 de septiembre, usó DeepSeek en modo `relevantes_temporales` y devolvió cuatro cards verificadas: IDs 151, 153, 154 y 152. No incorporó publicaciones de otro día.
+- El smoke agregó una conversación y dos mensajes al historial PROD; se conservaron porque no hubo autorización de limpieza. **No se ejecutó migración, cambio de datos editoriales, Mantenimiento, commit ni push.**
+
+## Punto de pausa vigente — accesibilidad de texto del asistente publicada en PROD — 12 de septiembre de 2026
+
+- El chat PC quedó aproximadamente 10% más ancho: `clamp(420px, 32vw, 480px)`, con 461px medidos a 1440px. PC y móvil muestran **A− / A+** inmediatamente antes de Cerrar y permiten seis niveles entre 90% y 140%.
+- La escala se conserva en `localStorage` con la clave exclusiva `portal_asistente_texto_cardonahoy`; se aplica a mensajes, sugerencias, cards y campo de escritura. Los controles tienen grupo, nombres accesibles, estado `aria-live` y límites deshabilitados.
+- Se publicaron únicamente `partials/asistente.php`, `assets/js/asistente.js` y `assets/css/asistente.css`. El preflight FTPS/TLS tuvo cero conflictos; los respaldos recuperables están en `.deploy/respaldos/20260912_182044-asistente-accesibilidad-prod/` y `.deploy/respaldos/20260912_182431-asistente-header-mobile-prod/`. Los reemplazos fueron atómicos y no quedaron temporales remotos.
+- La revisión visual PROD detectó que la fuente de respaldo —Google Fonts continúa bloqueada por la CSP preexistente— ensanchaba el título móvil. Se compactó sólo ese encabezado y la captura final confirmó **Asistente de noticias** completo con A−, A+ y Cerrar visibles.
+- QA PROD pasó en `1440×900`, `390×844` y `320×568`: portada 200, persistencia 100% → 120% después de recargar, panel PC de 461px, clave aislada correcta, encabezado contenido y cero overflow. Los hashes finales son `66e5840d…` para el parcial, `ac3548c2…` para JavaScript y `f717b5ae…` para CSS. Runtime privado 403 y endpoint GET 405.
+- Analytics y Popups fueron bloqueados durante la automatización para no alterar métricas. No hubo consultas al asistente, cambios de historial, SQL, Mantenimiento, commit ni push. Capturas: `/tmp/pntest/capturas/cardonahoy-asistente-accesibilidad-prod-desktop.png` y `/tmp/pntest/capturas/cardonahoy-asistente-accesibilidad-prod-mobile.png`.
+
+## Punto de pausa vigente — ajuste visual del campo móvil publicado y validado en PROD — 12 de septiembre de 2026
+
+- Se ocultó únicamente el indicador vertical de desplazamiento del `textarea` móvil del asistente mediante `scrollbar-width: none`, `-ms-overflow-style: none` y `::-webkit-scrollbar`; el desplazamiento interno continúa disponible cuando el texto supera la altura máxima.
+- QA Chromium/Puppeteer —Browser plugin no disponible— en `390×844`: contenido interno de 305 px dentro de 100 px visibles, `canScroll=true`, scrollbar WebKit `display:none`/`width:0px`, botón habilitado, separación de 9 px, panel abierto, cero overflow horizontal y cero errores de consola. Captura: `/tmp/pntest/capturas/cardonahoy-asistente-sin-raya-mobile.png`.
+- Con autorización expresa se publicó únicamente `assets/css/asistente.css` en PROD. TLS 1.3 válido, cero conflictos, respaldo `.deploy/respaldos/20260912_180458-asistente-sin-scrollbar-prod/assets/css/asistente.css`, reemplazo atómico y hash local/FTPS/HTTPS `9034ec3ebfc9e831679658c8c52faddbbe3772a69298cf6a860ad7cfcf8c9044`; cero temporales remotos.
+- QA Chromium/Puppeteer PROD en `390×844`: 348 px de contenido dentro de 100 px visibles, scroll preservado, indicador WebKit oculto a `0px`, botón habilitado, separación de 9 px y cero overflow. La única consola fue Google Fonts bloqueada por la CSP preexistente. Captura: `/tmp/pntest/capturas/cardonahoy-asistente-sin-raya-prod-mobile.png`.
+- El manifiesto operativo quedó actualizado. No hubo cambios de datos, historial, Mantenimiento, commit ni push.
+
+## Punto de pausa vigente — selector semántico publicado y validado en PROD — 12 de septiembre de 2026
+
+- El fallo no estaba en la capacidad de DeepSeek para comprender la pregunta, sino en la selección previa de fuentes. “bien cual es la oferta educativa nueva de la utu de que trata” activaba Educación y luego exigía que todos los términos restantes coincidieran dentro de la misma publicación; el endpoint terminaba con `ia_utilizada=false`. “había una muchacha desaparecida” dependía de que la nota correcta entrara en un lote de hasta 15 candidatas.
+- `asistente/consultar.php` agrega en DEV una recuperación semántica de dos etapas cuando falla la búsqueda estricta. La primera llamada recibe únicamente ID, título, fecha y categorías de hasta 250 noticias con estado Publicada y devuelve como máximo 8 IDs; el servidor descarta IDs ajenos, vuelve a comprobar que continúen publicadas y recién entonces carga su contenido para la respuesta final.
+- La búsqueda léxica relajada queda como degradación si el selector no está disponible. Fechas extremas, noticias recientes, enlaces y tarjetas continúan bajo decisión del servidor; el asistente editorial permanece totalmente separado.
+- QA HTTP DEV autorizado: la expresión indirecta “qué complejo lechero pusieron a la venta” y el error “indulasca” encontraron la noticia 11 con `seleccion_semantica_catalogo=true`; “ovnis en Cardona” respondió sin cards. Silvana y UTU devolvieron vacío de forma correcta porque DEV sólo contiene 8 publicaciones y ninguna trata esos temas.
+- Cierre DEV: todos los POST devolvieron HTTP 200, `php -l asistente/consultar.php` y `git diff --check` correctos, y el servidor PHP temporal fue detenido. El historial DEV total quedó en 25 conversaciones/92 mensajes; no se borró ningún registro.
+- Con autorización expresa se publicó únicamente `asistente/consultar.php` en Cardona Hoy PROD. TLS 1.3 y hostname válidos; la copia remota previa coincidió con el estado (`9abf99c…`), quedó respaldada en `.deploy/respaldos/20260912_174133-selector-semantico-prod/asistente/consultar.php`, y el reemplazo temporal/atómico terminó con hash local-remoto `3cdc6812d0e44441701049be54fa608f2a899145a7563f5a9e042fc066265be6` y cero temporales.
+- Postflight: portada `200`, GET del endpoint `405`, runtime privado `403` y batería funcional autorizada completa. “había una muchacha desaparecida” devolvió IDs `[94,92]`; la oferta educativa de UTU, `[153,107]`; OVNIs, cero cards; y `utlima`, la última noticia ID 158. El manifiesto operativo quedó actualizado con el hash verificado y el despliegue marcado `verified_pending_user_confirmation`.
+- Las cuatro consultas finales y las dos reproducciones diagnósticas anteriores agregaron seis conversaciones de QA además de las cinco del smoke inicial. No se borró historial, no hubo migración, cambio de Mantenimiento, commit ni push.
+
+## Asistente público activo en Cardona Hoy PROD — 12 de septiembre de 2026
+
+- Por autorización expresa del usuario se publicó el asistente público completo en `https://cardonahoy.com/`, totalmente separado del asistente editorial **Crear noticia con IA**.
+- El preflight FTPS usó TLS verificado, huella PROD `b83ead0fb903` y cero conflictos reales. Se agregaron 9 archivos, se reemplazaron 6 y no se borró ninguno; los 15 hashes finales coinciden y no quedaron temporales remotos.
+- Respaldos de código: `.deploy/respaldos/20260912_171035-asistente-prod/` antes de la activación y `.deploy/respaldos/20260912_171035-asistente-prod-ajuste-semantico/` antes del ajuste posterior de recuperación amplia.
+- Respaldo completo de base: `.deploy/respaldos-db/20260912_171035-asistente-prod/cardonahoy-production-before-asistente.sql`, 2.794.437 bytes, SHA-256 `37c3ffe64ffc3b525177fcd45675ad85e092260e7b5b7201c6831f2a5d5b7922` y modo `600`.
+- La migración PROD se ejecutó dos veces con conteos estables: 20 tablas, las 2 tablas del historial, permiso `asistente.ver`, una asignación al Administrador y 4 ajustes públicos. El asistente quedó activo y Mantenimiento permaneció en `0`.
+- La interpretación ahora tolera `utlima`, distingue singular/plural, resuelve “más vieja/antigua” por `publicada_at` e ID, y permite a DeepSeek interpretar sinónimos y lenguaje cotidiano sobre un corpus acotado. Las negativas explícitas no generan cards irrelevantes.
+- QA endpoint real: `utlima` devolvió la última publicación de Plan Agropecuario; la consulta informal sobre la fábrica de leche recuperó Indulacsa desde noticias antiguas; extraterrestres devolvió cero cards. Portada `200`, runtime privado `403`, instalador `403` y runner eliminado `404`.
+- Chromium/Puppeteer —Browser plugin no disponible— pasó en escritorio `1440×900` y móvil `390×844`: burbuja visible, panel estable, card correcta y cero overflow. Continúa la advertencia preexistente de Google Fonts bloqueada por CSP.
+- El smoke QA inicial creó 5 conversaciones y 10 mensajes en PROD; las reproducciones diagnósticas posteriores agregaron consultas nuevas, por lo que cualquier limpieza deberá comenzar con un conteo exacto. No se realizó commit ni push; el cambio local pendiente está en `asistente/consultar.php` junto con esta documentación.
+
 ## Punto de pausa vigente — asistente público validado en DEV — 12 de septiembre de 2026
 
 - El usuario completó y aprobó la validación funcional del asistente público de Cardona Hoy en DEV: configuración y activación, visibilidad del menú, respuestas DeepSeek, cards y apertura, historial, noticias recientes, categorías múltiples, fechas relativas, contexto encadenado, tolerancia ortográfica, consultas repetidas y respuestas sin coincidencias.
@@ -1290,3 +1396,11 @@ La consulta general **¿Qué noticias recientes hay?** recuperaba candidatos cor
 La prueba HTTP real en Cardona Hoy DEV devolvió, en este orden: Indulacsa (`2026-08-30 02:30:07`), la fuente experimental, Noche de la Nostalgia, WMS e IA. El modo fue `recientes`, `ia_utilizada=false` y se registraron los dos mensajes esperados. Se eliminó exclusivamente esa conversación temporal mediante su token verificado y el borrado en cascada; no se tocaron conversaciones del usuario. **Sin commit, push ni cambios en PROD.**
 
 Una segunda reproducción explicó por qué el usuario todavía veía resultados incorrectos dentro del chat abierto: antes de reconocer la intención reciente, el recuperador concatenaba cualquier pregunta anterior corta. Así, después de hablar de Deportes, “¿Qué noticias recientes hay?” quedaba convertida en una búsqueda temática de deportes. La intención general reciente ahora se detecta exclusivamente sobre el mensaje actual y omite la expansión contextual. La regresión con un turno previo de Deportes volvió a colocar Indulacsa primera; la conversación temporal se eliminó por su token sin afectar el historial real.
+
+### Accesibilidad de texto y ancho del asistente — 12 de septiembre de 2026
+
+El panel del asistente público en PC pasó de `clamp(380px, 29vw, 430px)` a `clamp(420px, 32vw, 480px)`, lo que da 461px en un viewport de 1440px. En PC y móvil se incorporaron los controles **A− / A+** inmediatamente antes del botón Cerrar. Ajustan mensajes, sugerencias, cards y campo de escritura en seis niveles, de 90% a 140%, deshabilitando el control correspondiente al llegar a cada límite.
+
+La escala se conserva en `localStorage` mediante la clave `portal_asistente_texto_cardonahoy`, aislada de los otros portales. Si el almacenamiento está bloqueado, los controles continúan funcionando durante la sesión. Los botones tienen grupo, nombres accesibles y un estado `aria-live`; además, tocar un control en móvil no inicia el gesto de arrastre del panel.
+
+QA local con Chromium/Puppeteer —Browser plugin ausente— pasó en PC `1440×900`, móvil `390×844` y móvil angosto `320×568`. Se verificaron 100% inicial, aumento y persistencia a 120% tras recargar, límites 90%/140%, controles antes de Cerrar, etiquetas accesibles, panel de 461px, ausencia de overflow y consola limpia. Capturas: `/tmp/pntest/capturas/cardonahoy-asistente-texto-desktop.png` y `/tmp/pntest/capturas/cardonahoy-asistente-texto-mobile.png`. La mejora fue publicada después en PROD mediante el despliegue incremental documentado al comienzo de este archivo; no hubo commit ni push.

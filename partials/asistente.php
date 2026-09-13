@@ -4,6 +4,7 @@
   data-news-assistant
   data-endpoint="<?= e(url_portal('asistente/consultar.php')) ?>"
   data-story-endpoint="<?= e(url_portal('cargar-noticia.php')) ?>"
+  data-text-size-key="<?= e('portal_asistente_texto_' . PORTAL_INSTANCE_ID) ?>"
   aria-label="Asistente de noticias"
 >
   <button
@@ -36,11 +37,18 @@
         <strong id="newsAssistantTitle">Asistente de noticias</strong>
         <span id="newsAssistantDescription"><i aria-hidden="true"></i> Encontrá lo que querés saber</span>
       </span>
-      <button class="news-assistant-close" type="button" data-assistant-close aria-label="Cerrar asistente">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-          <path d="m7 7 10 10M17 7 7 17"/>
-        </svg>
-      </button>
+      <div class="news-assistant-header-actions">
+        <div class="news-assistant-text-controls" role="group" aria-label="Tamaño del texto del chat">
+          <button type="button" data-assistant-text-decrease aria-label="Reducir tamaño del texto" title="Reducir texto">A−</button>
+          <button type="button" data-assistant-text-increase aria-label="Aumentar tamaño del texto" title="Aumentar texto">A+</button>
+        </div>
+        <span class="sr-only" data-assistant-text-status aria-live="polite">Tamaño de texto 100%</span>
+        <button class="news-assistant-close" type="button" data-assistant-close aria-label="Cerrar asistente">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="m7 7 10 10M17 7 7 17"/>
+          </svg>
+        </button>
+      </div>
     </header>
 
     <div class="news-assistant-messages" data-assistant-messages aria-live="polite" aria-relevant="additions">
