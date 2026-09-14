@@ -6,6 +6,7 @@ require_once __DIR__ . '/admin/includes/votos.php';
 
 $pdo = db();
 $usuarioPublico = usuario_actual_publico();
+$asistentePublico = configuracion_asistente_publico();
 $logoPortalRuta = configuracion_logo_portal();
 $logoPortalArchivo = __DIR__ . '/' . $logoPortalRuta;
 $logoPortalVersion = is_file($logoPortalArchivo) ? (string) filemtime($logoPortalArchivo) : '1';
@@ -111,12 +112,22 @@ $misVotos = $noticia ? votos_del_visitante($pdo, visitante_id()) : [];
   <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,400;1,700&amp;display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/noticia.css?v=<?= (int) @filemtime(__DIR__ . '/assets/css/noticia.css') ?>" />
   <link rel="stylesheet" href="assets/css/popup.css?v=<?= (int) @filemtime(__DIR__ . '/assets/css/popup.css') ?>" />
+<?php if ($asistentePublico['activo']): ?>
+  <link rel="stylesheet" href="assets/css/asistente.css?v=<?= (int) @filemtime(__DIR__ . '/assets/css/asistente.css') ?>" />
+<?php endif; ?>
 <?php imprimir_codigo_header_publico(); ?>
 </head>
 <body style="<?= e($logoPortalEstilo) ?>">
   <nav class="navbar" aria-label="Menú principal">
     <button class="hamburger" id="hamburger" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="menuOverlay"><span></span><span></span><span></span></button>
     <a href="<?= e(url_base_portal()) ?>" class="logo" aria-label="<?= e($nombreSitio) ?> - Inicio"><img src="<?= e($logoPortalUrl) ?>" alt="<?= e($nombreSitio) ?>" /></a>
+<?php if ($asistentePublico['activo']): ?>
+    <button class="navbar-ai-mode" type="button" data-assistant-navbar-trigger aria-controls="newsAssistantPanel" aria-expanded="false">
+      <span class="navbar-ai-mode-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none"><path d="M10 1.8 11.65 8.35 18.2 10l-6.55 1.65L10 18.2l-1.65-6.55L1.8 10l6.55-1.65L10 1.8Z" fill="currentColor"/></svg></span>
+      <span class="navbar-ai-mode-label-desktop">Activar Modo IA</span>
+      <span class="navbar-ai-mode-label-mobile">IA</span>
+    </button>
+<?php endif; ?>
     <?php if ($usuarioPublico): ?>
       <?php require __DIR__ . '/partials/acceso-admin.php'; ?>
     <?php endif; ?>
@@ -124,6 +135,17 @@ $misVotos = $noticia ? votos_del_visitante($pdo, visitante_id()) : [];
   <div class="menu-overlay" id="menuOverlay" aria-hidden="true">
     <button class="close-btn" id="closeMenu" type="button" aria-label="Cerrar menú"><span></span><span></span></button>
     <a href="<?= e(url_base_portal()) ?>" class="menu-logo" aria-label="<?= e($nombreSitio) ?> - Inicio"><img src="<?= e($logoPortalUrl) ?>" alt="<?= e($nombreSitio) ?>" /></a>
+<?php if ($asistentePublico['activo']): ?>
+    <div class="menu-assistant-cta-wrap">
+      <button class="menu-assistant-cta" type="button" data-menu-assistant-open aria-controls="newsAssistantPanel" aria-label="Explorá las noticias con nuestro asistente de IA">
+        <span class="menu-assistant-cta-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 2.8 13.65 8.35 19.2 10l-5.55 1.65L12 17.2l-1.65-5.55L4.8 10l5.55-1.65L12 2.8Z" fill="currentColor"/><path d="m18.5 15.5.7 2.3 2.3.7-2.3.7-.7 2.3-.7-2.3-2.3-.7 2.3-.7.7-2.3Z" fill="currentColor" opacity=".72"/></svg>
+        </span>
+        <span class="menu-assistant-cta-copy"><strong>Explorá las noticias</strong><span>con nuestro asistente de IA</span></span>
+        <span class="menu-assistant-cta-sparkles" aria-hidden="true"><i></i><i></i><i></i></span>
+      </button>
+    </div>
+<?php else: ?>
     <div class="menu-news-search" role="search" data-menu-news-search data-search-url="<?= e(url_portal('buscar-noticias.php')) ?>">
       <label class="menu-news-search-field" for="articleMenuNewsSearchInput">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
@@ -131,6 +153,7 @@ $misVotos = $noticia ? votos_del_visitante($pdo, visitante_id()) : [];
       </label>
       <div class="menu-news-search-results" id="articleMenuNewsSearchResults" aria-live="polite" hidden></div>
     </div>
+<?php endif; ?>
   </div>
   <main>
 <?php if (!$noticia): ?>
@@ -209,7 +232,13 @@ $misVotos = $noticia ? votos_del_visitante($pdo, visitante_id()) : [];
   </div>
 <?php endif; ?>
 <?php require __DIR__ . '/partials/popup-publico.php'; ?>
+<?php if ($asistentePublico['activo']): ?>
+<?php require __DIR__ . '/partials/asistente.php'; ?>
+<?php endif; ?>
   <script src="assets/js/noticia.js?v=<?= (int) @filemtime(__DIR__ . '/assets/js/noticia.js') ?>" data-vote-url="<?= e(url_portal('votar.php')) ?>" data-view-url="<?= e(url_portal('noticia-vista.php')) ?>" data-share-url="<?= e(url_portal('noticia-compartir.php')) ?>" data-noticia-id="<?= (int) ($noticia['id'] ?? 0) ?>" data-ad-placements-url="<?= e(url_portal('publicidad-ubicaciones.php')) ?>"></script>
+<?php if ($asistentePublico['activo']): ?>
+  <script src="assets/js/asistente.js?v=<?= (int) @filemtime(__DIR__ . '/assets/js/asistente.js') ?>"></script>
+<?php endif; ?>
   <script src="assets/js/popup.js?v=<?= (int) @filemtime(__DIR__ . '/assets/js/popup.js') ?>" data-popup-endpoint="<?= e(url_portal('popup-publico.php')) ?>"></script>
 </body>
 </html>
