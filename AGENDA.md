@@ -6,10 +6,20 @@ Este archivo es la **única agenda aplicable a `portal-cardonahoy`**. La aplicac
 
 ## Prioridad activa
 
-1. Revisar manualmente en DEV la nueva paridad visual del asistente con RS Medios antes de autorizar cualquier commit, push o publicación en PROD.
+1. Confirmar manualmente en Cardona Hoy PROD la nueva experiencia Copilot y que el teclado de un teléfono real ya no cierre el chat.
 2. Continuar probando en PROD la selección por popularidad, especialmente singular/plural y los períodos hoy, ayer, anteayer, esta semana y semana pasada.
 3. Conservar como referencia la única conversación PROD restante —ID 20, último test aprobado— y no volver a limpiar historial sin una nueva autorización expresa.
 4. Mantener pendientes las validaciones autenticadas previas de noticias, autoría, sesión única, Portada y Análisis que aún correspondan en PROD.
+
+## Experiencia Copilot del asistente publicada en PROD — 13 de septiembre de 2026
+
+- Correctivo móvil: el `resize` producido al abrir el teclado ya no cierra el chat cuando el launcher flotante está oculto. DEV y PROD conservaron panel, foco, texto y Enviar a `390/320px`; el cierre explícito y la regresión PC/tablet/móvil también pasaron.
+- Se publicaron únicamente `admin/asistente.php`, `index.php`, `assets/css/asistente.css`, `assets/css/portal.css` y `assets/js/asistente.js`: identificador `#ID`, accesos superiores PC/móvil, Copilot 30/70, noticia lateral simultánea y halos verdes animados.
+- El preflight FTPS/TLS encontró los cinco archivos exactamente en el baseline registrado, con cero conflictos. Los originales son recuperables desde `.deploy/respaldos/20260913_asistente-copilot-prod/`.
+- La QA PROD detectó que el logo configurado al 130% rozaba el botón IA en 320 px. Se amplió sólo allí el desplazamiento de 12 a 24 px y se publicó exclusivamente `assets/css/portal.css` tras un segundo preflight; respaldo adicional `.deploy/respaldos/20260913_asistente-copilot-logo-prod/`.
+- Hashes FTPS finales verificados y hashes HTTPS coincidentes para ambos CSS y JavaScript. Portada/login `200`, Admin anónimo `302`, endpoint GET `405`, configuraciones privadas `403` y cero temporales remotos.
+- Chromium/Puppeteer PROD pasó en 1440×900, 1025×768, 390×844, 320×720 y tablet 800×900: geometría, aperturas/cierres, noticia coexistente, halos, CTA y cero overflow o errores propios. Se interceptaron IA, vistas, publicidad y analytics; no se crearon conversaciones ni métricas.
+- Sin migración ni modificación de base, historial, noticias o configuración. El ajuste final de 24 px, el correctivo del teclado y esta documentación quedan incluidos en el checkpoint Git autorizado del 13 de septiembre.
 
 ## Paridad visual del asistente aplicada en DEV — 13 de septiembre de 2026
 
@@ -17,7 +27,7 @@ Este archivo es la **única agenda aplicable a `portal-cardonahoy`**. La aplicac
 - En PC, el acceso superior **Activar Modo IA** reemplaza la burbuja flotante y abre un Copilot fijo a la izquierda en división aproximada 30/70. La portada se desplaza a la derecha y una noticia puede abrirse simultáneamente en su panel lateral derecho sin cerrar el chat.
 - En móvil, la burbuja queda oculta y aparece el botón compacto **IA** junto al menú. El encabezado, A−/A+ y Cerrar comparten el halo verde animado; el CTA **Explorá las noticias** del menú usa el mismo perímetro luminoso. En 320 px se separó levemente el logo para evitar solapamiento.
 - Chromium/Puppeteer sobre DEV pasó en 1440×900, 1025×768, 390×844, 320×720 y tablet 800×900: aperturas/cierres, geometría, noticia simultánea, animaciones, controles y ausencia de overflow o errores propios. Las consultas se interceptaron con respuesta simulada, por lo que no se escribió historial ni se tocó la base.
-- Se preservaron el motor semántico, la configuración, identidad y geometría propia de Cardona Hoy. Tablet continúa deliberadamente sin activador. Cambio pendiente de revisión del usuario, sin commit, push ni PROD.
+- Se preservaron el motor semántico, la configuración, identidad y geometría propia de Cardona Hoy. Tablet continúa deliberadamente sin activador. Este fue el cierre DEV previo al despliegue PROD documentado arriba.
 
 ## Cierre Git autorizado — 12 de septiembre de 2026
 

@@ -120,7 +120,9 @@
       clearInvitation();
       if (pageEngaged) scheduleInvitation();
     }
-    if (!pageEngaged && open && !desktopMedia.matches) setOpen(false, false);
+    // El teclado móvil dispara resize. Si el launcher flotante está oculto,
+    // su altura cero no debe interpretarse como una orden de cerrar el chat.
+    if (!pageEngaged && open && !desktopMedia.matches && launcher.offsetHeight > 0) setOpen(false, false);
   }
 
   function launcherTopPosition() {

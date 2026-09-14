@@ -1,5 +1,21 @@
 # Continuidad — Portal de Noticias
 
+## Correctivo del teclado móvil del asistente — DEV y PROD — 13 de septiembre de 2026
+
+- Cardona Hoy compartía la falla diagnosticada en RS Medios: al enfocar el textarea, el teclado disparaba `window.resize`; el launcher flotante oculto medía cero y `setPageEngaged(false)` cerraba involuntariamente el panel.
+- Se trasladó únicamente la condición corregida en `assets/js/asistente.js`: el cierre automático por visibilidad sólo opera cuando el launcher flotante tiene altura real. No cambia el diseño, motor, historial ni datos.
+- DEV y PROD pasaron `390×844 → 390×520` y `320×720 → 320×430`: panel abierto, bloqueo del fondo, foco y texto preservados, Enviar habilitado y cierre explícito correcto. La regresión pasó además en `1440×900`, `1025×768` y tablet `800×900`; el aviso CSP histórico de Google Fonts permanece ajeno al asistente.
+- PROD recibió un solo archivo tras TLS/preflight sin conflictos. El respaldo está en `.deploy/respaldos/20260913_asistente-teclado-movil-prod/`; SHA-256 FTPS/HTTPS `67fbd60ec4922ceedd7319ae78abf824feb39be971310396683e656be33e36c2`; cero temporales. Sin DB, historial ni Mantenimiento; el correctivo y la documentación quedan incluidos en el checkpoint Git autorizado del 13 de septiembre.
+
+## Punto de pausa vigente — experiencia Copilot publicada y validada en Cardona Hoy PROD — 13 de septiembre de 2026
+
+- Por autorización expresa se desplegaron sólo cinco archivos: `admin/asistente.php`, `index.php`, `assets/css/asistente.css`, `assets/css/portal.css` y `assets/js/asistente.js`. PROD muestra `#ID` en el historial, acceso superior IA, panel izquierdo 30/70, noticia derecha simultánea y halos animados en PC/móvil.
+- TLS externo válido para `vps-4962765-x.dattaweb.com`; el preflight autenticado confirmó cero conflictos contra los cinco hashes del manifiesto. La carga temporal, renombrado atómico y descarga posterior verificaron todos los bytes. Respaldo anterior: `.deploy/respaldos/20260913_asistente-copilot-prod/`.
+- La primera QA real encontró únicamente un roce entre el botón IA y el logo productivo ampliado al 130% en 320 px. `assets/css/portal.css` desplaza ahora el logo 24 px sólo hasta 340 px. Se publicó ese único CSS con nuevo preflight sin conflicto y respaldo `.deploy/respaldos/20260913_asistente-copilot-logo-prod/`; hash final `b611411a…`.
+- Browser plugin no disponible; Chromium/Puppeteer PROD pasó en 1440×900, 1025×768, 390×844, 320×720 y 800×900. Verificó botón/launcher, Copilot, noticia coexistente, cierres, halos, CTA, ausencia de solapamientos, cero overflow y cero errores propios. IA, métricas y analytics se interceptaron, por lo que no se escribió historial ni actividad.
+- Postflight: portada/login y assets `200`, Admin anónimo `302`, endpoint GET `405`, `servicios.local.json` y runtime privado `403`, hashes HTTPS de CSS/JS iguales a los locales y cero temporales FTPS. Sin migración, base de datos, noticias, historial ni configuración.
+- El ajuste final de 24 px, el correctivo móvil y estos documentos quedan incluidos en el checkpoint Git autorizado del 13 de septiembre. `.deploy/estado.json` quedó actualizado como `verified_pending_user_confirmation`.
+
 ## Punto de pausa vigente — paridad visual del asistente terminada en Cardona Hoy DEV — 13 de septiembre de 2026
 
 - Se trasladó selectivamente desde RS Medios el frente aprobado del asistente, sin copiar `asistente/consultar.php`, configuración privada, prompts, historial ni ninguna variante semántica. Cardona Hoy conserva íntegro su motor propio.
@@ -7,7 +23,7 @@
 - PC ≥1025 px: burbuja oculta, botón **Activar Modo IA**, panel fijo izquierdo y portada desplazada. La noticia se abre a la derecha sin cerrar el chat. Móvil ≤768 px: burbuja oculta, botón **IA**, panel modal y encabezado luminoso. Tablet 769–1024 conserva el comportamiento inactivo acordado.
 - En 320 px se desplazó 12 px el logo propio de Cardona Hoy para mantener separación real entre hamburguesa, botón IA y marca; en 390 px no fue necesario modificar la geometría.
 - Browser plugin no disponible; QA segura con Chromium/Puppeteer en la URL HTTPS DEV pasó en 1440×900, 1025×768, 390×844, 320×720 y 800×900. Se verificaron animaciones, aperturas/cierres, A−/A+, panel de noticia coexistente y cero overflow/errores propios. El endpoint IA y las métricas fueron interceptados, por lo que no se generó historial ni se modificaron datos.
-- `php -l index.php`, `php -l admin/asistente.php`, `node --check assets/js/asistente.js` y `git diff --check` correctos. Estado exclusivamente DEV y pendiente de revisión del usuario: sin migración, commit, push ni publicación PROD.
+- `php -l index.php`, `php -l admin/asistente.php`, `node --check assets/js/asistente.js` y `git diff --check` correctos. Este fue el cierre DEV previo a la publicación PROD documentada en el bloque superior.
 
 ## Cierre Git autorizado del asistente público — 12 de septiembre de 2026
 
