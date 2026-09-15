@@ -29,8 +29,11 @@ $noticia = [
     'youtube_2' => '',
     'youtube_3' => '',
     'audio_1' => '',
+    'audio_titulo_1' => '',
     'audio_2' => '',
+    'audio_titulo_2' => '',
     'audio_3' => '',
+    'audio_titulo_3' => '',
     'portada' => 0,
     'estado' => 'borrador',
     'publicada_at' => null,
@@ -140,6 +143,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         }
         $audios[$campo] = $valor === '' ? '' : $normalizada;
     }
+    $titulosAudio = [];
+    foreach (['audio_titulo_1', 'audio_titulo_2', 'audio_titulo_3'] as $i => $campo) {
+        $valor = trim(strip_tags((string) ($_POST[$campo] ?? '')));
+        if (mb_strlen($valor) > 180) {
+            $errores[] = 'El título del audio ' . ($i + 1) . ' supera los 180 caracteres.';
+        }
+        $campoAudio = 'audio_' . ($i + 1);
+        $titulosAudio[$campo] = ($audios[$campoAudio] ?? '') === '' ? '' : $valor;
+    }
 
     $portada = $editando && isset($_POST['portada']) ? 1 : 0;
 
@@ -158,8 +170,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         'youtube_2' => $videos['youtube_2'],
         'youtube_3' => $videos['youtube_3'],
         'audio_1' => $audios['audio_1'],
+        'audio_titulo_1' => $titulosAudio['audio_titulo_1'],
         'audio_2' => $audios['audio_2'],
+        'audio_titulo_2' => $titulosAudio['audio_titulo_2'],
         'audio_3' => $audios['audio_3'],
+        'audio_titulo_3' => $titulosAudio['audio_titulo_3'],
         'portada' => $portada,
         'estado' => $estado,
         'publicada_at' => $existente['publicada_at'] ?? null,
@@ -205,18 +220,20 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     if (empty($errores)) {
       $archivosAEliminar = [];
       $errorImagenSeo = '';
+      $noticiasRetiradasPortada = [];
       try {
         $pdo->beginTransaction();
         if ($editando) {
             if ($portada === 1) {
-                exigir_cupo_noticia_portada($pdo, $id);
+                $noticiasRetiradasPortada = liberar_cupo_noticia_portada($pdo, $id);
             }
             if ($estadosNoticiasDisponibles) {
                 $stmt = $pdo->prepare(
                     "UPDATE noticias
                     SET categoria_id=?, usuario_id=?, titulo=?, slug=?, descripcion=?,
                         seo_titulo=?, seo_descripcion=?, seo_imagen=?,
-                        youtube=?, youtube_2=?, youtube_3=?, audio_1=?, audio_2=?, audio_3=?, portada=?,
+                        youtube=?, youtube_2=?, youtube_3=?,
+                        audio_1=?, audio_titulo_1=?, audio_2=?, audio_titulo_2=?, audio_3=?, audio_titulo_3=?, portada=?,
                         estado=?, publicada_at=CASE WHEN ? = 'publicada' THEN COALESCE(publicada_at, NOW()) ELSE publicada_at END
                   WHERE id=?"
                 );
@@ -225,7 +242,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                     'UPDATE noticias
                         SET categoria_id=?, usuario_id=?, titulo=?, slug=?, descripcion=?,
                             seo_titulo=?, seo_descripcion=?, seo_imagen=?,
-                            youtube=?, youtube_2=?, youtube_3=?, audio_1=?, audio_2=?, audio_3=?, portada=?
+                            youtube=?, youtube_2=?, youtube_3=?,
+                            audio_1=?, audio_titulo_1=?, audio_2=?, audio_titulo_2=?, audio_3=?, audio_titulo_3=?, portada=?
                       WHERE id=?'
                 );
             }
@@ -237,7 +255,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $categoriaId, $usuarioId, $titulo, $slug, $descripcion,
                 $seoTitulo, $seoDescripcion, $seoImagen !== '' ? $seoImagen : null,
                 $videos['youtube'], $videos['youtube_2'], $videos['youtube_3'],
-                $audios['audio_1'], $audios['audio_2'], $audios['audio_3'], $portada,
+                $audios['audio_1'], $titulosAudio['audio_titulo_1'],
+                $audios['audio_2'], $titulosAudio['audio_titulo_2'],
+                $audios['audio_3'], $titulosAudio['audio_titulo_3'], $portada,
             ];
             if ($estadosNoticiasDisponibles) array_push($parametrosGuardar, $estado, $estado);
             $parametrosGuardar[] = $id;
@@ -252,22 +272,27 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $stmt = $pdo->prepare(
                     "INSERT INTO noticias
                     (categoria_id, usuario_id, titulo, slug, descripcion, seo_titulo, seo_descripcion, seo_imagen,
-                     youtube, youtube_2, youtube_3, audio_1, audio_2, audio_3, portada, estado, publicada_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 'publicada' THEN NOW() ELSE NULL END)"
+                     youtube, youtube_2, youtube_3,
+                     audio_1, audio_titulo_1, audio_2, audio_titulo_2, audio_3, audio_titulo_3,
+                     portada, estado, publicada_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 'publicada' THEN NOW() ELSE NULL END)"
                 );
             } else {
                 $stmt = $pdo->prepare(
                     'INSERT INTO noticias
                         (categoria_id, usuario_id, titulo, slug, descripcion, seo_titulo, seo_descripcion, seo_imagen,
-                         youtube, youtube_2, youtube_3, audio_1, audio_2, audio_3, portada)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                         youtube, youtube_2, youtube_3,
+                         audio_1, audio_titulo_1, audio_2, audio_titulo_2, audio_3, audio_titulo_3, portada)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
                 );
             }
             $parametrosGuardar = [
                 $categoriaId, $usuarioId, $titulo, $slug, $descripcion,
                 $seoTitulo, $seoDescripcion, $seoImagen !== '' ? $seoImagen : null,
                 $videos['youtube'], $videos['youtube_2'], $videos['youtube_3'],
-                $audios['audio_1'], $audios['audio_2'], $audios['audio_3'], 0,
+                $audios['audio_1'], $titulosAudio['audio_titulo_1'],
+                $audios['audio_2'], $titulosAudio['audio_titulo_2'],
+                $audios['audio_3'], $titulosAudio['audio_titulo_3'], 0,
             ];
             if ($estadosNoticiasDisponibles) array_push($parametrosGuardar, $estado, $estado);
             $stmt->execute($parametrosGuardar);
@@ -345,6 +370,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             : ($estado === 'publicada'
             ? ($editando ? 'Publicación actualizada correctamente.' : 'Noticia publicada correctamente.')
             : ($editando ? 'Borrador guardado correctamente.' : 'Borrador creado correctamente.'));
+        if ($noticiasRetiradasPortada) {
+            $titulosRetirados = array_column($noticiasRetiradasPortada, 'titulo');
+            $mensaje .= count($titulosRetirados) === 1
+                ? ' Se quitó de Portada la noticia más antigua: “' . $titulosRetirados[0] . '”.'
+                : ' Se quitaron de Portada las noticias más antiguas: “'
+                    . implode('”, “', $titulosRetirados) . '”.';
+        }
         flash('success', $mensaje);
         redirigir('index.php');
       } catch (DomainException $e) {
@@ -502,7 +534,7 @@ require __DIR__ . '/includes/header.php';
           <span class="news-cover-switch-track" aria-hidden="true"><span></span></span>
           <span>
             <strong>Mostrar en el slider</strong>
-            <small>Al activarla, esta noticia aparecerá en el encabezado. Máximo <?= PORTADA_NOTICIAS_LIMITE ?> noticias.</small>
+            <small>Al activarla, esta noticia aparecerá en el encabezado. Si ya hay <?= PORTADA_NOTICIAS_LIMITE ?>, se quitará automáticamente la más antigua.</small>
           </span>
         </label>
       </div>
@@ -629,9 +661,11 @@ require __DIR__ . '/includes/header.php';
           <span class="media-fields-chevron" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
         </button>
         <div class="media-fields-body" id="audiosFields" hidden>
-<?php for ($i = 1; $i <= 3; $i++): $campoAudio = 'audio_' . $i; ?>
+<?php for ($i = 1; $i <= 3; $i++): $campoAudio = 'audio_' . $i; $campoTituloAudio = 'audio_titulo_' . $i; ?>
         <div class="form-group media-url-group">
-          <label for="<?= $campoAudio ?>">Audio <?= $i ?></label>
+          <label for="<?= $campoTituloAudio ?>">Título del audio <?= $i ?></label>
+          <input class="form-control media-audio-title" type="text" id="<?= $campoTituloAudio ?>" name="<?= $campoTituloAudio ?>" value="<?= e($noticia[$campoTituloAudio] ?? '') ?>" maxlength="180" placeholder="Ej.: Palabras de la directora de la Escuela X" />
+          <label class="media-audio-source-label" for="<?= $campoAudio ?>">Archivo o URL del audio <?= $i ?></label>
           <div class="media-url-row">
             <input class="form-control" type="text" id="<?= $campoAudio ?>" name="<?= $campoAudio ?>" value="<?= e($noticia[$campoAudio] ?? '') ?>" maxlength="500" placeholder="https://... o subí un archivo" />
             <button class="media-upload-btn" type="button" data-audio-upload="<?= $i ?>" aria-label="Subir audio <?= $i ?>" title="Subir audio <?= $i ?>">

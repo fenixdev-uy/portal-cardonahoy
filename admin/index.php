@@ -17,6 +17,7 @@ if ($solicitudPortada) {
 
     $idPortada = (int) ($_POST['id'] ?? 0);
     $estadoPortada = (string) ($_POST['portada'] ?? '0') === '1' ? 1 : 0;
+    $noticiasRetiradasPortada = [];
     try {
         $pdo->beginTransaction();
         $campoEstadoPortada = $estadosNoticiasDisponibles ? 'n.estado' : "'publicada' AS estado";
@@ -39,7 +40,7 @@ if ($solicitudPortada) {
             throw new DomainException('La noticia necesita al menos una foto para mostrarse en el slider.');
         }
         if ($estadoPortada === 1) {
-            exigir_cupo_noticia_portada($pdo, $idPortada);
+            $noticiasRetiradasPortada = liberar_cupo_noticia_portada($pdo, $idPortada);
         }
 
         $stmtPortada = $pdo->prepare('UPDATE noticias SET portada = ?, updated_at = updated_at WHERE id = ?');
@@ -68,6 +69,7 @@ if ($solicitudPortada) {
         'label' => $estadoPortada === 1 ? 'En portada' : 'Fuera de portada',
         'portada_total' => $totalPortada,
         'portada_limite' => PORTADA_NOTICIAS_LIMITE,
+        'portada_retiradas' => $noticiasRetiradasPortada,
     ], JSON_UNESCAPED_UNICODE);
     exit;
 }
@@ -80,7 +82,7 @@ $ordenEstadoListado = $estadosNoticiasDisponibles ? 'COALESCE(n.publicada_at, n.
 $noticias = $pdo->query(
     "SELECT n.id, n.titulo, n.descripcion, n.created_at, n.updated_at, $camposEstadoListado,
             n.portada AS portada_estado,
-            n.audio_1, n.audio_2, n.audio_3,
+            n.audio_1, n.audio_titulo_1, n.audio_2, n.audio_titulo_2, n.audio_3, n.audio_titulo_3,
             n.me_gusta, n.no_me_gusta, n.vistas, n.compartidos,
             c.nombre AS categoria_nombre,
             u.nombre AS autor_nombre,
@@ -579,10 +581,36 @@ require __DIR__ . '/includes/header.php';
           text.textContent = input.checked ? 'Sí' : 'No';
           input.setAttribute('aria-label', (input.checked ? 'Quitar de portada: ' : 'Mostrar en portada: ')
             + (form.closest('tr')?.querySelector('.cell-title')?.textContent || 'noticia'));
-          feedback.textContent = 'Guardado';
+          const retiradas = Array.isArray(result.portada_retiradas) ? result.portada_retiradas : [];
+          retiradas.forEach((retirada) => {
+            document.querySelectorAll('.js-news-cover-form').forEach((otherForm) => {
+              const otherId = otherForm.querySelector('input[name="id"]');
+              if (!otherId || Number(otherId.value) !== Number(retirada.id)) return;
+              const otherInput = otherForm.querySelector('input[name="portada"]');
+              const otherText = otherForm.querySelector('.news-cover-switch-text');
+              const otherFeedback = otherForm.querySelector('.news-cover-feedback');
+              if (otherInput) {
+                otherInput.checked = false;
+                otherInput.setAttribute('aria-label', 'Mostrar en portada: '
+                  + (otherForm.closest('tr')?.querySelector('.cell-title')?.textContent || 'noticia'));
+              }
+              if (otherText) otherText.textContent = 'No';
+              if (otherFeedback) {
+                const removedMessage = 'Retirada por antigüedad';
+                otherFeedback.textContent = removedMessage;
+                window.setTimeout(() => {
+                  if (otherFeedback.textContent === removedMessage) otherFeedback.textContent = '';
+                }, 3000);
+              }
+            });
+          });
+          const feedbackMessage = retiradas.length > 0
+            ? 'Guardado · se retiró la más antigua'
+            : 'Guardado';
+          feedback.textContent = feedbackMessage;
           updateLimitAlert(Number(result.portada_total || 0), Number(result.portada_limite || <?= PORTADA_NOTICIAS_LIMITE ?>));
           window.setTimeout(() => {
-            if (feedback.textContent === 'Guardado') feedback.textContent = '';
+            if (feedback.textContent === feedbackMessage) feedback.textContent = '';
           }, 1800);
         } catch (error) {
           input.checked = !requestedState;
@@ -772,11 +800,13 @@ require __DIR__ . '/includes/header.php';
       if (audios.length) {
         const section = drawerBody.querySelector('.news-audios');
         const list = drawerBody.querySelector('.news-audio-list');
-        audios.forEach((url, index) => {
+        audios.forEach((audio, index) => {
+          const url = typeof audio === 'string' ? audio : (audio.url || '');
+          const title = typeof audio === 'string' ? 'Audio ' + (index + 1) : (audio.titulo || 'Audio ' + (index + 1));
           const item = document.createElement('div');
           item.className = 'news-audio-item';
           const label = document.createElement('span');
-          label.textContent = 'Audio ' + (index + 1);
+          label.textContent = title;
           const player = document.createElement('audio');
           player.controls = true;
           player.preload = 'metadata';

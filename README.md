@@ -97,6 +97,7 @@ landing/
 │   ├── categorias-multiples-v1.php ← varias categorías por noticia
 │   ├── usuarios-foto-v1.php   ← foto opcional en perfiles de usuario
 │   ├── noticias-estados-v1.php ← estados Borrador/Publicada y fecha real de publicación
+│   ├── medios-v2.php            ← títulos opcionales para los tres audios de noticias
 │   └── migrate.php             ← migración histórica v2, solo CLI
 │
 ├── votar.php                   ← endpoint público de votos (POST, sin login)
@@ -203,8 +204,11 @@ landing/
 | youtube_2      | VARCHAR(255)  | URL opcional de YouTube 2              |
 | youtube_3      | VARCHAR(255)  | URL opcional de YouTube 3              |
 | audio_1        | VARCHAR(500)  | URL opcional de audio 1                |
+| audio_titulo_1 | VARCHAR(180)  | título descriptivo opcional del audio 1|
 | audio_2        | VARCHAR(500)  | URL opcional de audio 2                |
+| audio_titulo_2 | VARCHAR(180)  | título descriptivo opcional del audio 2|
 | audio_3        | VARCHAR(500)  | URL opcional de audio 3                |
+| audio_titulo_3 | VARCHAR(180)  | título descriptivo opcional del audio 3|
 | portada        | TINYINT(1)    | `1` = mostrar la noticia en el slider  |
 | created_at     | TIMESTAMP     |                                        |
 | updated_at     | TIMESTAMP     | on update                              |
@@ -256,7 +260,7 @@ La migración idempotente `install/publicidad-v1.php` crea la tabla completa y e
 - `noticias_votos`: un voto por visitante y por noticia, **definitivo**. Clave primaria `(noticia_id, visitante)` — es lo que impide el segundo voto.
 - `votos_limite`: techo de 60 votos por hora, por hash de IP (nunca la IP en claro).
 
-Las migraciones para bases existentes incluyen `install/votos-v1.php`, `install/medios-v1.php`, `install/seo-v1.php` e `install/categorias-multiples-v1.php`; son idempotentes.
+Las migraciones para bases existentes incluyen `install/votos-v1.php`, `install/medios-v1.php`, `install/medios-v2.php`, `install/seo-v1.php` e `install/categorias-multiples-v1.php`; son idempotentes.
 
 El esquema completo y los datos de ejemplo están en `install/schema.sql`. La migración de la versión anterior (que reemplaza `foto_principal` por la galería) está en `install/migrate.php`.
 

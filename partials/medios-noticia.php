@@ -1,9 +1,15 @@
 <?php
 /** Reproductores opcionales compartidos por los feeds PC y móvil. */
-$audiosNoticia = array_values(array_filter(array_map(
-    static fn($url) => normalizar_url_audio((string) $url),
-    [$n['audio_1'] ?? '', $n['audio_2'] ?? '', $n['audio_3'] ?? '']
-)));
+$audiosNoticia = [];
+for ($i = 1; $i <= 3; $i++) {
+    $urlAudio = normalizar_url_audio((string) ($n['audio_' . $i] ?? ''));
+    if ($urlAudio === '') continue;
+    $tituloAudio = trim((string) ($n['audio_titulo_' . $i] ?? ''));
+    $audiosNoticia[] = [
+        'url' => $urlAudio,
+        'titulo' => $tituloAudio !== '' ? $tituloAudio : 'Audio ' . $i,
+    ];
+}
 $videosNoticia = array_values(array_filter(array_map(
     static fn($url) => youtube_embed_url((string) $url),
     [$n['youtube'] ?? '', $n['youtube_2'] ?? '', $n['youtube_3'] ?? '']
@@ -14,10 +20,10 @@ $videosNoticia = array_values(array_filter(array_map(
 <?php if ($audiosNoticia): ?>
           <section class="story-media-group" aria-label="Audios de la noticia">
             <h3 class="story-media-heading">Audios</h3>
-<?php foreach ($audiosNoticia as $i => $audio): ?>
+<?php foreach ($audiosNoticia as $audio): ?>
             <div class="story-audio">
-              <span>Audio <?= $i + 1 ?></span>
-              <audio controls preload="metadata" src="<?= e(url_recurso_portal($audio)) ?>">Tu navegador no puede reproducir este audio.</audio>
+              <span><?= e($audio['titulo']) ?></span>
+              <audio controls preload="metadata" src="<?= e(url_recurso_portal($audio['url'])) ?>">Tu navegador no puede reproducir este audio.</audio>
             </div>
 <?php endforeach; ?>
           </section>

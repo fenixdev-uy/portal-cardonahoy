@@ -171,11 +171,13 @@
       if (audios.length) {
         const section = drawerBody.querySelector('.news-audios');
         const list = drawerBody.querySelector('.news-audio-list');
-        audios.forEach((url, index) => {
+        audios.forEach((audio, index) => {
+          const url = typeof audio === 'string' ? audio : (audio.url || '');
+          const title = typeof audio === 'string' ? 'Audio ' + (index + 1) : (audio.titulo || 'Audio ' + (index + 1));
           const item = document.createElement('div');
           item.className = 'news-audio-item';
           const label = document.createElement('span');
-          label.textContent = 'Audio ' + (index + 1);
+          label.textContent = title;
           const player = document.createElement('audio');
           player.controls = true;
           player.preload = 'metadata';

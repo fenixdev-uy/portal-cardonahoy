@@ -2605,6 +2605,8 @@ body {
 .seo-google-preview p { margin: 0; color: #4d5156; font-family: Arial, sans-serif; font-size: .76rem; line-height: 1.45; }
 .seo-preview-note { margin: 0; color: #94a3b8; font-size: .67rem; line-height: 1.45; }
 .media-url-group:last-child { margin-bottom: 0; }
+.media-audio-title { margin-bottom: 10px; }
+.media-audio-source-label { display: block; margin-bottom: 6px; color: #64748b; font-size: .72rem; font-weight: 650; }
 .media-url-row { display: grid; grid-template-columns: minmax(0, 1fr) 42px; gap: 8px; }
 .media-upload-btn {
   display: grid;
@@ -3792,16 +3794,20 @@ body.ia-preview-open { overflow: hidden; }
 /* Reproductores de audio y YouTube dentro de la vista previa. */
 .news-media {
   display: grid;
+  width: 100%;
+  min-width: 0;
   gap: 22px;
   margin-top: 22px;
 }
 
-.news-media-group { display: grid; gap: 10px; }
+.news-media-group { display: grid; width: 100%; min-width: 0; gap: 10px; }
 .news-audio-list,
-.news-video-list { display: grid; gap: 12px; }
-.news-audio-item { display: grid; gap: 6px; }
-.news-audio-item span { color: var(--text-muted); font-size: .76rem; font-weight: 600; }
-.news-audio-item audio { display: block; width: 100%; height: 42px; }
+.news-video-list { display: grid; width: 100%; min-width: 0; gap: 12px; }
+.news-audio-item { display: grid; width: 100%; min-width: 0; gap: 6px; }
+.news-audio-item span { display: block; color: var(--text); font-size: .88rem; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
+.news-audio-item audio { display: block; width: 100%; min-width: 100%; max-width: 100%; height: 42px; }
+.news-audio-item audio::-webkit-media-controls-enclosure,
+.news-audio-item audio::-webkit-media-controls-panel { width: 100%; max-width: 100%; }
 
 .news-video-title {
   font-size: 0.8rem;

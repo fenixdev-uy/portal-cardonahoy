@@ -1,15 +1,61 @@
 # Agenda — Portal Cardona Hoy
 
-Última actualización: **13 de septiembre de 2026**.
+Última actualización: **15 de septiembre de 2026**.
 
 Este archivo es la **única agenda aplicable a `portal-cardonahoy`**. La aplicación nace del baseline aprobado `5ec3e42`, pero no comparte configuración privada, base de datos, uploads, despliegue ni remoto con RS Medios.
 
 ## Prioridad activa
 
-1. Confirmar manualmente en Cardona Hoy PROD la nueva experiencia Copilot y que el teclado de un teléfono real ya no cierre el chat.
-2. Continuar probando en PROD la selección por popularidad, especialmente singular/plural y los períodos hoy, ayer, anteayer, esta semana y semana pasada.
-3. Conservar como referencia la única conversación PROD restante —ID 20, último test aprobado— y no volver a limpiar historial sin una nueva autorización expresa.
-4. Mantener pendientes las validaciones autenticadas previas de noticias, autoría, sesión única, Portada y Análisis que aún correspondan en PROD.
+1. Validar manualmente con una sesión administrativa en Cardona Hoy PROD que, al activar la noticia número 11 para Portada, la publicación más antigua se desactive automáticamente y el total permanezca en 10.
+2. Confirmar visualmente en un dispositivo real la nueva flecha de desplazamiento de la foto a pantalla completa en una noticia individual de PROD.
+3. Confirmar manualmente en Cardona Hoy PROD la nueva experiencia Copilot y que el teclado de un teléfono real ya no cierre el chat.
+4. Continuar probando en PROD la selección por popularidad, especialmente singular/plural y los períodos hoy, ayer, anteayer, esta semana y semana pasada.
+5. Conservar como referencia la única conversación PROD restante —ID 20, último test aprobado— y no volver a limpiar historial sin una nueva autorización expresa.
+6. Mantener pendientes las validaciones autenticadas previas de noticias, autoría, sesión única, Portada y Análisis que aún correspondan en PROD.
+
+## Títulos descriptivos de audios publicados en PROD — 15 de septiembre de 2026
+
+- Con autorización expresa se agregaron exclusivamente en Cardona Hoy PROD `audio_titulo_1`, `audio_titulo_2` y `audio_titulo_3` como `VARCHAR(180) NULL`. La migración conservó 177 noticias, incluidas 21 con audio, Mantenimiento en 0 y 0 títulos iniciales; una segunda ejecución confirmó idempotencia.
+- El respaldo completo previo de PROD quedó en `.deploy/respaldos-db/20260915_audio-titulos-prod/cardonahoy-production-before-medios-v2.sql`: 4.876.187 bytes y SHA-256 `d692cb2ec4da86bbdf3c21cc008b06440709f0b64d61449ac1a62da27736bac0`.
+- Se publicaron 11 archivos funcionales con preflight de cero conflictos, respaldo de código `.deploy/respaldos/20260915_audio-titulos-prod/`, transferencia temporal/atómica, hashes FTPS finales y hashes HTTPS de los tres CSS iguales a DEV. No quedaron temporales y el ejecutor efímero responde 404.
+- Home/login respondieron 200, Admin anónimo 302 y configuraciones privadas 403. Chromium/Puppeteer PROD validó una noticia real con audio en `1440×900` y `390×844`: fallback **Audio 1**, ancho útil exacto 666/666 px y 320/320 px, cero overflow y consola limpia.
+- Queda pendiente solamente confirmar con una sesión administrativa real que un nuevo título se guarda y aparece también en el lateral de Noticias. Sin cambios en otros portales; sin commit ni push.
+
+## Títulos descriptivos para los audios terminados en DEV — 15 de septiembre de 2026
+
+- Cada uno de los tres audios del formulario de noticia tiene ahora un campo opcional **Título del audio** de hasta 180 caracteres, ubicado inmediatamente arriba de su archivo o URL.
+- El título se guarda únicamente si existe el audio correspondiente. La portada, la carga paginada, la noticia individual y la vista previa administrativa transportan y muestran el texto correcto; las notas anteriores sin título conservan **Audio 1**, **Audio 2** o **Audio 3** según su posición original.
+- Con autorización expresa se respaldó sólo Cardona Hoy DEV en `.deploy/respaldos-db/20260915_audio-titulos-dev/cardonahoy-development-before-medios-v2.sql`: 110.695 bytes y SHA-256 `d7a4f49f7af1b3de543c9d08ba7b5a8abff39061b1eb0bfc2b819910db37e8a4`.
+- `install/medios-v2.php --environment=development` agregó las tres columnas `VARCHAR(180) NULL` y su segunda ejecución confirmó idempotencia: 8 noticias preservadas y 0 títulos iniciales. Una prueba transaccional escribió y leyó los tres valores y luego restauró los originales mediante rollback.
+- Browser plugin no disponible. Chromium/Puppeteer validó el formulario y el render compartido en escritorio y móvil: título largo legible, reproductores contenidos, cero overflow y consola limpia.
+- La prueba manual con la noticia DEV real **Accidente de Audio** detectó que el listado administrativo conservaba una copia antigua del lateral. `admin/index.php` ahora consume el objeto `{url, titulo}` y muestra **Palabras del Agente de Policia**; las reglas de Admin y público fuerzan cada reproductor al 100% del ancho útil de su vista.
+- Chromium/Puppeteer confirmó después 528/528 px y 292/292 px en el lateral PC/móvil, y 666/666 px y 320/320 px en la vista pública, sin overflow ni errores. La noticia real respondió HTTP 200 con título y audio correctos. Sin cambios en PROD ni en otros portales; sin commit ni push.
+
+## Rotación de Portada y flecha de noticia publicadas en PROD — 15 de septiembre de 2026
+
+- Se publicaron únicamente `admin/includes/funciones.php`, `admin/index.php`, `admin/noticia-form.php`, `noticia.php`, `assets/css/noticia.css` y `assets/js/noticia.js`.
+- El preflight FTPS/TLS comparó los seis archivos contra el último estado registrado: cero conflictos. Los originales son recuperables desde `.deploy/respaldos/20260915_portada-rotacion-flecha-prod/`.
+- La carga temporal, el reemplazo atómico y la descarga final verificaron los seis hashes SHA-256; no quedaron temporales remotos. CSS y JavaScript también coincidieron byte a byte por HTTPS.
+- Portada, noticia real y login respondieron `200`; Admin anónimo redirigió `302` al login y los archivos privados continuaron en `403`.
+- Chromium/Puppeteer PROD, entrando desde un referente externo y bloqueando métricas/publicidad, pasó en `1440×900` y `390×844`: una flecha visible, centrado exacto, sin overflow ni errores, y desplazamiento exacto al contenido al pulsarla.
+- No hubo migración ni modificación de base de datos, noticias, Portada, vistas, historial o Mantenimiento. La rotación queda pendiente de una prueba manual autenticada en PROD; sin commit ni push.
+
+## Flecha de desplazamiento en la noticia individual terminada en DEV — 15 de septiembre de 2026
+
+- La foto a pantalla completa de `noticia.php` incorpora ahora la misma flecha circular, blanca, translúcida y animada que indica el desplazamiento en el slider de la Home.
+- La flecha aparece sólo cuando la noticia tiene foto. Se mantiene centrada abajo en `46px` para escritorio y `40px` para móvil, sin superponerse al título, los indicadores ni el botón de ampliar.
+- Se implementó como botón accesible para evitar que la etiqueta `<base>` de la noticia resuelva una ancla local contra la Home. Al pulsarlo, `assets/js/noticia.js` desplaza suavemente hasta `#contenido-noticia`, sin recarga ni cambio de página.
+- Browser plugin no disponible. Chromium/Puppeteer sobre una noticia real DEV pasó en `1440×900` y `390×844`: HTTP 200, una flecha, centrado exacto, animación, clic/desplazamiento, consola limpia, cero solapamientos y cero overflow. La escritura de vista fue interceptada.
+- Pendiente: revisión visual manual del usuario en DEV. Sin commit, push, despliegue, migración ni cambios en PROD.
+
+## Rotación automática de noticias de Portada terminada en DEV — 15 de septiembre de 2026
+
+- Cuando una noticia nueva se activa para Portada y ya existen 10 seleccionadas, el sistema desmarca automáticamente la publicación más antigua por `publicada_at`, con `created_at` como respaldo e ID ascendente para desempatar.
+- La rotación y la activación ocurren en la misma transacción tanto desde el switch del listado como al guardar el formulario. Si el guardado falla, tampoco queda retirada la noticia anterior.
+- El listado actualiza sin recarga el switch retirado y muestra **Retirada por antigüedad**; la noticia nueva confirma **Guardado · se retiró la más antigua**. El formulario informa el título retirado en el mensaje final.
+- El runtime fue confirmado contra `databases.development`, huella `6349afc0e628`. Una prueba con tabla temporal verificó 10 activas, reemplazo exacto de la más antigua, total final 10 e idempotencia; no modificó datos reales.
+- Browser plugin no disponible. Chromium/Puppeteer con el controlador real pasó en `1440×900` y `390×844`, sin errores ni overflow. En móvil la columna Portada del listado continúa oculta por el diseño previo y se gestiona desde el formulario.
+- Pendiente: validación autenticada manual del usuario en DEV. Sin commit, push, despliegue, migración ni cambios en PROD.
 
 ## Experiencia Copilot del asistente publicada en PROD — 13 de septiembre de 2026
 

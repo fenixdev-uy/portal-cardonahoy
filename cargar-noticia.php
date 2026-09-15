@@ -33,7 +33,8 @@ $filtroPublicadaSql = $estadosDisponibles ? " AND n.estado = 'publicada'" : '';
 $stmt = $pdo->prepare(
     'SELECT n.id, n.categoria_id, n.titulo, n.slug, n.descripcion,
             n.youtube, n.youtube_2, n.youtube_3,
-            n.audio_1, n.audio_2, n.audio_3, ' . $fechaPublicaSql . ' AS created_at,
+            n.audio_1, n.audio_titulo_1, n.audio_2, n.audio_titulo_2, n.audio_3, n.audio_titulo_3,
+            ' . $fechaPublicaSql . ' AS created_at,
             n.me_gusta, n.no_me_gusta, n.portada,
             c.nombre AS categoria_nombre,
             u.nombre AS autor_nombre

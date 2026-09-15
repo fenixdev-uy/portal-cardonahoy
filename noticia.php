@@ -177,9 +177,14 @@ $misVotos = $noticia ? votos_del_visitante($pdo, visitante_id()) : [];
 <?php endif; ?>
 <?php if ($fotos): ?>
         <button class="story-gallery-expand" id="storyGalleryExpand" type="button" aria-label="Ampliar galería" title="Ampliar galería"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg></button>
+        <button type="button" class="scroll-down" data-scroll-to-article aria-label="Desplazarse hacia el contenido de la noticia">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
 <?php endif; ?>
       </section>
-      <div class="story-content">
+      <div class="story-content" id="contenido-noticia">
         <div class="story-meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg><?php if ($fecha !== ''): ?><span><?= e($fecha) ?></span><?php endif; ?><?php if ($fecha !== '' && $autor !== ''): ?><span>—</span><?php endif; ?><span class="story-author"><?= e($autor) ?></span></div>
         <div class="article-placement-ad article-placement-ad-header" data-ad-placement="encabezado"<?= $anuncioPublicidadEncabezado === null ? ' hidden' : '' ?>>
 <?php if ($anuncioPublicidadEncabezado !== null): ?>

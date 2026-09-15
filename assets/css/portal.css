@@ -2989,9 +2989,12 @@
     }
 
     .story-audio span {
-      color: #64748b;
-      font-size: 0.76rem;
-      font-weight: 600;
+      display: block;
+      color: #334155;
+      font-size: 0.92rem;
+      font-weight: 700;
+      line-height: 1.4;
+      overflow-wrap: anywhere;
     }
 
     .story-audio audio {

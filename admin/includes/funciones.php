@@ -39,27 +39,59 @@ function asistente_historial_disponible(PDO $pdo): bool
 }
 
 /**
- * Bloquea la selección actual de Portada al alcanzar el cupo configurado.
- * Debe ejecutarse dentro de la misma transacción que guarda el cambio.
+ * Libera el cupo necesario para incorporar una noticia a Portada.
+ *
+ * Si la noticia todavía no está seleccionada y se alcanzó el límite,
+ * desmarca primero las publicaciones más antiguas. Debe ejecutarse dentro de
+ * la misma transacción que activa la noticia nueva.
+ *
+ * @return array<int, array{id: int, titulo: string}>
  */
-function exigir_cupo_noticia_portada(PDO $pdo, int $noticiaId): void
+function liberar_cupo_noticia_portada(PDO $pdo, int $noticiaId): array
 {
     if (!$pdo->inTransaction()) {
-        throw new LogicException('El cupo de Portada debe validarse dentro de una transacción.');
+        throw new LogicException('El cupo de Portada debe ajustarse dentro de una transacción.');
     }
 
     $filtroEstado = noticias_estados_disponibles($pdo) ? " AND estado = 'publicada'" : '';
+    $fechaOrden = noticias_estados_disponibles($pdo)
+        ? 'COALESCE(publicada_at, created_at)'
+        : 'created_at';
+    $seleccionadas = $pdo->query(
+        "SELECT id, titulo
+           FROM noticias
+          WHERE portada = 1$filtroEstado
+          ORDER BY $fechaOrden ASC, id ASC
+          FOR UPDATE"
+    )->fetchAll();
     $ids = array_map(
-        'intval',
-        $pdo->query("SELECT id FROM noticias WHERE portada = 1$filtroEstado ORDER BY id FOR UPDATE")->fetchAll(PDO::FETCH_COLUMN)
+        static fn(array $noticia): int => (int) $noticia['id'],
+        $seleccionadas
     );
 
-    if (!in_array($noticiaId, $ids, true) && count($ids) >= PORTADA_NOTICIAS_LIMITE) {
-        throw new DomainException(
-            'La portada admite un máximo de ' . PORTADA_NOTICIAS_LIMITE
-            . ' noticias destacadas. Desmarcá una antes de agregar otra.'
-        );
+    if (in_array($noticiaId, $ids, true) || count($seleccionadas) < PORTADA_NOTICIAS_LIMITE) {
+        return [];
     }
+
+    $cantidadARetirar = count($seleccionadas) - PORTADA_NOTICIAS_LIMITE + 1;
+    $retiradas = array_slice($seleccionadas, 0, $cantidadARetirar);
+    $idsRetiradas = array_map(
+        static fn(array $noticia): int => (int) $noticia['id'],
+        $retiradas
+    );
+    $placeholders = implode(',', array_fill(0, count($idsRetiradas), '?'));
+    $stmt = $pdo->prepare(
+        "UPDATE noticias SET portada = 0, updated_at = updated_at WHERE id IN ($placeholders)"
+    );
+    $stmt->execute($idsRetiradas);
+
+    return array_map(
+        static fn(array $noticia): array => [
+            'id' => (int) $noticia['id'],
+            'titulo' => (string) $noticia['titulo'],
+        ],
+        $retiradas
+    );
 }
 
 /**

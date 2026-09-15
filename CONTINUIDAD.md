@@ -1,5 +1,57 @@
 # Continuidad — Portal de Noticias
 
+## Punto de pausa vigente — títulos descriptivos de audios publicados en Cardona Hoy PROD — 15 de septiembre de 2026
+
+- La autorización cubrió tanto el despliegue como la migración PROD. `servicios.local.json` validó `deployment.database_environment=production`, DEV `6349afc0e628` y PROD `b83ead0fb903`; el archivo privado permaneció modo 600, ignorado y bloqueado.
+- El preflight FTPS externo validó TLS/hostname sin `--insecure` y comparó 11 archivos contra `.deploy/estado.json`: 11 modificaciones esperadas, 0 altas, 0 borrados y 0 conflictos. Los originales son recuperables desde `.deploy/respaldos/20260915_audio-titulos-prod/`.
+- Antes del código se respaldó la base PROD completa en `.deploy/respaldos-db/20260915_audio-titulos-prod/cardonahoy-production-before-medios-v2.sql`: 4.876.187 bytes y SHA-256 `d692cb2ec4da86bbdf3c21cc008b06440709f0b64d61449ac1a62da27736bac0`.
+- La migración agregó `audio_titulo_1`, `audio_titulo_2` y `audio_titulo_3` como `VARCHAR(180) NULL`, preservó 20 tablas, 177 noticias, 21 noticias con audio y Mantenimiento `0`; los títulos nacieron vacíos. La segunda ejecución confirmó idempotencia. El runner fue eliminado, responde 404 y no aparece entre los temporales FTPS.
+- Archivos publicados: `admin/assets/admin.css`, `admin/includes/noticia-preview-drawer.php`, `admin/index.php`, `admin/noticia-detalle.php`, `admin/noticia-form.php`, `assets/css/noticia.css`, `assets/css/portal.css`, `cargar-noticia.php`, `index.php`, `partials/medios-noticia.php` y `partials/portada-paginacion.php`.
+- Los 11 hashes finales FTPS coinciden con DEV; `admin.css`, `portal.css` y `noticia.css` también coinciden byte a byte por HTTPS. Home/login `200`, Admin y formulario anónimos `302`, privados `403`, cero temporales.
+- Browser plugin no disponible. Chromium/Puppeteer sobre una noticia PROD real con audio pasó en `1440×900` y `390×844`: HTTP 200, fallback **Audio 1**, reproductor 666/666 px y 320/320 px, cero overflow y consola limpia. Métricas/publicidad/analytics se interceptaron durante QA.
+- Pendiente exclusivo: prueba autenticada manual agregando un título a un audio en PROD y comprobando el lateral administrativo. No se tocaron otros portales; sin commit ni push.
+
+## Punto de pausa vigente — títulos descriptivos de audios terminados en Cardona Hoy DEV — 15 de septiembre de 2026
+
+- `admin/noticia-form.php` incorpora **Título del audio 1/2/3** encima de cada archivo o URL. Son campos opcionales, sanitizados, limitados a 180 caracteres y descartados si no existe el audio asociado.
+- La persistencia usa `audio_titulo_1`, `audio_titulo_2` y `audio_titulo_3`. Las consultas de portada, paginación, carga de noticia y detalle administrativo incluyen esos campos; `partials/medios-noticia.php` es el render público compartido y conserva el fallback posicional **Audio N** para contenido anterior.
+- Con autorización expresa se respaldó exclusivamente la base DEV, huella `6349afc0e628`, en `.deploy/respaldos-db/20260915_audio-titulos-dev/cardonahoy-development-before-medios-v2.sql`: 110.695 bytes y SHA-256 `d7a4f49f7af1b3de543c9d08ba7b5a8abff39061b1eb0bfc2b819910db37e8a4`.
+- `install/medios-v2.php --environment=development` se ejecutó dos veces: las tres columnas quedaron como `VARCHAR(180) NULL`, la repetición omitió las existentes y se preservaron las 8 noticias. Una prueba real dentro de una transacción confirmó escritura/lectura de los tres títulos y rollback exacto; DEV terminó con los 0 títulos previos.
+- `php -l` pasó en todos los PHP afectados, `node --check assets/js/noticia.js` y `git diff --check` quedaron correctos.
+- Browser plugin ausente; Chromium/Puppeteer validó el formulario en `1280×900` y el render público en `1440×900`/`390×844`: tres cajas, orden título antes de audio, límite 180, título descriptivo visible, fallback **Audio 3**, reproductores contenidos, cero overflow y consola limpia.
+- La prueba manual posterior creó la noticia DEV ID 16, `accidente-de-audio`, con el título **Palabras del Agente de Policia**. Reveló que `admin/index.php` todavía tenía una copia interna antigua del renderer del lateral; se corrigió para leer `{url, titulo}` igual que el parcial reutilizable.
+- `admin/assets/admin.css` fuerza `width/min-width/max-width: 100%` en el reproductor y `min-width: 0` en todos sus contenedores; el público conserva la misma regla y permite cortar títulos largos sin ensanchar la vista. QA final: lateral 528/528 px PC y 292/292 px móvil; público 666/666 px PC y 320/320 px móvil, cero overflow, consola limpia y cierre del lateral correcto. La noticia DEV real respondió HTTP 200 con título y audio.
+- No se tocó PROD ni los otros portales; no se creó commit ni se hizo push.
+
+## Punto de pausa vigente — rotación de Portada y flecha de noticia publicadas en Cardona Hoy PROD — 15 de septiembre de 2026
+
+- Con autorización expresa se publicaron únicamente `admin/includes/funciones.php`, `admin/index.php`, `admin/noticia-form.php`, `noticia.php`, `assets/css/noticia.css` y `assets/js/noticia.js`.
+- `servicios.local.json` validó `deployment.database_environment=production`, DEV `6349afc0e628` y PROD `b83ead0fb903`; no se ejecutó ninguna operación de base de datos.
+- TLS 1.3 y hostname válidos. El preflight remoto coincidió con las seis huellas esperadas, con cero conflictos, y guardó los originales en `.deploy/respaldos/20260915_portada-rotacion-flecha-prod/`.
+- El reemplazo temporal y atómico terminó con seis hashes FTPS finales iguales a los locales y cero temporales. Los assets versionados `assets/css/noticia.css` y `assets/js/noticia.js` también coincidieron por HTTPS.
+- Postflight: portada, noticia real y login `200`; `admin/index.php` y `admin/noticia-form.php` anónimos `302`; `servicios.local.json` y `admin/config.local.php` `403`.
+- Browser plugin no disponible. Chromium/Puppeteer PROD ingresó a una noticia real con referente externo en `1440×900` y `390×844`: flecha única de `46×46px`/`40×40px`, centrado exacto, sin overflow ni errores, y clic hasta `#contenido-noticia`. Se bloquearon vistas, publicidad y analytics durante el QA.
+- Pendiente exclusivo: prueba manual autenticada en PROD activando una noticia número 11 para comprobar el aviso y el retiro visual de la más antigua. No hubo cambios en noticias, selección de Portada, vistas, historial, Mantenimiento, commit ni push.
+
+## Punto de pausa vigente — flecha de desplazamiento en la noticia individual terminada en Cardona Hoy DEV — 15 de septiembre de 2026
+
+- `noticia.php` muestra dentro de `.story-hero` la misma flecha circular y animada del slider de la Home cuando existe al menos una foto. El destino editorial es `#contenido-noticia`.
+- Para no depender de una ancla relativa afectada por el `<base>` de la página, la pieza es un botón accesible `[data-scroll-to-article]`; `assets/js/noticia.js` ejecuta `scrollIntoView()` suave sin recargar ni abandonar la noticia.
+- `assets/css/noticia.css` replica las medidas aprobadas: `46×46px` y `bottom:28px` en escritorio; `40×40px` y `bottom:18px` en móvil; borde blanco translúcido, círculo, sombra y animación `scroll-float` de 2 segundos.
+- Browser plugin no disponible. Chromium/Puppeteer sobre `noticia.php?slug=...` real en DEV pasó en `1440×900` y `390×844`: HTTP 200, contenido no vacío, una flecha, centrado exacto, sin solapamiento con título/lupa, sin overflow ni errores propios. El clic desplazó `691px` en PC y `673px` en móvil; la solicitud de vista se interceptó y no escribió actividad.
+- `php -l noticia.php`, `node --check assets/js/noticia.js` y `git diff --check` correctos. Archivos funcionales: `noticia.php`, `assets/css/noticia.css` y `assets/js/noticia.js`.
+- Pendiente: revisión visual manual del usuario en DEV. Sin commit, push, FTPS, migración, base de datos ni cambios en PROD.
+
+## Punto de pausa vigente — rotación automática de Portada terminada en Cardona Hoy DEV — 15 de septiembre de 2026
+
+- El límite continúa centralizado en `PORTADA_NOTICIAS_LIMITE = 10`. Al activar una noticia que todavía no está en Portada y encontrar el cupo completo, `liberar_cupo_noticia_portada()` bloquea la selección vigente y desmarca automáticamente la publicación más antigua antes de activar la nueva.
+- La antigüedad se resuelve por `COALESCE(publicada_at, created_at) ASC, id ASC`. La función también sanea de forma segura un eventual estado histórico superior a 10, retirando sólo la cantidad necesaria.
+- La misma operación transaccional se usa desde `admin/index.php` y `admin/noticia-form.php`. El JSON del switch devuelve las noticias retiradas para poner sus controles en **No** sin recargar; el formulario agrega el título retirado al mensaje de éxito.
+- `php -l` pasó en los tres PHP modificados y `git diff --check` quedó limpio. El runtime se comprobó contra Cardona Hoy DEV, huella `6349afc0e628`.
+- Prueba backend aislada: una tabla temporal con 10 seleccionadas recibió la número 11, retiró exactamente la ID más antigua, conservó IDs 2–11 y una repetición no retiró otra noticia. La tabla temporal fue eliminada y ningún dato real cambió.
+- Browser plugin no disponible; Chromium/Puppeteer ejercitó el JavaScript real mediante respuesta controlada en `1440×900` y `390×844`: switch antiguo en **No**, nuevo en **Sí**, mensajes correctos, total 10, consola limpia y sin overflow. La columna Portada continúa deliberadamente oculta en el listado móvil según el diseño anterior.
+- Archivos funcionales: `admin/includes/funciones.php`, `admin/index.php` y `admin/noticia-form.php`. Pendiente: prueba autenticada manual en DEV. Sin commit, push, FTPS, migración ni cambio alguno en PROD.
+
 ## Correctivo del teclado móvil del asistente — DEV y PROD — 13 de septiembre de 2026
 
 - Cardona Hoy compartía la falla diagnosticada en RS Medios: al enfocar el textarea, el teclado disparaba `window.resize`; el launcher flotante oculto medía cero y `setPageEngaged(false)` cerraba involuntariamente el panel.

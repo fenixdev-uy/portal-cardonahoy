@@ -24,7 +24,8 @@ $camposEstado = noticias_estados_disponibles($pdo)
 $stmt = $pdo->prepare(
     'SELECT n.id, n.titulo, n.descripcion,
             n.youtube, n.youtube_2, n.youtube_3,
-            n.audio_1, n.audio_2, n.audio_3, n.created_at, n.updated_at, ' . $camposEstado . ',
+            n.audio_1, n.audio_titulo_1, n.audio_2, n.audio_titulo_2, n.audio_3, n.audio_titulo_3,
+            n.created_at, n.updated_at, ' . $camposEstado . ',
             n.me_gusta, n.no_me_gusta, n.vistas, n.compartidos,
             c.nombre AS categoria_nombre,
             u.nombre AS autor_nombre
@@ -60,13 +61,16 @@ $videos = array_values(array_filter(array_map(
     static fn($url) => youtube_embed_url((string) $url),
     [$n['youtube'] ?? '', $n['youtube_2'] ?? '', $n['youtube_3'] ?? '']
 )));
-$audios = array_values(array_filter(array_map(
-    static function ($url): string {
-        $normalizada = normalizar_url_audio((string) $url);
-        return $normalizada === '' ? '' : url_audio_panel($normalizada);
-    },
-    [$n['audio_1'] ?? '', $n['audio_2'] ?? '', $n['audio_3'] ?? '']
-)));
+$audios = [];
+for ($i = 1; $i <= 3; $i++) {
+    $normalizada = normalizar_url_audio((string) ($n['audio_' . $i] ?? ''));
+    if ($normalizada === '') continue;
+    $tituloAudio = trim((string) ($n['audio_titulo_' . $i] ?? ''));
+    $audios[] = [
+        'url' => url_audio_panel($normalizada),
+        'titulo' => $tituloAudio !== '' ? $tituloAudio : 'Audio ' . $i,
+    ];
+}
 
 echo json_encode([
     'id'             => (int) $n['id'],
